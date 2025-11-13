@@ -6,6 +6,9 @@ from torch.utils.data import DataLoader
 from fuxian.disassemble_dataset import DisassembledDataSet
 from TruncatedLoss import TruncatedLoss
 
+from torchvision.models import ResNet50_Weights
+
+
 
 def build_dataset(mask_type,class_num):
     data_transform = transforms.Compose(
@@ -22,7 +25,7 @@ def build_dataset(mask_type,class_num):
     return disassembled_dataset
 
 def build_ResNet50(class_num):
-    model = torchvision.models.resnet50(pretrained=True)
+    model = torchvision.models.resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
     model.fc = torch.nn.Linear(2048, class_num)
     return model
 
@@ -42,15 +45,15 @@ def train_one_epoch(epoch,model,train_dataloader,
     model.train()
     loss_sum = 0
     if (epoch + 1) >= 3 and (epoch + 1) % 3 == 0 and is_LNL:
-        best_checkpoint = torch.load(os.path.join(model_save_dir,"best.pth"), map_location="cpu")
+        best_checkpoint = torch.load(os.path.join(model_save_dir,"best.pt"), map_location="cpu")
         model.load_state_dict(best_checkpoint["model"])
         model.eval()
         for batch_idx, (inputs, targets, indexes) in enumerate(train_dataloader):
-            print("\rrunning update_weight:{} / {}".format(batch_idx, len(train_dataloader)), end="")
+            # print("\rrunning update_weight:{} / {}".format(batch_idx, len(train_dataloader)), end="")
             inputs, targets = inputs.to(device), targets.to(device)
             outputs = model(inputs)
             criterion.update_weight(outputs, targets, indexes)
-        last_checkpoint = torch.load(os.path.join(model_save_dir,f"epoch_{epoch-1}.pth"), map_location="cpu")
+        last_checkpoint = torch.load(os.path.join(model_save_dir,f"epoch_{epoch-1}.pt"), map_location="cpu")
         model.load_state_dict(last_checkpoint['model'])
         model.train()
 
@@ -68,8 +71,8 @@ def train_one_epoch(epoch,model,train_dataloader,
         loss.backward()
         optimizer.step()
         # Training progress bar
-        print("\rEpoch: {}/{} | Step: {}/{} | Loss: {:.4f}".format(epoch + 1, epoches, i + 1, len(train_dataloader),
-                                                                    loss.item()), end="")
+        # print("\rEpoch: {}/{} | Step: {}/{} | Loss: {:.4f}".format(epoch + 1, epoches, i + 1, len(train_dataloader),
+        #                                                             loss.item()), end="")
     loss_avg = round(loss_sum / len(train_dataloader),4)
     return loss_avg
 
@@ -86,9 +89,9 @@ def val_one_epoch(model,val_dataloader,device):
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
             # test progress bar
-            print("\rTest: {}/{}".format(total, len(val_dataloader)), end="")
+            # print("\rVal: {}/{}".format(total, len(val_dataloader)), end="")
 
-    print("Accuracy of the val images: {} %".format(100 * correct / total))
+    print("\rAccuracy of the val images: {} %".format(100 * correct / total))
 
     acc = 100 * correct / total
     return acc
@@ -141,17 +144,40 @@ def train():
 
 
 if __name__ == "__main__":
-    img_root_dir = "/data/mml/data_debugging/datasets/VOC2012-coco/train", 
-    annotation_path = "/data/mml/data_debugging/datasets/VOC2012-coco/train/_annotations.coco_error.json",
-    mask_type = "other objects" # other objects|crop
-    class_num = 12
+    exp_data_root = "/data/mml/data_debugging_data"
+    img_root_dir = f"{exp_data_root}/datasets/VOC2012-coco/train"
+    annotation_path = f"{exp_data_root}/datasets/VOC2012-coco/train/_annotations.coco_error.json"
+    mask_type = "other_objects" # crop | other_objects
+    class_num = 21
     epoches = 13
-    model_save_dir = f"/data/mml/data_debugging/saved_models/DataDetective/{mask_type}"
+    model_save_dir = f"{exp_data_root}/DataDetective/saved_models/{mask_type}"
     train()
 
 
+'''
+train_model(mask_type='crop', class_num=class_num, img_root=img_root,
+            trainlabel_root=train_label_path,
+            testlabel_root=test_label_path,
+            model_save_path="./models/crop_model_epoch_{}.pt")
+train_model(mask_type='other objects', class_num=class_num, img_root=img_root,
+            trainlabel_root=train_label_path,
+            testlabel_root=test_label_path,
+            model_save_path="./models/mask_others_model_epoch_{}.pt")
+inf_model(root_path=img_root, mask_type='crop',
+              dirty_path=test_label_path,
+              modelpath='./models/crop_model_epoch_13.pt',
+              results_save_path='./crop_test_inf.json')
+inf_model(root_path=img_root, mask_type='mask others',
+              dirty_path=test_label_path,
+              modelpath='./models/mask_others_model_epoch_13.pt',
+              results_save_path='./mask_others_test_inf.json')
+detective(crop_path='./crop_test_inf.json',
+              mask_others_path='./mask_others_test_inf.json',
+              dirty_path='./dataset/COCO/casestudy_test.json')
+'''
+
 # resume
-# checkpoint = torch.load('./models/resnet50_voc_epoch_10.pth', map_location="cpu")
+# checkpoint = torch.load('./models/resnet50_voc_epoch_10.pt', map_location="cpu")
 # model.load_state_dict(checkpoint["model"])
 # optimizer.load_state_dict(checkpoint["optimizer"])
 # epoch = checkpoint["epoch"]

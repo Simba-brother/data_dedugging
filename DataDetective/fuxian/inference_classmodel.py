@@ -54,7 +54,7 @@ def infer():
                 content_dic = {
                     "image_name": targets["image_name"][j],
                     "full_scores": outputs[j].cpu().numpy().tolist(), # imgs[j]的prob_list
-                    "pred_category_id":predicted[j],
+                    "pred_category_id":predicted[j].item(),
                     "gt_category_id": int(targets["category_id"][j]),
                     "bbox": targets["boxes"][j].numpy().tolist(),
                     "loss": loss # imgs[j]的loss,其实就是一个instance的loss，因为由于解构了数据集所以一个instance就是一个img
@@ -65,11 +65,34 @@ def infer():
         json_file.write(json_str)
 
 if __name__ == "__main__":
-    
-    img_root = "/data/mml/data_debugging/datasets/VOC2012-coco/train"
-    annotation_path = "/data/mml/data_debugging/datasets/VOC2012-coco/train/_annotations.coco_error.json"
+    exp_data_root = "/data/mml/data_debugging_data"
+    img_root = f"{exp_data_root}/datasets/VOC2012-coco/train"
+    annotation_path = f"{exp_data_root}/datasets/VOC2012-coco/train/_annotations.coco_error.json"
     class_num = 21
-    mask_type = "crop" # crop and other objects
-    trained_model_path = f"/data/mml/data_debugging/DataDetective/saved_models/{mask_type}/epoch_13.pth"
-    results_save_path = f"/data/mml/data_debugging/DataDetective/infer_results/{mask_type}.json"
+    mask_type = "other_objects" # crop and other_objects
+    trained_model_path = f"{exp_data_root}/DataDetective/saved_models/{mask_type}/epoch_12.pt"
+    results_save_path = f"{exp_data_root}/DataDetective/infer_results/{mask_type}.json"
     infer()
+
+
+'''
+train_model(mask_type='crop', class_num=class_num, img_root=img_root,
+            trainlabel_root=train_label_path,
+            testlabel_root=test_label_path,
+            model_save_path="./models/crop_model_epoch_{}.pt")
+train_model(mask_type='other objects', class_num=class_num, img_root=img_root,
+            trainlabel_root=train_label_path,
+            testlabel_root=test_label_path,
+            model_save_path="./models/mask_others_model_epoch_{}.pt")
+inf_model(root_path=img_root, mask_type='crop',
+              dirty_path=test_label_path,
+              modelpath='./models/crop_model_epoch_13.pt',
+              results_save_path='./crop_test_inf.json')
+inf_model(root_path=img_root, mask_type='mask others',
+              dirty_path=test_label_path,
+              modelpath='./models/mask_others_model_epoch_13.pt',
+              results_save_path='./mask_others_test_inf.json')
+detective(crop_path='./crop_test_inf.json',
+              mask_others_path='./mask_others_test_inf.json',
+              dirty_path='./dataset/COCO/casestudy_test.json')
+'''

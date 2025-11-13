@@ -12,8 +12,10 @@ class Inference_classificationDataSet(Dataset):
                 mask_type,
                 transforms=None):
         self.img_root = img_root
-        self.mask_type = mask_type # other object | all background
+        self.mask_type = mask_type # crop | other_objects | all_background
         self.coco = COCO(annotation_path)
+        self.catIds = self.coco.getCatIds()
+        self.background_id = self.catIds[-1] + 1
         ann_ids = self.coco.getAnnIds()
         annotations = self.coco.loadAnns(ann_ids)
         self.instances = []
@@ -23,9 +25,9 @@ class Inference_classificationDataSet(Dataset):
             ymax = ymin + height
             instance["bbox"] = [int(xmin),int(ymin),int(xmax),int(ymax)]
             # 保证box是个有效的整数矩形
-            if instance["bbox"][0] == instance["boxes"][2]:
+            if instance["bbox"][0] == instance["bbox"][2]:
                 instance["bbox"][2] += 1
-            if instance["bbox"][1] == instance["boxes"][3]:
+            if instance["bbox"][1] == instance["bbox"][3]:
                 instance["bbox"][3] += 1
         # 一个图像映射到其boxes
         self.imageid2boxes = defaultdict(list)
@@ -35,7 +37,7 @@ class Inference_classificationDataSet(Dataset):
             self.imageid2boxes[instance["image_id"]].append(instance["bbox"])
         print(f"INFO: {len(self.instances)} instances nomissing-loaded.")
 
-        if self.mask_type == 'other objects' or self.mask_type == 'mask all':
+        if self.mask_type == 'other_objects' or self.mask_type == 'all_background':
             bg_instances = []
             bg_image_names = []
             for instance in self.instances:
@@ -48,7 +50,7 @@ class Inference_classificationDataSet(Dataset):
                 item["image_name"] = image_name
                 item["image_size"] = [image_info["width"],image_info["height"]]
                 item["bbox"] = instance["bbox"]
-                item["label"] = 0
+                item["label"] = self.background_id
                 item["image_id"] = instance["image_id"]
                 item["area"] = self.caclu_area(instance["bbox"])
                 item["iscrowd"] = 0
@@ -59,9 +61,25 @@ class Inference_classificationDataSet(Dataset):
                     bg_image_names.append(item["image_name"])
             self.instances = bg_instances #只需推理背景部分即可
             print(f"INFO: {len(self.instances)} instances only bkg-loaded.")
-            # self.fault_gt_instances = bkg_fault_gt_instances
-            # merge fault_gt_instances and bkg_fault_gt_instances
-            # self.fault_gt_instances.extend(bkg_fault_gt_instances)
+        elif self.mask_type == "crop":
+            temp_instances = []
+            for instance in self.instances:
+                # 拿到该实例所属image path
+                image_id = instance["image_id"]
+                image_info = self.coco.loadImgs(image_id)[0] 
+                image_name = image_info['file_name']
+                item = {}
+                item["image_id"] = image_id
+                item["image_name"] = image_name
+                item["image_size"] = [image_info["width"],image_info["height"]]
+                item["bbox"] = instance["bbox"]
+                item["label"] = self.background_id
+                item["image_id"] = instance["image_id"]
+                item["area"] = self.caclu_area(instance["bbox"])
+                item["iscrowd"] = 0
+                temp_instances.append(item)
+            self.instances = temp_instances
+
         self.transforms = transforms
 
     def caclu_area(self,bbox:list):
@@ -83,37 +101,38 @@ class Inference_classificationDataSet(Dataset):
         instance = self.instances[idx]
         img_path = os.path.join(self.img_root, instance['image_name'])
         img = Image.open(img_path).convert("RGB")
-        boxes = instance["bbox"]
+        cur_instance_bbox = instance["bbox"]
         in_boxes_list = []
-        label = instance["category_id"]
+        label = instance["label"]
         img_need = None
-        if label != 0:
-            img_need = img.crop(boxes)
-        if self.mask_type == 'mask others':
-            for box in self.imageid2boxes[instance["image_id"]]:
-                box = [int(i) for i in box]
-                if box == boxes and label != 0:
+        if label != self.background_id:
+            img_need = img.crop(cur_instance_bbox)
+        if self.mask_type == 'other_objects':
+            for bbox in self.imageid2boxes[instance["image_id"]]:
+                bbox = [int(i) for i in bbox]
+                if bbox == cur_instance_bbox and label != self.background_id:
                     continue
                 # Gaussian blur the box area of the image
                 # if box belong to the part of boxes
-                if box[0] > boxes[0] and box[1] > boxes[1] and box[2] < boxes[2] and box[3] < boxes[3]:
-                    in_boxes_list.append(box)
+                if bbox[0] > cur_instance_bbox[0] and bbox[1] > cur_instance_bbox[1] and bbox[2] < cur_instance_bbox[2] and bbox[3] < cur_instance_bbox[3]:
+                    in_boxes_list.append(bbox)
                 else:
-                    img = self.gaussian_blur(img, box)
-            if label != 0:
-                img.paste(img_need, boxes)
+                    # mask other obj
+                    img = self.gaussian_blur(img, bbox)
+            if label != self.background_id:
+                img.paste(img_need, cur_instance_bbox)
 
-            for box in in_boxes_list:
-                img = self.gaussian_blur(img, box)
+            for bbox in in_boxes_list:
+                img = self.gaussian_blur(img, bbox)
 
 
         elif self.mask_type == 'crop':
-            img = img.crop(boxes)
+            img = img.crop(cur_instance_bbox)
 
         target = {}
         target["image_name"] = instance["image_name"]
         target["category_id"] = torch.tensor(instance["label"])
-        target["boxes"] = torch.tensor(boxes)
+        target["boxes"] = torch.tensor(cur_instance_bbox)
         img = img.resize((224, 224))
         if self.transforms is not None:
             img = self.transforms(img)

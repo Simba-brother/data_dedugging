@@ -14,21 +14,24 @@ from PIL import Image
 import pandas as pd
 import os
 
+exp_data_root_dir = "/data/mml/data_debugging_data"
+model_name = "SSD" # SSD|FRCNN
+gpu_id = 1
+conf_threshold = 0.8
 # Transform PIL image --> PyTorch tensor
 def get_transform():
     return ToTensor()
-
 # Load training dataset
 train_dataset = CocoDetectionDataset(
-    image_dir="/data/mml/data_debugging/datasets/VOC2012-coco/train", 
-    annotation_path="/data/mml/data_debugging/datasets/VOC2012-coco/train/_annotations.coco_correct.json",
+    image_dir=f"{exp_data_root_dir}/datasets/VOC2012-coco/train", 
+    annotation_path=f"{exp_data_root_dir}/datasets/VOC2012-coco/train/_annotations.coco_error.json",
     transforms=get_transform()
 )
 
 # Load validation dataset
 val_dataset = CocoDetectionDataset(
-    image_dir="/data/mml/data_debugging/datasets/VOC2012-coco/val",
-    annotation_path="/data/mml/data_debugging/datasets/VOC2012-coco/val/_annotations.coco.json",
+    image_dir=f"{exp_data_root_dir}/datasets/VOC2012-coco/val",
+    annotation_path=f"{exp_data_root_dir}/datasets/VOC2012-coco/val/_annotations.coco.json",
     transforms=get_transform()
 )
  
@@ -74,9 +77,9 @@ def test():
     Higher threshold give you more accurate detections, 
     but number of predictions is reduced; there is a simple trade-off
     """
-    threshold = 0.8
+    conf_threshold = 0.8
     for i in range(len(boxes)):
-        if scores[i] > threshold:
+        if scores[i] > conf_threshold:
             box = boxes[i].cpu().numpy().astype(int)
             label = label_list[labels[i]]
             score = scores[i].item()
@@ -125,10 +128,14 @@ def main():
     # Number of classes in the dataset (including background)
     # +1 for bg class
     num_classes = len(train_dataset.coco.getCatIds()) + 1
-    model = build_ssd_model(num_classes)
-
+    if model_name == "SSD":
+        model = build_ssd_model(num_classes)
+    elif model_name == "FRCNN":
+        model = build_frcnn_model(num_classes)
+    else:
+        raise Exception("模型名称错误")
     # Move the model to the GPU for faster training
-    device = torch.device("cuda:0")
+    device = torch.device(f"cuda:{gpu_id}")
     model.to(device)
 
     # Get parameters that require gradients (the model's trainable parameters)
@@ -146,12 +153,73 @@ def main():
         train_one_epoch(model, optimizer, train_loader, device, epoch, print_freq=25)  # Using train_loader for training
         # Evaluate the model only on the validation dataset, not training
         evaluate(model, val_loader, device=device)  # Using val_loader for evaluation
-        # model.train()
-        # collection_indicator(model,device,train_t_loader,epoch)
+        if model_name == "FRCNN":
+            collection_FRCNN_indicator(model,device,train_t_loader,epoch)
+        elif model_name == "SSD":
+            collection_SSD_indicator(model,device,train_t_loader,epoch)
         # save the model after each epoch
-        torch.save(model.state_dict(), f"check_points/VOC2012/SSD/epoch_{epoch}.pth")
+        torch.save(model.state_dict(), f"{exp_data_root_dir}/models/VOC2012_error/{model_name}/epoch_{epoch}.pth")
 
-def collection_indicator(model,device,dataloader,epoch):
+
+def collection_SSD_indicator(model,device,dataloader,epoch):
+    item_list = []
+    for images, targets in dataloader:
+        item = {
+            "image_name":None,
+            "loss_box":None,
+            "loss_objcls":None,
+            "loss":None,
+            "conf_avg":None,
+            "box_count_dif":None
+        }
+        images = list(image.to(device) for image in images)
+        targets = [{k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in t.items()} for t in targets]
+        image_name = targets[0]["image_path"].split("/")[-1]
+        gt_box_count = targets[0]["boxes"].shape[0]
+        item["image_name"] = image_name
+        model.train()
+        loss_dict = model(images, targets)
+        
+        item["loss_box"] = loss_dict["bbox_regression"].item()
+        item["loss_objcls"] = loss_dict["classification"].item()
+        item["loss"] = item["loss_objcls"] + item["loss_box"]
+        # Inference
+        model.eval()
+        predictions = model(images)
+        # detection data
+        boxes = predictions[0]['boxes']
+        labels = predictions[0]['labels']
+        scores = predictions[0]['scores']
+        
+        """
+        Higher threshold give you more accurate detections, 
+        but number of predictions is reduced; there is a simple trade-off
+        """
+        conf_threshold = 0.8
+        conf_list = []
+        for i in range(len(boxes)):
+            if scores[i] > conf_threshold:
+                # box = boxes[i].cpu().numpy().astype(int)
+                # label = label_list[labels[i]]
+                conf = scores[i].item()
+                conf_list.append(conf)
+        # box_count_dif = len(conf) - 
+        if len(conf_list) == 0:
+            conf_avg = 0
+        else:
+            conf_avg = round(sum(conf_list) / len(conf_list),3)
+        item["conf_avg"] = conf_avg
+        box_count_dif = abs(len(conf_list)-gt_box_count)
+        item["box_count_dif"] = box_count_dif
+        item_list.append(item)
+    df = pd.DataFrame(item_list)
+    save_dir = f"{exp_data_root_dir}/collection_indicator/VOC2012/{model_name}"
+    save_path = os.path.join(save_dir,f"epoch_{epoch}.csv")
+    df.to_csv(save_path, index=False)
+    print(f"保存在：{save_path}")
+
+
+def collection_FRCNN_indicator(model,device,dataloader,epoch):
     item_list = []
     for images, targets in dataloader:
         item = {
@@ -168,6 +236,8 @@ def collection_indicator(model,device,dataloader,epoch):
         image_name = targets[0]["image_path"].split("/")[-1]
         gt_box_count = targets[0]["boxes"].shape[0]
         item["image_name"] = image_name
+
+        model.train()
         loss_dict = model(images, targets)
         loss_classifier = loss_dict["loss_classifier"].item()
         item["loss_cls"] = loss_classifier
@@ -189,10 +259,10 @@ def collection_indicator(model,device,dataloader,epoch):
         Higher threshold give you more accurate detections, 
         but number of predictions is reduced; there is a simple trade-off
         """
-        threshold = 0.8
+        conf_threshold = 0.8
         conf_list = []
         for i in range(len(boxes)):
-            if scores[i] > threshold:
+            if scores[i] > conf_threshold:
                 # box = boxes[i].cpu().numpy().astype(int)
                 # label = label_list[labels[i]]
                 conf = scores[i].item()
@@ -206,14 +276,11 @@ def collection_indicator(model,device,dataloader,epoch):
         box_count_dif = abs(len(conf_list)-gt_box_count)
         item["box_count_dif"] = box_count_dif
         item_list.append(item)
-        model.train()
     df = pd.DataFrame(item_list)
-    save_dir = "/data/mml/data_debugging/collection_indicator/VOC2012/FRCNN/"
+    save_dir = f"{exp_data_root_dir}/collection_indicator/VOC2012/{model_name}"
     save_path = os.path.join(save_dir,f"epoch_{epoch}.csv")
     df.to_csv(save_path, index=False)
     print(f"保存在：{save_path}")
-    model.train()
-
 
 if __name__ == "__main__":
     main()

@@ -16,12 +16,14 @@ class DisassembledDataSet(Dataset):
                 class_num,
                 mask_type,
                 transforms=None):  # run_type 仅用来指定是测试集还是训练集
-        assert mask_type in ['other objects', 'all backgrounds','crop'], "mask_type must be in ['other objects', 'all backgrounds', 'crop']"
+        assert mask_type in ['crop', 'other_objects', 'all_backgrounds'], "mask_type must be in ['other objects', 'all backgrounds', 'crop']"
         
         self.img_root_dir = img_root_dir
         self.mask_type = mask_type
         self.transforms = transforms
         self.coco = COCO(annotation_path)
+        self.catIds = self.coco.getCatIds()
+        self.background_id = self.catIds[-1]+1
         # 获取所有 annotation 的 ID
         ann_ids = self.coco.getAnnIds()
         # 根据 ID 载入所有 annotation
@@ -32,9 +34,9 @@ class DisassembledDataSet(Dataset):
             ymax = ymin + height
             instance["bbox"] = [int(xmin),int(ymin),int(xmax),int(ymax)]
             # 保证box是个有效的整数矩形
-            if instance["bbox"][0] == instance["boxes"][2]:
+            if instance["bbox"][0] == instance["bbox"][2]:
                 instance["bbox"][2] += 1
-            if instance["bbox"][1] == instance["boxes"][3]:
+            if instance["bbox"][1] == instance["bbox"][3]:
                 instance["bbox"][3] += 1
         '''
         将label!=-1的实例收集到self.instances_list中
@@ -52,11 +54,11 @@ class DisassembledDataSet(Dataset):
         len_before = len(self.instances_list)
 
         # 判断一下数据集结构类型
-        if self.mask_type == 'all backgrounds' or self.mask_type == 'other objects':
+        if self.mask_type == 'all_backgrounds' or self.mask_type == 'other_objects':
             '''
             从self.instances_list选择一些实例将其改为背景实例，并添加到self.instances_list中
             '''
-            print('INFO: all backgrounds or other objects')
+            print('INFO: all_backgrounds or other objects')
             # random select 1000 instances
             # 随机选择一些obj实例作为背景
             self.background_instances_list = random.sample(self.instances_list,
@@ -66,7 +68,7 @@ class DisassembledDataSet(Dataset):
                 # 拷贝一个新的obj实例出来
                 new_instance = {key: value for key, value in instance.items()}
                 # 把obj实例的label改为 0（背景类别）
-                new_instance["category_id"] = 0 # bg instance
+                new_instance["category_id"] = self.background_id # bg instance
                 # 把这个背景obj加入到self.instances_list
                 self.instances_list.append(new_instance)
 
@@ -97,12 +99,12 @@ class DisassembledDataSet(Dataset):
         # 拿到该实例所属image path
         image_id = instance["image_id"]
         image_info = self.coco.loadImgs(image_id)[0]
-        img_path = os.path.join(self.image_dir, image_info['file_name'])
+        img_path = os.path.join(self.img_root_dir, image_info['file_name'])
 
         img, label = None, None
         # 判断一下解构类型
         # 如果是模糊其他obj
-        if self.mask_type == 'other objects':
+        if self.mask_type == 'other_objects':
             # 拿到instance 所在图像
             img = Image.open(img_path).convert("RGB")
             cur_instance_bbox = instance["bbox"]
@@ -116,29 +118,29 @@ class DisassembledDataSet(Dataset):
             出了instance其他都模糊掉：
             注意instance 内部 obj的模糊
             '''
-            if label != 0: # 非背景obj,裁出
+            if label != self.background_id: # 非背景obj,裁出
                 img_need = img.crop(cur_instance_bbox) # 裁剪出一个obj
             
             '''模糊掉不是内部box的其他实例'''
-            # 遍历该图像的所有box
+            # 遍历该图像的所有bbox
             for bbox in self.imageid2boxes[instance["image_id"]]:
-                if bbox == cur_instance_bbox and label != 0:
+                if bbox == cur_instance_bbox and label != self.background_id:
                     # 如果遍历到了自己（instance,obj,target）且自己不是背景，跳过该box，准备直接处理下个box
                     continue
                 if bbox[0] > cur_instance_bbox[0] and bbox[1] > cur_instance_bbox[1] and bbox[2] < cur_instance_bbox[2] and bbox[3] < cur_instance_bbox[3]:
-                    # 当前box是当前instance的子box,把这个box坐标存入in_boxes_list
-                    in_boxes_list.append(box)
+                    # 当前bbox是当前instance的子bbox,把这个box坐标存入in_boxes_list
+                    in_boxes_list.append(bbox)
                 else:
-                    # 如果box不是内部，把它模糊掉
-                    img = self.gaussian_blur(img, box) # img已经是将instance裁出了
+                    # 如果bbox不是内部，把它模糊掉
+                    img = self.gaussian_blur(img, bbox) # img已经是将instance裁出了
 
-            if label != 0:
+            if label != self.background_id:
                 # 该instance 不是 bg instance, 把它贴回到图像中
                 img.paste(img_need, cur_instance_bbox)
 
             '''模糊掉内部其他实例'''
-            for box in in_boxes_list: # 把它内部box模糊掉
-                img = self.gaussian_blur(img, box)
+            for bbox in in_boxes_list: # 把它内部box模糊掉
+                img = self.gaussian_blur(img, bbox)
 
         # 如果结构方式是裁出，直接裁出并且resize就可以了。
         elif self.mask_type == 'crop':

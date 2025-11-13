@@ -17,8 +17,6 @@ def aggregation(obj_list:list):
     sorted_img_name_list = sorted(image2loss, key=image2loss.get, reverse=True)
     return sorted_img_name_list
 
-
-
 def main():
     with open(crop_infer_results_path, 'r') as f:
         crop_list = json.load(f)
@@ -48,9 +46,20 @@ def main():
     # 按照obj loss从大到小排序
     # results = sorted(crop_list, key=lambda x: x['loss'], reverse=True)
 
+def get_labelmap():
+    
+    coco = COCO(annotation_path)
+    # 读取类别信息
+    cats = coco.loadCats(coco.getCatIds())
+    # 生成 {category_id: category_name} 映射
+    labelmap = {cat['id']: cat['name'] for cat in cats}
+    return labelmap
+
 if __name__ == "__main__":
-    labelmap = {1: 'person', 2: 'car', 3: 'chair', 4: 'book', 5: 'bottle', 6: 'cup', 7: 'dining table', 8: 'traffic light'}
-    crop_infer_results_path='./casestudydata/crop_test_inf.json',
-    others_infer_results_path='./casestudydata/mask_others_test_inf.json',
-    annotation_path='./dataset/COCO/casestudy_test.json'
-    rank_result_save_path = "/data/mml/data_debugging/DataDetective/ranked_img_name_list.joblib."
+    
+    exp_data_root = "/data/mml/data_debugging_data"
+    crop_infer_results_path=f'{exp_data_root}/DataDetective/infer_results/crop.json'
+    others_infer_results_path=f'{exp_data_root}/DataDetective/infer_results/other_objects.json'
+    annotation_path=f'{exp_data_root}/datasets/VOC2012-coco/train/_annotations.coco.json'
+    rank_result_save_path = f"{exp_data_root}/DataDetective/ranked_img_name_list.joblib"
+    main()

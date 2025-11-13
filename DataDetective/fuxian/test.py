@@ -2,7 +2,8 @@ import json
 import torch
 from pycocotools.coco import COCO
 def test_1():
-    coco = COCO("/data/mml/data_debugging/datasets/VOC2012-coco/train/_annotations.coco.json")
+    coco = COCO("/data/mml/data_debugging_data/datasets/football-player/train/_annotations.coco.json")
+    catIds = coco.getCatIds()
     ann_ids = coco.getAnnIds()
     annotations = coco.loadAnns(ann_ids)
     instance = annotations[0]
@@ -19,4 +20,4 @@ def test_2():
     print()
 
 if __name__ == "__main__":
-    test_2()
+    test_1()
