@@ -1,5 +1,5 @@
 '''
-把epoch收集的imge的indicator csv中的图像路径简化一下
+把epoch收集的imge的indicator csv中最后添加一列epoch,添加第一列sample_id
 '''
 import os
 import pandas as pd
@@ -11,7 +11,8 @@ for epoch in range(Epochs):
     # 修改列名并提取文件名
     # df = df.rename(columns={'image_path': 'image_name'})
     # df['image_name'] = df['image_name'].apply(os.path.basename)
-    df['epoch'] = [epoch for _ in range(df.shape[0])]
     df.insert(0,"sample_id",[i for i in range(df.shape[0])])
+    df['epoch'] = [epoch for _ in range(df.shape[0])]
     df.to_csv(csv_path,index=False)
+print("修改完毕")
 
