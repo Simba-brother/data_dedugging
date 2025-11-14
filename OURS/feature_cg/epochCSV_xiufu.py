@@ -3,7 +3,7 @@
 '''
 import os
 import pandas as pd
-epoch_csv_root_dir = "/data/mml/data_debugging/collection_indicator/VOC2012/FRCNN"
+epoch_csv_root_dir = "/data/mml/data_debugging_data/collection_indicator/VOC2012/SSD"
 Epochs = 50
 for epoch in range(Epochs):
     csv_path = os.path.join(epoch_csv_root_dir, f"epoch_{epoch}.csv")

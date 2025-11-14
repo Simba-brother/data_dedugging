@@ -6,11 +6,7 @@ import topsispy as tp
 import matplotlib.pyplot as plt
 
 
-
-def ranking_(save_dir,epoch_dir):
-    merged_feature_df = pd.read_csv(f"{save_dir}/merged_feature.csv")
-    sample_ids = merged_feature_df.iloc[:, 0]
-    dataset_features = merged_feature_df.iloc[:, 1:].values # (nums,features)
+def feature_flag(metric_name_list, stat_name_list):
     '''
     ["loss_box","loss_obj","loss_cls","loss","conf_avg"]
     loss_box:
@@ -31,15 +27,28 @@ def ranking_(save_dir,epoch_dir):
         bodong_3:越大越可疑 True 11
     conf_avg:
         mean_4:越小越可疑 False 12
-        slop_4:越大越可疑 True 13
+        slop_4:越小越可疑 False 13
         bodong_4:越大越可疑 True 14
     '''
+    feature_signs = []
+    for metric_name in metric_name_list:
+        for stat_name in stat_name_list:
+            if metric_name in ["loss_box","loss_obj","loss_cls","loss", "loss_objcls"]:
+                feature_signs.append(1) # 正向指标，loss越大越有可能为错误样本
+            elif metric_name in ["conf_avg"]:
+                if stat_name == ["mean","slop"]:
+                    feature_signs.append(-1)
+                else:
+                    feature_signs.append(1)
+    return feature_signs
 
-    # feature_indices = [0,4,5,6,10,11,12,16,17,18,22,23]
-    # dataset_subfeatures = dataset_features[:,feature_indices]
 
-    feature_signs = [1 for _ in range(15)]
-    feature_signs[-3] = -1
+def ranking_(save_dir,epoch_dir,metric_name_list, stat_name_list):
+    merged_feature_df = pd.read_csv(f"{save_dir}/merged_feature.csv")
+    sample_ids = merged_feature_df.iloc[:, 0]
+    dataset_features = merged_feature_df.iloc[:, 1:].values # (nums,features)
+
+    feature_signs = feature_flag(metric_name_list, stat_name_list)
     n_features = len(feature_signs)
     weights = np.ones(n_features) / n_features
     best_id, score_array = tp.topsis(dataset_features, weights, feature_signs)
@@ -57,7 +66,6 @@ def ranking_(save_dir,epoch_dir):
     for sample_id in sorted_sample_indices:
         sorted_img_name_list.append(sample_id_to_imgname[sample_id])
     return sorted_img_name_list
-
 
 
 def compute_apfd(list_A, list_B):
@@ -144,7 +152,7 @@ def case_study(epoch_nums):
 
 def main():
     # 可疑排序
-    sorted_img_name_list = ranking_(source_data_dir,epoch_csv_dir)
+    sorted_img_name_list = ranking_(source_data_dir,epoch_csv_dir,metric_name_list,stat_name_list)
     save_path = os.path.join(result_save_dir,"ranked_img_name_list.joblib")
     joblib.dump(sorted_img_name_list,save_path)
     print(f"排序完成,ranked_img_name_list保存在:{save_path}")
@@ -153,13 +161,18 @@ def main():
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
     dataset_name = "VOC2012"
-    model_name = "FRCNN"
-    source_data_dir = os.path.join(exp_data_root,"collection_indicator",dataset_name,model_name,"feature_fc")
+    model_name = "SSD" # "YOLOv7","FRCNN","SSD"
+    source_data_dir = os.path.join(exp_data_root,"collection_indicator",dataset_name,model_name,"feature_gc")
     epoch_csv_dir = os.path.join(exp_data_root,"collection_indicator",dataset_name,model_name)
-    result_save_dir = os.path.join(exp_data_root,"Ours")
+    result_save_dir = os.path.join(exp_data_root,"Ours",dataset_name,model_name)
+    os.makedirs(result_save_dir,exist_ok=True)
+    if model_name in ["YOLOv7","FRCNN"]:
+        metric_name_list =  ["loss_box","loss_obj","loss_cls","loss","conf_avg"]
+    elif model_name == "SSD":
+        metric_name_list =  ["loss_box","loss_objcls","loss","conf_avg"]
+    stat_name_list = ["mean","slop","bodong"]
     main()
 
-    
     # case study
 
 

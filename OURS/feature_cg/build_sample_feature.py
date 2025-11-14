@@ -71,7 +71,7 @@ def metric_statis_features(save_dir,metric_name:str):
             # "std":std_,
             # "max":max_,
             # "min":min_,
-            "slop":slope_,
+            "slop":slope_, # loss 下降 为 负数
             "bodong":bodong,
         }
         data.append(item)
@@ -99,13 +99,13 @@ if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
     exp_stage_name = "collection_indicator"
     dataset_name = "VOC2012"
-    model_name = "FRCNN"
+    model_name = "SSD"
     epoch_csv_dir = os.path.join(exp_data_root,exp_stage_name,dataset_name,model_name)
+    save_dir = os.path.join(epoch_csv_dir,"feature_gc")
+    os.makedirs(save_dir,exist_ok=True)
     if model_name == "FRCNN":
         metric_list = ["loss_box","loss_obj","loss_cls","loss","conf_avg"]
     elif model_name == "SSD":
         metric_list = ["loss_box","loss_objcls","loss","conf_avg"]
-    save_dir = os.path.join(epoch_csv_dir,"feature_gc")
-    os.makedirs(save_dir,exist_ok=True)
     # 构建特征集
     build_dataset_features(epoch_csv_dir,save_dir,epoch_num=50)
