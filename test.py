@@ -24,7 +24,5 @@ def test2():
     anns = coco.loadAnns(ann_ids)
     print()
 
-
-
 if __name__ == "__main__":
     test2()
