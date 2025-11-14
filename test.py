@@ -1,4 +1,6 @@
 from analyse.eval_ import compute_apfd
+from pycocotools.coco import COCO
+
 
 def test_1():
     # 假设有 5 条数据，id 为 1..5，其中 2,4 是 fault
@@ -16,6 +18,13 @@ def test_1():
     ranked_worst = [1, 3, 5, 2, 4]
     print("APFD (worst):", compute_apfd(ground_truth_faults, ranked_worst))
 
+def test2():
+    coco = COCO("/data/mml/data_debugging_data/datasets/VOC2012-coco/train/_annotations.coco_correct.json")
+    ann_ids = coco.getAnnIds(imgIds=[99])
+    anns = coco.loadAnns(ann_ids)
+    print()
+
+
 
 if __name__ == "__main__":
-    test_1()
+    test2()
