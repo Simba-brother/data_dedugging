@@ -1,8 +1,11 @@
 import os
 import pandas as pd
 
+'''
+先行脚本是label_tamper.py
+'''
 def simple_error_record():
-    df_record = pd.read_csv("/data/mml/data_debugging/datasets/VOC2012_error_record/error_record.csv")
+    df_record = pd.read_csv(f"{exp_data_dir}/datasets/{dataset_name}_error_record/error_record.csv")
     item_list = []
     for row_id, row in df_record.iterrows():
         txt_file_name = row["label_file_path"].split("/")[-1]
@@ -13,11 +16,11 @@ def simple_error_record():
         }
         item_list.append(item)
     df_yolo = pd.DataFrame(item_list)
-    df_yolo.to_csv("/data/mml/data_debugging/datasets/VOC2012_error_record/error_record_simple.csv", index=False)
+    df_yolo.to_csv(f"{exp_data_dir}/datasets/{dataset_name}_error_record/error_record_simple.csv", index=False)
 
 
-def error_record_yolo():
-    df_record = pd.read_csv("/data/mml/data_debugging/datasets/error_record.csv")
+def error_record_yolo(yolo_dataset_abs_dir):
+    df_record = pd.read_csv(f"{exp_data_dir}/datasets/error_record.csv")
     item_list = []
     for row_id, row in df_record.iterrows():
         txt_file_name = row["label_file_path"].split("/")[-1]
@@ -29,10 +32,10 @@ def error_record_yolo():
         }
         item_list.append(item)
     df_yolo = pd.DataFrame(item_list)
-    df_yolo.to_csv("/data/mml/data_debugging/datasets/error_record-yolo.csv", index=False)
+    df_yolo.to_csv(f"{exp_data_dir}/datasets/error_record-yolo.csv", index=False)
 
-def error_record_coco():
-    df_record = pd.read_csv("/data/mml/data_debugging/datasets/error_record.csv")
+def error_record_coco(coco_dataset_abs_dir):
+    df_record = pd.read_csv(f"{exp_data_dir}/datasets/error_record.csv")
     item_list = []
     for row_id, row in df_record.iterrows():
         txt_file_name = row["label_file_path"].split("/")[-1]
@@ -44,10 +47,10 @@ def error_record_coco():
         }
         item_list.append(item)
     df_coco = pd.DataFrame(item_list)
-    df_coco.to_csv("/data/mml/data_debugging/datasets/error_record-coco.csv", index=False)
+    df_coco.to_csv(f"{exp_data_dir}/datasets/error_record-coco.csv", index=False)
 
-def error_record_xml():
-    df_record = pd.read_csv("/data/mml/data_debugging/datasets/error_record.csv")
+def error_record_xml(xml_dataset_abs_dir):
+    df_record = pd.read_csv(f"{exp_data_dir}/datasets/error_record.csv")
     item_list = []
     for row_id, row in df_record.iterrows():
         txt_file_name = row["label_file_path"].split("/")[-1]
@@ -59,16 +62,21 @@ def error_record_xml():
         }
         item_list.append(item)
     df_xml = pd.DataFrame(item_list)
-    df_xml.to_csv("/data/mml/data_debugging/datasets/error_record-xml.csv", index=False)
+    df_xml.to_csv(f"{exp_data_dir}/datasets/error_record-xml.csv", index=False)
 
 
 
 
 if __name__ == "__main__":
     
-    yolo_dataset_abs_dir = "/data/mml/data_debugging/datasets/VOC2012-yolo"
-    coco_dataset_abs_dir = "/data/mml/data_debugging/datasets/VOC2012-coco"
-    xml_dataset_abs_dir = "/data/mml/data_debugging/datasets/VOC2012-xml/datasets_error"
+    exp_data_dir = "/data/mml/data_debugging_data"
+    dataset_name = "VisDrone" # VOC2012|VisDrone
+
+    '''
+    yolo_dataset_abs_dir = f"{exp_data_dir}/datasets/{dataset_name}-yolo"
+    coco_dataset_abs_dir = f"{exp_data_dir}/datasets/{dataset_name}-coco"
+    xml_dataset_abs_dir = f"{exp_data_dir}/datasets/{dataset_name}-xml/datasets_error"
+    '''
 
     simple_error_record()
     # error_record_xml()

@@ -4,13 +4,20 @@ import csv
 from pathlib import Path
 
 # -----------------------------
-# 配置
+# 配置 先行脚本 change_extension.py
 # -----------------------------
-DATASET_DIR = "/data/mml/data_debugging/datasets/VOC2012-yolo/train/labels_error" # "datasets/african-wildlife/labels/train"  # 原标签路径
-CSV_FILE = "/data/mml/data_debugging/datasets/VOC2012_error_record/error_record.csv"  # 保存篡改记录
+exp_data_root = "/data/mml/data_debugging_data"
+dataset_name = "VisDrone"
+DATASET_DIR = f"{exp_data_root}/datasets/{dataset_name}-yolo/train/labels_error" # "datasets/african-wildlife/labels/train"  # 原标签路径
+CSV_FILE = f"{exp_data_root}/datasets/{dataset_name}_error_record/error_record.csv"  # 保存篡改记录
+os.makedirs(f"{exp_data_root}/datasets/{dataset_name}_error_record",exist_ok=True)
+
 ERROR_RATE = 0.1  # 篡改比例
 MAX_IOU_BOX_ERROR = 0.5  # box扰动IOU上限
-NUM_CLASSES = 20  # 类别总数（请按实际数据集修改）
+if dataset_name == "VOC2012":
+    NUM_CLASSES = 20  # 类别总数（请按实际数据集修改）
+elif dataset_name == "VisDrone":
+    NUM_CLASSES = 10
 
 # -----------------------------
 # 工具函数
