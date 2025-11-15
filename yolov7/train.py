@@ -539,10 +539,16 @@ def train(hyp, opt, device, tb_writer=None):
 
 
 if __name__ == '__main__':
+
+    exp_data_root = "/data/mml/data_debugging_data"
+    dataset_name = "KITTI" # VOC2012 | VisDrone | KITTI
+    model_name = "YOLOv7"
+    collection_save_dir = os.path.join(exp_data_root,"collection_indicator", dataset_name,model_name)
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', type=str, default='yolov7.pt', help='initial weights path')
     parser.add_argument('--cfg', type=str, default='cfg/training/yolov7.yaml', help='model.yaml path')
-    parser.add_argument('--data', type=str, default='data/VisDrone.yaml', help='data.yaml path')
+    parser.add_argument('--data', type=str, default='data/KITTI.yaml', help='data.yaml path')
     parser.add_argument('--hyp', type=str, default='data/hyp.scratch.p5.yaml', help='hyperparameters path')
     parser.add_argument('--epochs', type=int, default=50)
     parser.add_argument('--batch-size', type=int, default=32, help='total batch size for all GPUs')
@@ -556,7 +562,7 @@ if __name__ == '__main__':
     parser.add_argument('--bucket', type=str, default='', help='gsutil bucket')
     parser.add_argument('--cache-images', action='store_true', help='cache images for faster training')
     parser.add_argument('--image-weights', action='store_true', help='use weighted image selection for training')
-    parser.add_argument('--device', default='0', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+    parser.add_argument('--device', default='1', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--multi-scale', action='store_true', help='vary img-size +/- 50%%')
     parser.add_argument('--single-cls', action='store_true', help='train multi-class data as single-class')
     parser.add_argument('--adam', action='store_true', help='use torch.optim.Adam() optimizer')
@@ -587,12 +593,7 @@ if __name__ == '__main__':
     #    check_git_status()
     #    check_requirements()
 
-    exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012 | VisDrone
-    model_name = "YOLOv7"
-    collection_save_dir = os.path.join(exp_data_root,"collection_indicator", dataset_name,model_name)
-    
-    
+
 
     # Resume
     wandb_run = check_wandb_resume(opt)

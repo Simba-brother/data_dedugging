@@ -30,6 +30,6 @@ class TruncatedLoss(nn.Module):
         Lqk = np.repeat(((1 - (self.k ** self.q)) / self.q), targets.size(0))
         Lqk = torch.from_numpy(Lqk).type(torch.cuda.FloatTensor)
         Lqk = torch.unsqueeze(Lqk, 1)
-
+        Lqk = Lqk.to(Lq.device)
         condition = torch.gt(Lqk, Lq)
         self.weight[indexes] = condition.type(torch.cuda.FloatTensor)

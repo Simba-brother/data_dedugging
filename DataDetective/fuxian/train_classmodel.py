@@ -106,7 +106,7 @@ def train():
     model.to(device)
     is_LNL = True
     criterion = build_criterion(is_LNL=is_LNL,train_dataset=train_disassembled_dataset)
-    criterion = criterion.to(device)
+    criterion.to(device)
     # optimizer
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[7, 11], gamma=0.1)
@@ -146,14 +146,18 @@ def train():
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VisDrone | VOC2012
+    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
     img_root_dir = f"{exp_data_root}/datasets/{dataset_name}-coco/train"
     annotation_path = f"{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json"
     mask_type = "other_objects" # crop | other_objects
-    if dataset_name == "VisDrone":
-        class_num = 11 # 10 + 1
-    elif dataset_name == "VOC2012":
+    if dataset_name == "VOC2012":
         class_num = 21 # 20 + 1
+    elif dataset_name == "VisDrone":
+        class_num = 11 # 10 + 1
+    elif dataset_name == "KITTI":
+        class_num = 10 # 9 + 1
+    else:
+        raise Exception("数据集名称错误")
     epoches = 13
     model_save_dir = f"{exp_data_root}/DataDetective/{dataset_name}/saved_models/{mask_type}"
     os.makedirs(model_save_dir,exist_ok=True)
