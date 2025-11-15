@@ -70,7 +70,7 @@ def error_record_xml(xml_dataset_abs_dir):
 if __name__ == "__main__":
     
     exp_data_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|VisDrone
+    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
 
     '''
     yolo_dataset_abs_dir = f"{exp_data_dir}/datasets/{dataset_name}-yolo"

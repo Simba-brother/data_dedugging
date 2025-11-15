@@ -30,4 +30,4 @@ def check_extension(folder_path):
     print(ext_set)
 
 if __name__ == "__main__":
-    check_extension("/data/mml/data_debugging_data/datasets/VisDrone/images/val")
+    check_extension("/data/mml/data_debugging_data/datasets/KITTI-yolo/val/images")
