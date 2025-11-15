@@ -31,7 +31,7 @@ def build_ResNet50(class_num):
 
 def build_criterion(is_LNL,train_dataset):
     if is_LNL:
-        criterion = TruncatedLoss(trainset_size=len(train_dataset)).cuda()
+        criterion = TruncatedLoss(trainset_size=len(train_dataset))
     else:
         criterion = torch.nn.CrossEntropyLoss()
     return criterion
@@ -101,11 +101,12 @@ def train():
     train_dataloader = DataLoader(train_disassembled_dataset, batch_size=32, shuffle=True, num_workers=4)
     val_dataloader = DataLoader(train_disassembled_dataset, batch_size=32, shuffle=False, num_workers=4)
 
-    device = torch.device("cuda:0")
+    device = torch.device("cuda:1")
     model = build_ResNet50(class_num)
     model.to(device)
     is_LNL = True
     criterion = build_criterion(is_LNL=is_LNL,train_dataset=train_disassembled_dataset)
+    criterion.to(device)
     # optimizer
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[7, 11], gamma=0.1)
@@ -145,12 +146,17 @@ def train():
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    img_root_dir = f"{exp_data_root}/datasets/VOC2012-coco/train"
-    annotation_path = f"{exp_data_root}/datasets/VOC2012-coco/train/_annotations.coco_error.json"
+    dataset_name = "VisDrone" # VisDrone | VOC2012
+    img_root_dir = f"{exp_data_root}/datasets/{dataset_name}-coco/train"
+    annotation_path = f"{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json"
     mask_type = "other_objects" # crop | other_objects
-    class_num = 21
+    if dataset_name == "VisDrone":
+        class_num = 11 # 10 + 1
+    elif dataset_name == "VOC2012":
+        class_num = 21 # 20 + 1
     epoches = 13
-    model_save_dir = f"{exp_data_root}/DataDetective/saved_models/{mask_type}"
+    model_save_dir = f"{exp_data_root}/DataDetective/{dataset_name}/saved_models/{mask_type}"
+    os.makedirs(model_save_dir,exist_ok=True)
     train()
 
 

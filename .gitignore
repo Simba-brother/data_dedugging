@@ -1,7 +1,15 @@
-./exp_results
-./yolov7/runs
-./frcnn_ssd/check_points
-./DataDetective/checkpoints
+exp_results
+data/
+yolov7/runs/
+yolov7/logs/
+yolov7/inference
+yolov7/*.pt
+yolov7/data
+yolov7/figure
+
+frcnn_ssd/check_points
+
+DataDetective/checkpoints
 # Repo-specific GitIgnore ----------------------------------------------------------------------------------------------
 *.jpg
 *.jpeg

@@ -15,6 +15,7 @@ import pandas as pd
 import os
 
 exp_data_root_dir = "/data/mml/data_debugging_data"
+dataset_name = "VisDrone" # VOC2012|VisDrone
 model_name = "SSD" # SSD|FRCNN
 gpu_id = 1
 conf_threshold = 0.8
@@ -23,15 +24,15 @@ def get_transform():
     return ToTensor()
 # Load training dataset
 train_dataset = CocoDetectionDataset(
-    image_dir=f"{exp_data_root_dir}/datasets/VOC2012-coco/train", 
-    annotation_path=f"{exp_data_root_dir}/datasets/VOC2012-coco/train/_annotations.coco_error.json",
+    image_dir=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/train", 
+    annotation_path=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json",
     transforms=get_transform()
 )
 
 # Load validation dataset
 val_dataset = CocoDetectionDataset(
-    image_dir=f"{exp_data_root_dir}/datasets/VOC2012-coco/val",
-    annotation_path=f"{exp_data_root_dir}/datasets/VOC2012-coco/val/_annotations.coco.json",
+    image_dir=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/val",
+    annotation_path=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/val/_annotations.coco.json",
     transforms=get_transform()
 )
  
@@ -158,7 +159,10 @@ def main():
         elif model_name == "SSD":
             collection_SSD_indicator(model,device,train_t_loader,epoch)
         # save the model after each epoch
-        torch.save(model.state_dict(), f"{exp_data_root_dir}/models/VOC2012_error/{model_name}/epoch_{epoch}.pth")
+        save_dir = f"{exp_data_root_dir}/models/{dataset_name}_error/{model_name}"
+        os.makedirs(save_dir,exist_ok=True)
+        save_path = os.path.join(save_dir,f"epoch_{epoch}.pth")
+        torch.save(model.state_dict(), save_path)
 
 
 def collection_SSD_indicator(model,device,dataloader,epoch):
@@ -213,7 +217,8 @@ def collection_SSD_indicator(model,device,dataloader,epoch):
         item["box_count_dif"] = box_count_dif
         item_list.append(item)
     df = pd.DataFrame(item_list)
-    save_dir = f"{exp_data_root_dir}/collection_indicator/VOC2012/{model_name}"
+    save_dir = f"{exp_data_root_dir}/collection_indicator/{dataset_name}/{model_name}"
+    os.makedirs(save_dir,exist_ok=True)
     save_path = os.path.join(save_dir,f"epoch_{epoch}.csv")
     df.to_csv(save_path, index=False)
     print(f"保存在：{save_path}")
@@ -277,7 +282,8 @@ def collection_FRCNN_indicator(model,device,dataloader,epoch):
         item["box_count_dif"] = box_count_dif
         item_list.append(item)
     df = pd.DataFrame(item_list)
-    save_dir = f"{exp_data_root_dir}/collection_indicator/VOC2012/{model_name}"
+    save_dir = f"{exp_data_root_dir}/collection_indicator/{dataset_name}/{model_name}"
+    os.makedirs(save_dir,exist_ok=True)
     save_path = os.path.join(save_dir,f"epoch_{epoch}.csv")
     df.to_csv(save_path, index=False)
     print(f"保存在：{save_path}")

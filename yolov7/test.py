@@ -23,7 +23,8 @@ def collect_sample_train_indicator(
         data,
         dataloader,
         compute_loss,
-        epoch
+        epoch,
+        save_dir
         ):
     # 拿到设备
     device = next(model.parameters()).device
@@ -78,7 +79,7 @@ def collect_sample_train_indicator(
             item["box_count_dif"] = abs(len(conf_list)-len(labels))
         item_list.append(item)
     df = pd.DataFrame(item_list)
-    save_dir = "/data/mml/data_debugging/collection_indicator/VOC2012/YOLOv7/"
+    os.makedirs(save_dir,exist_ok=True)
     save_path = os.path.join(save_dir,f"epoch_{epoch}.csv")
     df.to_csv(save_path, index=False)
     print(f"Epoch:{epoch}收集结果保存在:{save_path}")
@@ -378,6 +379,7 @@ if __name__ == '__main__':
     opt.save_json |= opt.data.endswith('coco.yaml')
     opt.data = check_file(opt.data)  # check file
     print(opt)
+
     #check_requirements()
 
     if opt.task in ('train', 'val', 'test'):  # run normally

@@ -36,6 +36,12 @@ class CocoDetectionDataset(Dataset):
             xmin, ymin, width, height = obj['bbox']
             xmax = xmin + width
             ymax = ymin + height
+            if xmax <= xmin:
+                xmax += 1
+                print(f"img:{image_path}, box宽度有问题")
+            if ymax <= ymin:
+                ymax += 1
+                print(f"img:{image_path}, box高度有问题")
             boxes.append([xmin, ymin, xmax, ymax])
             labels.append(obj['category_id'])
             obj["area"] = width * height

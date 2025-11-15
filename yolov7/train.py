@@ -420,7 +420,8 @@ def train(hyp, opt, device, tb_writer=None):
                                                     data_dict,
                                                     train_t_loader,
                                                     compute_loss,
-                                                    epoch)
+                                                    epoch,
+                                                    collection_save_dir)
                 results, maps, times = test.test(data_dict,
                                                  batch_size=batch_size * 2,
                                                  imgsz=imgsz_test,
@@ -541,7 +542,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', type=str, default='yolov7.pt', help='initial weights path')
     parser.add_argument('--cfg', type=str, default='cfg/training/yolov7.yaml', help='model.yaml path')
-    parser.add_argument('--data', type=str, default='data/VOC2012.yaml', help='data.yaml path')
+    parser.add_argument('--data', type=str, default='data/VisDrone.yaml', help='data.yaml path')
     parser.add_argument('--hyp', type=str, default='data/hyp.scratch.p5.yaml', help='hyperparameters path')
     parser.add_argument('--epochs', type=int, default=50)
     parser.add_argument('--batch-size', type=int, default=32, help='total batch size for all GPUs')
@@ -585,6 +586,13 @@ if __name__ == '__main__':
     #if opt.global_rank in [-1, 0]:
     #    check_git_status()
     #    check_requirements()
+
+    exp_data_root = "/data/mml/data_debugging_data"
+    dataset_name = "VisDrone" # VOC2012 | VisDrone
+    model_name = "YOLOv7"
+    collection_save_dir = os.path.join(exp_data_root,"collection_indicator", dataset_name,model_name)
+    
+    
 
     # Resume
     wandb_run = check_wandb_resume(opt)
