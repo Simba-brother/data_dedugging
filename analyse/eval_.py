@@ -4,6 +4,7 @@ import pandas as pd
 import scienceplots
 import matplotlib
 import matplotlib.pyplot as plt
+import random
 
 def compute_apfd(ground_truth_fault_data_list:list, ranked_data_list:list):
     """
@@ -201,6 +202,7 @@ def main(model_name=None):
         save_dir = os.path.join(exp_root_dir,method_name,dataset_name,model_name)
     else:
         save_dir = os.path.join(exp_root_dir,method_name,dataset_name)
+    os.makedirs(save_dir,exist_ok=True)
     PR_visualization(gt_error_list,ranked_img_name_list,save_dir)
     print("PR over cut off绘制完成")
     error_set = set(gt_error_list)
@@ -211,8 +213,8 @@ def main(model_name=None):
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    method_name = "Ours" # DataDetective|Ours
-    dataset_name = "VOC2012"
+    method_name = "Random" # DataDetective|Ours|Random
+    dataset_name = "VisDrone" # VOC2012|VisDrone
     model_name = "SSD" # YOLOv7,FRCNN,SSD
     error_record_df = pd.read_csv(os.path.join(exp_root_dir,"datasets",f"{dataset_name}_error_record","error_record_simple.csv"))
     if method_name == "Ours":
@@ -220,4 +222,7 @@ if __name__ == "__main__":
         main(model_name)
     elif method_name == "DataDetective": # baseline_1
         ranked_img_name_list = joblib.load(os.path.join(exp_root_dir,method_name,dataset_name,"ranked_img_name_list.joblib"))
+    elif method_name == "Random":
+        ranked_img_name_list = joblib.load(os.path.join(exp_root_dir,"Ours",dataset_name, model_name,"ranked_img_name_list.joblib"))
+        random.shuffle(ranked_img_name_list)
         main()

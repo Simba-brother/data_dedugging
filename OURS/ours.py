@@ -160,7 +160,7 @@ def main():
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012"
+    dataset_name = "VisDrone" # VOC2012| VisDrone
     model_name = "SSD" # "YOLOv7","FRCNN","SSD"
     source_data_dir = os.path.join(exp_data_root,"collection_indicator",dataset_name,model_name,"feature_gc")
     epoch_csv_dir = os.path.join(exp_data_root,"collection_indicator",dataset_name,model_name)
@@ -172,7 +172,6 @@ if __name__ == "__main__":
         metric_name_list =  ["loss_box","loss_objcls","loss","conf_avg"]
     stat_name_list = ["mean","slop","bodong"]
     main()
-
     # case study
 
 

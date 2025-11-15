@@ -98,12 +98,12 @@ if __name__ == "__main__":
     '''
     exp_data_root = "/data/mml/data_debugging_data"
     exp_stage_name = "collection_indicator"
-    dataset_name = "VOC2012"
-    model_name = "SSD"
+    dataset_name = "VisDrone" # VOC2012|VisDrone
+    model_name = "SSD" # YOLOv7|FRCNN|SSD
     epoch_csv_dir = os.path.join(exp_data_root,exp_stage_name,dataset_name,model_name)
     save_dir = os.path.join(epoch_csv_dir,"feature_gc")
     os.makedirs(save_dir,exist_ok=True)
-    if model_name == "FRCNN":
+    if model_name in ["YOLOv7","FRCNN"]:
         metric_list = ["loss_box","loss_obj","loss_cls","loss","conf_avg"]
     elif model_name == "SSD":
         metric_list = ["loss_box","loss_objcls","loss","conf_avg"]

@@ -106,7 +106,7 @@ def train():
     model.to(device)
     is_LNL = True
     criterion = build_criterion(is_LNL=is_LNL,train_dataset=train_disassembled_dataset)
-    criterion.to(device)
+    criterion = criterion.to(device)
     # optimizer
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[7, 11], gamma=0.1)

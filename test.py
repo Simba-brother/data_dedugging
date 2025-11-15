@@ -1,6 +1,6 @@
 from analyse.eval_ import compute_apfd
 from pycocotools.coco import COCO
-
+import random
 
 def test_1():
     # 假设有 5 条数据，id 为 1..5，其中 2,4 是 fault
@@ -24,5 +24,10 @@ def test2():
     anns = coco.loadAnns(ann_ids)
     print()
 
+def test3():
+    my_list = [1, 2, 3, 4, 5]
+    random.shuffle(my_list)
+    print(my_list)
+
 if __name__ == "__main__":
-    test2()
+    test3()
