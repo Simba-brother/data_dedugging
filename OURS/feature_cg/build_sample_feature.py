@@ -98,7 +98,7 @@ if __name__ == "__main__":
     '''
     exp_data_root = "/data/mml/data_debugging_data"
     exp_stage_name = "collection_indicator"
-    dataset_name = "VisDrone" # VOC2012|VisDrone
+    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
     model_name = "SSD" # YOLOv7|FRCNN|SSD
     epoch_csv_dir = os.path.join(exp_data_root,exp_stage_name,dataset_name,model_name)
     save_dir = os.path.join(epoch_csv_dir,"feature_gc")

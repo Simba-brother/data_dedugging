@@ -160,7 +160,7 @@ def main():
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012| VisDrone
+    dataset_name = "KITTI" # VOC2012| VisDrone|KITTI
     model_name = "SSD" # "YOLOv7","FRCNN","SSD"
     source_data_dir = os.path.join(exp_data_root,"collection_indicator",dataset_name,model_name,"feature_gc")
     epoch_csv_dir = os.path.join(exp_data_root,"collection_indicator",dataset_name,model_name)

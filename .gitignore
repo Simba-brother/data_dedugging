@@ -11,6 +11,7 @@ frcnn_ssd/check_points
 
 DataDetective/checkpoints
 DataDetective/nohup.out
+
 # Repo-specific GitIgnore ----------------------------------------------------------------------------------------------
 *.jpg
 *.jpeg

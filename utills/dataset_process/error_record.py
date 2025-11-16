@@ -9,7 +9,10 @@ def simple_error_record():
     item_list = []
     for row_id, row in df_record.iterrows():
         txt_file_name = row["label_file_path"].split("/")[-1]
-        img_file_name = txt_file_name.replace(".txt", ".jpg")
+        if dataset_name == "KITTI":
+            img_file_name = txt_file_name.replace(".txt", ".png")
+        elif dataset_name in ["VisDrone","VOC2012"]:
+            img_file_name = txt_file_name.replace(".txt", ".jpg")
         item = {
             "img_file_name":img_file_name,
             "error_type":row["error_type"]
