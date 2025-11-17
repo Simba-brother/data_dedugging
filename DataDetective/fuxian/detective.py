@@ -46,6 +46,7 @@ def main():
     # 按照obj loss从大到小排序
     # results = sorted(crop_list, key=lambda x: x['loss'], reverse=True)
 
+'''
 def get_labelmap():
     
     coco = COCO(annotation_path)
@@ -54,12 +55,14 @@ def get_labelmap():
     # 生成 {category_id: category_name} 映射
     labelmap = {cat['id']: cat['name'] for cat in cats}
     return labelmap
+'''
 
 if __name__ == "__main__":
     
     exp_data_root = "/data/mml/data_debugging_data"
-    crop_infer_results_path=f'{exp_data_root}/DataDetective/infer_results/crop.json'
-    others_infer_results_path=f'{exp_data_root}/DataDetective/infer_results/other_objects.json'
-    annotation_path=f'{exp_data_root}/datasets/VOC2012-coco/train/_annotations.coco.json'
-    rank_result_save_path = f"{exp_data_root}/DataDetective/ranked_img_name_list.joblib"
+    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
+    crop_infer_results_path=f'{exp_data_root}/DataDetective/{dataset_name}/infer_results/crop.json'
+    others_infer_results_path=f'{exp_data_root}/DataDetective/{dataset_name}/infer_results/other_objects.json'
+    annotation_path=f'{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json'
+    rank_result_save_path = f"{exp_data_root}/DataDetective/{dataset_name}/ranked_img_name_list.joblib"
     main()

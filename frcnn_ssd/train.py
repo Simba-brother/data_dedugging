@@ -15,8 +15,8 @@ import pandas as pd
 import os
 
 exp_data_root_dir = "/data/mml/data_debugging_data"
-dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
-model_name = "SSD" # SSD|FRCNN
+dataset_name = "VOC2012" # VOC2012|VisDrone|KITTI
+model_name = "FRCNN" # SSD|FRCNN
 gpu_id = 0
 conf_threshold = 0.8
 # Transform PIL image --> PyTorch tensor
@@ -154,14 +154,16 @@ def main():
         train_one_epoch(model, optimizer, train_loader, device, epoch, print_freq=25)  # Using train_loader for training
         # Evaluate the model only on the validation dataset, not training
         evaluate(model, val_loader, device=device)  # Using val_loader for evaluation
+        '''
         if model_name == "FRCNN":
             collection_FRCNN_indicator(model,device,train_t_loader,epoch)
         elif model_name == "SSD":
             collection_SSD_indicator(model,device,train_t_loader,epoch)
+        '''
         # save the model after each epoch
         save_dir = f"{exp_data_root_dir}/models/{dataset_name}_error/{model_name}"
         os.makedirs(save_dir,exist_ok=True)
-        save_path = os.path.join(save_dir,f"epoch_{epoch}.pth")
+        save_path = os.path.join(save_dir,f"epoch_{epoch}.pt")
         torch.save(model.state_dict(), save_path)
 
 

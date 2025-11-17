@@ -213,15 +213,16 @@ def main(model_name=None):
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    method_name = "Random" # DataDetective|Ours|Random
-    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
-    model_name = "SSD" # YOLOv7,FRCNN,SSD
+    method_name = "Ours" # Ours|DataDetective|Random
+    dataset_name = "VisDrone" # VOC2012|VisDrone|KITTI
+    model_name = "YOLOv7" # YOLOv7,FRCNN,SSD
     error_record_df = pd.read_csv(os.path.join(exp_root_dir,"datasets",f"{dataset_name}_error_record","error_record_simple.csv"))
     if method_name == "Ours":
         ranked_img_name_list = joblib.load(os.path.join(exp_root_dir,method_name,dataset_name, model_name,"ranked_img_name_list.joblib"))
         main(model_name)
     elif method_name == "DataDetective": # baseline_1
         ranked_img_name_list = joblib.load(os.path.join(exp_root_dir,method_name,dataset_name,"ranked_img_name_list.joblib"))
+        main()
     elif method_name == "Random":
         ranked_img_name_list = joblib.load(os.path.join(exp_root_dir,"Ours",dataset_name, model_name,"ranked_img_name_list.joblib"))
         random.shuffle(ranked_img_name_list)
