@@ -60,12 +60,13 @@ def main():
         plt.plot(epochs, error_mean.values, label="Error Samples", marker='o')
 
         plt.xlabel("Epoch")
-        plt.ylabel("Mean Loss")
-        plt.title("Mean Loss of Samples  Over 50 Epochs")
+        plt.ylabel(f"Mean {metric_name}")
+        plt.title(f"Mean {metric_name} of Samples  Over 50 Epochs")
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        save_dir = os.path.join(exp_root_dir,"imgs","correct_vs_error")
+        save_dir = os.path.join(exp_root_dir,"imgs","correct_vs_error",metric_name)
+        os.makedirs(save_dir,exist_ok=True)
         save_path = os.path.join(save_dir,f"{dataset_name}_{model_name}.png")
         plt.savefig(save_path)
         print("correct_vs_error_loss",save_path)
@@ -78,9 +79,9 @@ if __name__ == "__main__":
     epoch0_csv_path = os.path.join(exp_root_dir,"collection_indicator",dataset_name,model_name,"epoch_0.csv")
     if model_name in["YOLOv7","FRCNN"]:
         # metric_name_list =  ["loss_box","loss_obj","loss_cls","loss","conf_avg"]
-        metric_name_list = ["loss"]
+        metric_name_list = ["conf_avg"]
     elif model_name in["SSD"]:
         # metric_name_list =  ["loss_box","loss_objcls","loss","conf_avg"]
-        metric_name_list = ["loss"]
+        metric_name_list = ["conf_avg"]
     main()
     

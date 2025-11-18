@@ -5,50 +5,36 @@ import joblib
 import topsispy as tp
 import matplotlib.pyplot as plt
 
-
-def feature_flag(metric_name_list, stat_name_list):
-    '''
-    ["loss_box","loss_obj","loss_cls","loss","conf_avg"]
-    loss_box:
-        mean:越大越可疑 True 0
-        slop:越大越可疑 True 1
-        bodong:越大越可疑 True 2
-    loss_obj:
-        mean_1:越大越可疑 True 3
-        slop_1:越大越可疑 True 4
-        bodong_1:越大越可疑 True 5
-    loss_cls:
-        mean_2:越大越可疑 True 6
-        slop_2:越大越可疑 True 7
-        bodong_2:越大越可疑 True 8
-    loss:
-        mean_3:越大越可疑 True 9
-        slop_3:越大越可疑 True 10
-        bodong_3:越大越可疑 True 11
-    conf_avg:
-        mean_4:越小越可疑 False 12
-        slop_4:越小越可疑 False 13
-        bodong_4:越大越可疑 True 14
-    '''
-    feature_signs = []
-    for metric_name in metric_name_list:
-        for stat_name in stat_name_list:
-            if metric_name in ["loss_box","loss_obj","loss_cls","loss", "loss_objcls"]:
-                feature_signs.append(1) # 正向指标，loss越大越有可能为错误样本
-            elif metric_name in ["conf_avg"]:
-                if stat_name == ["mean","slop"]:
-                    feature_signs.append(-1)
-                else:
-                    feature_signs.append(1)
-    return feature_signs
+def selected_feature(feature_df):
+    if model_name in ["YOLOv7","FRCNN"]:
+        selected_feature_name_list = ["loss_box_mean","loss_box_max","loss_box_min",
+                                    "loss_obj_mean","loss_obj_max","loss_obj_min",
+                                    "loss_cls_mean","loss_cls_max","loss_cls_min",
+                                    "loss_mean","loss_max","loss_min",
+                                    "conf_avg_mean","conf_avg_max","conf_avg_min"]
+        feature_signs = [1,1,1,
+                    1,1,1,
+                    1,1,1,
+                    1,1,1,
+                    -1,-1,-1]
+    elif model_name == "SSD":
+        selected_feature_name_list = ["loss_box_mean","loss_box_max","loss_box_min",
+                                    "loss_objcls_mean","loss_objcls_max","loss_objcls_min",
+                                    "loss_mean","loss_max","loss_min",
+                                    "conf_avg_mean","conf_avg_max","conf_avg_min"]
+        feature_signs = [1,1,1,
+                        1,1,1,
+                        1,1,1,
+                        -1,-1,-1]
+        
+    dataset_features = feature_df[selected_feature_name_list].to_numpy()
+       
+    return dataset_features,feature_signs
 
 
-def ranking_(save_dir,epoch_dir,metric_name_list, stat_name_list):
+def ranking_(save_dir,epoch_dir):
     merged_feature_df = pd.read_csv(f"{save_dir}/merged_feature.csv")
-    sample_ids = merged_feature_df.iloc[:, 0]
-    dataset_features = merged_feature_df.iloc[:, 1:].values # (nums,features)
-
-    feature_signs = feature_flag(metric_name_list, stat_name_list)
+    dataset_features,feature_signs = selected_feature(merged_feature_df)
     n_features = len(feature_signs)
     weights = np.ones(n_features) / n_features
     best_id, score_array = tp.topsis(dataset_features, weights, feature_signs)
@@ -61,7 +47,6 @@ def ranking_(save_dir,epoch_dir,metric_name_list, stat_name_list):
         sample_id = row["sample_id"]
         image_name = row["image_name"]
         sample_id_to_imgname[sample_id] = image_name
-
     sorted_img_name_list = []
     for sample_id in sorted_sample_indices:
         sorted_img_name_list.append(sample_id_to_imgname[sample_id])
@@ -152,7 +137,7 @@ def case_study(epoch_nums):
 
 def main():
     # 可疑排序
-    sorted_img_name_list = ranking_(source_data_dir,epoch_csv_dir,metric_name_list,stat_name_list)
+    sorted_img_name_list = ranking_(source_data_dir,epoch_csv_dir)
     save_path = os.path.join(result_save_dir,"ranked_img_name_list.joblib")
     joblib.dump(sorted_img_name_list,save_path)
     print(f"排序完成,ranked_img_name_list保存在:{save_path}")
@@ -166,11 +151,6 @@ if __name__ == "__main__":
     epoch_csv_dir = os.path.join(exp_data_root,"collection_indicator",dataset_name,model_name)
     result_save_dir = os.path.join(exp_data_root,"Ours",dataset_name,model_name)
     os.makedirs(result_save_dir,exist_ok=True)
-    if model_name in ["YOLOv7","FRCNN"]:
-        metric_name_list =  ["loss_box","loss_obj","loss_cls","loss","conf_avg"]
-    elif model_name == "SSD":
-        metric_name_list =  ["loss_box","loss_objcls","loss","conf_avg"]
-    stat_name_list = ["mean","slop","bodong"]
     main()
     # case study
 

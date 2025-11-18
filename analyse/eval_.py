@@ -46,6 +46,66 @@ def compute_apfd(ground_truth_fault_data_list:list, ranked_data_list:list):
 
     return apfd_value
 
+def compute_fnr_fpr(gt_list, ranked_list, threshold=0.1):
+    """
+    gt_list: list/set，真实错误样本的 id（实际正类）
+    ranked_data_list: list，按“可能是错误样本”的概率从高到低排好序的所有样本 id
+    threshold: 0~1 之间，取前多少比例的样本作为“预测错误”
+    """
+    gt_set = set(gt_list)
+    all_ids = list(ranked_list)
+
+    # 取前 threshold 比例的样本作为预测错误
+    k = int(len(all_ids) * threshold)
+    if k < 1 and threshold > 0:
+        k = 1  # 避免 threshold 太小导致 k=0（可按需要调整）
+
+    pred_pos = set(all_ids[:k])      # 预测为错误的样本
+    pred_neg = set(all_ids[k:])      # 预测为无错的样本
+
+    actual_pos = gt_set                             # 实际错误样本
+    actual_neg = set(all_ids) - gt_set             # 实际无错样本（其余的）
+
+    # 混淆矩阵
+    TP = len(pred_pos & actual_pos)
+    FN = len(actual_pos & pred_neg)
+    FP = len(pred_pos & actual_neg)
+    TN = len(actual_neg & pred_neg)
+
+    # False Negative Rate: FN / (FN + TP) = FN / 实际正类数
+    if (FN + TP) > 0:
+        fnr = FN / (FN + TP)
+    else:
+        fnr = 0.0  # 没有实际错误样本时，可以按 0 或 NaN 处理
+
+    # False Positive Rate: FP / (FP + TN) = FP / 实际负类数
+    if (FP + TN) > 0:
+        fpr = FP / (FP + TN)
+    else:
+        fpr = 0.0  # 没有实际无错样本时
+
+    precision = TP/(TP+FP)
+    recall = TP/TP+FN
+    fnr = round(fnr,3)
+    fpr = round(fpr,3)
+    f1 = round(2*precision*recall / (precision+recall),3) 
+
+    return fnr, fpr,f1
+
+
+def compute_exam_num(gt_list, rank_list):
+    try_num = 1
+    for i in range(len(rank_list)):
+        if rank_list[i] in gt_list:
+            break
+        else:
+            try_num += 1
+    
+    return try_num
+
+
+
+
 def calculate_pr_metrics(list_A, list_B, thresholds=None):
     """
     计算在不同截断阈值下的 Precision 和 Recall
@@ -197,7 +257,9 @@ def draw_rank(isError_list,save_dir):
 def main(model_name=None):
     gt_error_list = list(error_record_df["img_file_name"])
     apfd = compute_apfd(gt_error_list,ranked_img_name_list)
-    print(f"apfd:{apfd}")
+    fnr,fpr,f1 = compute_fnr_fpr(gt_error_list,ranked_img_name_list)
+    exam_num = compute_exam_num(gt_error_list,ranked_img_name_list)
+    print(f"apfd:{apfd},fnr:{fnr},fpr:{fpr},F1:{f1},exam_num:{exam_num}")
     if model_name:
         save_dir = os.path.join(exp_root_dir,method_name,dataset_name,model_name)
     else:
@@ -213,9 +275,9 @@ def main(model_name=None):
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    method_name = "Ours" # Ours|DataDetective|Random
-    dataset_name = "VisDrone" # VOC2012|VisDrone|KITTI
-    model_name = "YOLOv7" # YOLOv7,FRCNN,SSD
+    method_name = "Random" # Ours|DataDetective|Random
+    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
+    model_name = "SSD" # YOLOv7,FRCNN,SSD
     error_record_df = pd.read_csv(os.path.join(exp_root_dir,"datasets",f"{dataset_name}_error_record","error_record_simple.csv"))
     if method_name == "Ours":
         ranked_img_name_list = joblib.load(os.path.join(exp_root_dir,method_name,dataset_name, model_name,"ranked_img_name_list.joblib"))

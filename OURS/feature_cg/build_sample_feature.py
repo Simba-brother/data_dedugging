@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 from scipy.stats import linregress
+from functools import reduce
 
 def concat_epoch_df(epoch_nums,epoch_csv_dir):
     epoch_df_list = []
@@ -13,11 +14,13 @@ def concat_epoch_df(epoch_nums,epoch_csv_dir):
     all_epoch_df = pd.concat(epoch_df_list, ignore_index=True)
     return all_epoch_df
 
+'''
 def feature_splice(save_dir,metric_name_list):
     # metric_name_list:["loss_box","loss_obj","loss_cls","loss","conf_avg"]
     files = []
     for metirc_name in metric_name_list:
         files.append(f"{save_dir}/{metirc_name}_feature.csv")
+    
 
     # 读取第一个 CSV（保留 sample_id）
     df_main = pd.read_csv(files[0])
@@ -34,6 +37,30 @@ def feature_splice(save_dir,metric_name_list):
     # 保存结果
     df_main.to_csv(save_path, index=False)
     print(f"已生成合并后的 merged_feature,保存在{save_path}")
+'''
+def merge_feature(save_dir, metric_name_list):
+    df_main = pd.read_csv(f"{save_dir}/{metric_name_list[0]}_feature.csv")
+    id_col = "sample_id"
+    feature_cols = [c for c in df_main.columns if c != id_col]
+    df_features = df_main[feature_cols].add_prefix(f"{metric_name_list[0]}_")
+    df_main = pd.concat([df_main[[id_col]], df_features], axis=1)
+    for metric_name in metric_name_list[1:]: 
+        df_temp = pd.read_csv(f"{save_dir}/{metric_name}_feature.csv")
+        df_temp = df_temp.drop(columns=["sample_id"], errors='ignore')
+        df_temp = df_temp.add_prefix(f"{metric_name}_")
+        df_main = pd.concat([df_main, df_temp], axis=1)
+    '''
+    # 有样本id：用 sample_id 做外连接（避免重复列）
+    merged = reduce(
+        lambda left, right: pd.merge(left, right, on=id_col, how="inner"),
+        dfs
+    )
+    '''
+    # 保存结果
+    save_path = os.path.join(save_dir,"merged_feature.csv")
+    df_main.to_csv(save_path, index=False)
+    print(f"已生成合并后的 merged_feature,保存在{save_path}")
+
 
 def pivot_metric(metric_list,all_epoch_df,save_dir):
     os.makedirs(save_dir,exist_ok=True)
@@ -58,19 +85,19 @@ def metric_statis_features(save_dir,metric_name:str):
         epochs = np.arange(len(metrics))
         # 计算均值
         mean_ = metrics.mean()
-        '''
-        std_ = metrics.std()
+        
+        # std_ = metrics.std()
         max_ = metrics.max()
         min_ = metrics.min()
-        '''
+        
         slope_, _, _, _, _ = linregress(epochs, metrics) # 斜率
         bodong = np.std(np.diff(metrics)) # 波动性（相邻 epoch 变化量的标准差）
         item = {
             "sample_id":i,
             "mean":mean_,
             # "std":std_,
-            # "max":max_,
-            # "min":min_,
+            "max":max_,
+            "min":min_,
             "slop":slope_, # loss 下降 为 负数
             "bodong":bodong,
         }
@@ -89,7 +116,7 @@ def build_dataset_features(epoch_csv_dir,save_dir,epoch_num:int):
     for metric_name in metric_list:
         metric_statis_features(save_dir,metric_name)
     # 把所有的metric feature拼接成一个整体feature
-    feature_splice(save_dir,metric_list) # 特征拼接
+    merge_feature(save_dir,metric_list) # 特征拼接
     print("build dataset featrues 完成")
 
 if __name__ == "__main__":
@@ -98,8 +125,8 @@ if __name__ == "__main__":
     '''
     exp_data_root = "/data/mml/data_debugging_data"
     exp_stage_name = "collection_indicator"
-    dataset_name = "VisDrone" # VOC2012|VisDrone|KITTI
-    model_name = "FRCNN" # YOLOv7|FRCNN|SSD
+    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
+    model_name = "SSD" # YOLOv7|FRCNN|SSD
     epoch_csv_dir = os.path.join(exp_data_root,exp_stage_name,dataset_name,model_name)
     save_dir = os.path.join(epoch_csv_dir,"feature_gc")
     os.makedirs(save_dir,exist_ok=True)
