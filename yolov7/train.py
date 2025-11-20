@@ -416,14 +416,14 @@ def train(hyp, opt, device, tb_writer=None):
             final_epoch = epoch + 1 == epochs
             if not opt.notest or final_epoch:  # Calculate mAP
                 wandb_logger.current_epoch = epoch + 1
-                '''
+                
                 test.collect_sample_train_indicator(ema.ema, # 从训练脚本传递过来的
                                                     data_dict,
                                                     train_t_loader,
                                                     compute_loss,
                                                     epoch,
                                                     collection_save_dir)
-                '''
+                
                 results, maps, times = test.test(data_dict,
                                                  batch_size=batch_size * 2,
                                                  imgsz=imgsz_test,
@@ -543,14 +543,14 @@ def train(hyp, opt, device, tb_writer=None):
 if __name__ == '__main__':
 
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012 | VisDrone | KITTI
+    dataset_name = "VOC2012" # VOC2012 | VisDrone | KITTI
     model_name = "YOLOv7"
     collection_save_dir = os.path.join(exp_data_root,"collection_indicator", dataset_name,model_name)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', type=str, default='yolov7.pt', help='initial weights path')
     parser.add_argument('--cfg', type=str, default='cfg/training/yolov7.yaml', help='model.yaml path')
-    parser.add_argument('--data', type=str, default='data/VisDrone.yaml', help='data.yaml path')
+    parser.add_argument('--data', type=str, default=f'data/{dataset_name}.yaml', help='data.yaml path')
     parser.add_argument('--hyp', type=str, default='data/hyp.scratch.p5.yaml', help='hyperparameters path')
     parser.add_argument('--epochs', type=int, default=50)
     parser.add_argument('--batch-size', type=int, default=32, help='total batch size for all GPUs')
