@@ -313,6 +313,7 @@ class FaultDetective:
             fault_ = "no"
 
             if int(results[i]["detectiongt_category_id"]) == 0 and results[i]["image_name"] in self.missing_dict:
+                # 该实例是背景
                 results[i]["fault_type"] = fault_type_dict["missing fault"]
                 Y[i] = Y[i - 1] + 1
                 fault_ = "mis"

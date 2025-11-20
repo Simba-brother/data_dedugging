@@ -144,7 +144,7 @@ if __name__ == '__main__':
         dataset = inference_VOCinf_classificationDataSet(voc_root="./dataset/VOCdevkit/VOC2012",
                                                          inferences_root=detection_results[modeltype],
                                                          transforms=data_transform)
-        dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
+        dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0) 
 
     elif inference_type == 'class fault':
         dataset = inference_VOCgtfault_classificationDataSet(voc_root="./dataset/VOCdevkit/VOC2012",

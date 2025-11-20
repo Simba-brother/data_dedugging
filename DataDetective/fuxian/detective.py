@@ -1,4 +1,6 @@
+import os
 import joblib
+import pandas as pd
 import json
 import torch
 from collections import defaultdict
@@ -23,11 +25,9 @@ def main():
     with open(others_infer_results_path, 'r') as f:
         others_list = json.load(f)
     coco = COCO(annotation_path)
-
     imageId2boxes = defaultdict(list)
     ann_ids = coco.getAnnIds()
     annotations = coco.loadAnns(ann_ids)
-
     for instance in annotations:
         bbox = instance["bbox"]
         label  = instance["category_id"]
@@ -40,11 +40,25 @@ def main():
         loss = loss_func(torch.tensor([scores]), torch.tensor([label]))
         crop_list[i]['loss'] = loss.item()
     crop_list.extend(others_list)
-    # 越靠前的imgname越可疑
-    sorted_img_name_list = aggregation(crop_list)
-    joblib.dump(sorted_img_name_list,rank_result_save_path)
-    # 按照obj loss从大到小排序
-    # results = sorted(crop_list, key=lambda x: x['loss'], reverse=True)
+    results = sorted(crop_list, key=lambda x: x['loss'], reverse=True)
+    joblib.dump(results,rank_result_save_path)
+    fault_records_df = pd.read_csv(fault_records_csv_path)
+    miss_img_name_list = []
+    for row_i, row in fault_records_df.iterrows():
+        if row["fault_type"] == fault_type["missing_fault"]:
+            miss_img_name_list.append(row["img_name"])
+    for i in range(len(results)):
+        if int(results[i]["gt_category_id"]) == 0 and results[i]["image_name"] in miss_img_name_list:
+            results[i]["fault_type"] = fault_type["missing_fault"]
+    fault_num = 0
+    rank_sum = 0
+    for i in range(len(results)):
+        if results[i]['fault_type'] != fault_type["no_fault"]:
+            fault_num += 1
+            rank_sum += i+1
+    apfd = 1-(rank_sum-1)/(fault_num*len(results))
+    return apfd
+
 
 '''
 def get_labelmap():
@@ -58,11 +72,19 @@ def get_labelmap():
 '''
 
 if __name__ == "__main__":
-    
+    fault_type = {
+            'no_fault': 0,
+            'cls_fault': 1,
+            'loc_fault': 2,
+            'redundancy_fault': 3,
+            'missing_fault': 4,
+    }
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
+    dataset_name = "VOC2012" # VOC2012|VisDrone|KITTI
     crop_infer_results_path=f'{exp_data_root}/DataDetective/{dataset_name}/infer_results/crop.json'
     others_infer_results_path=f'{exp_data_root}/DataDetective/{dataset_name}/infer_results/other_objects.json'
     annotation_path=f'{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json'
-    rank_result_save_path = f"{exp_data_root}/DataDetective/{dataset_name}/ranked_img_name_list.joblib"
-    main()
+    fault_records_csv_path = os.path.join(exp_data_root,"error_anno",dataset_name,"fault_records.csv")
+    rank_result_save_path = f"{exp_data_root}/DataDetective/{dataset_name}/ranked_result/ranked_list.joblib"
+    apfd = main()
+    print(apfd)

@@ -98,8 +98,10 @@ def getinstances(dataset='VOC', datatype='val'):
 def genmixedfault(dataset='VOC', datatype='val'):
     random.seed(2023)
     np.random.seed(2023)
+    
     instances, num = getinstances(dataset, datatype)
-    return
+    
+    
     class_falut_index, location_falut_index, redundancy_falut_index, missing_falut_index = None, None, None, None
     if dataset == 'VOC' or dataset == 'COCO' or dataset == 'KITTI':
         class_falut_index = random.sample([i for i in range(num)], int(num * params.fault_ratio))

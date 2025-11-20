@@ -57,7 +57,8 @@ def infer():
                     "pred_category_id":predicted[j].item(),
                     "gt_category_id": int(targets["category_id"][j]),
                     "bbox": targets["boxes"][j].numpy().tolist(),
-                    "loss": loss # imgs[j]的loss,其实就是一个instance的loss，因为由于解构了数据集所以一个instance就是一个img
+                    "loss": loss, # imgs[j]的loss,其实就是一个instance的loss，因为由于解构了数据集所以一个instance就是一个img
+                    "fault_type":targets["fault_type"].item()
                 }
                 results.append(content_dic)
     json_str = json.dumps(results, indent=4)
@@ -66,7 +67,7 @@ def infer():
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|VisDrone|KITTI
+    dataset_name = "VOC2012" # VOC2012|VisDrone|KITTI
     img_root = f"{exp_data_root}/datasets/{dataset_name}-coco/train"
     annotation_path = f"{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json"
     if dataset_name == "VOC2012":
@@ -75,7 +76,7 @@ if __name__ == "__main__":
         class_num = 11
     elif dataset_name == "KITTI":
         class_num = 10
-    mask_type = "other_objects" # crop and other_objects
+    mask_type = "crop" # crop and other_objects
     trained_model_path = f"{exp_data_root}/DataDetective/{dataset_name}/saved_models/{mask_type}/epoch_12.pt"
     results_save_path = f"{exp_data_root}/DataDetective/{dataset_name}/infer_results/{mask_type}.json"
     infer()

@@ -101,7 +101,7 @@ def train():
     train_dataloader = DataLoader(train_disassembled_dataset, batch_size=32, shuffle=True, num_workers=4)
     val_dataloader = DataLoader(train_disassembled_dataset, batch_size=32, shuffle=False, num_workers=4)
 
-    device = torch.device("cuda:1")
+    
     model = build_ResNet50(class_num)
     model.to(device)
     is_LNL = True
@@ -146,7 +146,7 @@ def train():
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
+    dataset_name = "VOC2012" # VOC2012|VisDrone|KITTI
     img_root_dir = f"{exp_data_root}/datasets/{dataset_name}-coco/train"
     annotation_path = f"{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json"
     mask_type = "other_objects" # crop | other_objects
@@ -159,10 +159,10 @@ if __name__ == "__main__":
     else:
         raise Exception("数据集名称错误")
     epoches = 13
+    device = torch.device("cuda:0")
     model_save_dir = f"{exp_data_root}/DataDetective/{dataset_name}/saved_models/{mask_type}"
     os.makedirs(model_save_dir,exist_ok=True)
     train()
-
 
 '''
 train_model(mask_type='crop', class_num=class_num, img_root=img_root,

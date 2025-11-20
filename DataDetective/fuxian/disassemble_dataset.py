@@ -59,7 +59,6 @@ class DisassembledDataSet(Dataset):
             从self.instances_list选择一些实例将其改为背景实例，并添加到self.instances_list中
             '''
             print('INFO: all_backgrounds or other objects')
-            # random select 1000 instances
             # 随机选择一些obj实例作为背景
             self.background_instances_list = random.sample(self.instances_list,
                                                            int(len(self.instances_list) / class_num))
@@ -76,7 +75,7 @@ class DisassembledDataSet(Dataset):
         else:
             # 不需要背景实例
             self.background_instances_list = []
-            assert len(self.instances_list) == len(self.instances_list)
+            assert len(self.instances_list) == len_before
 
         print("INFO: {} instances loaded. including {} instances and {} background instances".format(
             len(self.instances_list), len_before, len(self.background_instances_list)))
@@ -108,7 +107,6 @@ class DisassembledDataSet(Dataset):
             # 拿到instance 所在图像
             img = Image.open(img_path).convert("RGB")
             cur_instance_bbox = instance["bbox"]
-            # 拿到实例label 0是背景obj
             label = instance["category_id"]
             # 用于存在该实例内部的实例的box
             in_boxes_list = []

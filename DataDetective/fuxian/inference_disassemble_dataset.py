@@ -19,6 +19,7 @@ class Inference_classificationDataSet(Dataset):
         ann_ids = self.coco.getAnnIds()
         annotations = self.coco.loadAnns(ann_ids)
         self.instances = []
+        # bbox -> xmin,ymin,xmax,ymax
         for instance in annotations:
             xmin, ymin, width, height = instance["bbox"]
             xmax = xmin + width
@@ -54,7 +55,7 @@ class Inference_classificationDataSet(Dataset):
                 item["image_id"] = instance["image_id"]
                 item["area"] = self.caclu_area(instance["bbox"])
                 item["iscrowd"] = 0
-                # item["fault_type"] = instance["fault_type"]
+                item["fault_type"] = instance["fault_type"]
 
                 if item["image_name"] not in bg_image_names:
                     bg_instances.append(item)
@@ -73,9 +74,10 @@ class Inference_classificationDataSet(Dataset):
                 item["image_name"] = image_name
                 item["image_size"] = [image_info["width"],image_info["height"]]
                 item["bbox"] = instance["bbox"]
-                item["label"] = self.background_id
+                item["label"] = instance["category_id"]
                 item["image_id"] = instance["image_id"]
                 item["area"] = self.caclu_area(instance["bbox"])
+                item["fault_type"] = instance["fault_type"]
                 item["iscrowd"] = 0
                 temp_instances.append(item)
             self.instances = temp_instances
@@ -133,6 +135,7 @@ class Inference_classificationDataSet(Dataset):
         target["image_name"] = instance["image_name"]
         target["category_id"] = torch.tensor(instance["label"])
         target["boxes"] = torch.tensor(cur_instance_bbox)
+        target["fault_type"] = instance["fault_type"]
         img = img.resize((224, 224))
         if self.transforms is not None:
             img = self.transforms(img)
