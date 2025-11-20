@@ -9,7 +9,6 @@ from TruncatedLoss import TruncatedLoss
 from torchvision.models import ResNet50_Weights
 
 
-
 def build_dataset(mask_type,class_num):
     data_transform = transforms.Compose(
         [transforms.ToTensor(),
@@ -146,7 +145,7 @@ def train():
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|VisDrone|KITTI
+    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
     img_root_dir = f"{exp_data_root}/datasets/{dataset_name}-coco/train"
     annotation_path = f"{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json"
     mask_type = "other_objects" # crop | other_objects
@@ -159,7 +158,7 @@ if __name__ == "__main__":
     else:
         raise Exception("数据集名称错误")
     epoches = 13
-    device = torch.device("cuda:0")
+    device = torch.device("cuda:1")
     model_save_dir = f"{exp_data_root}/DataDetective/{dataset_name}/saved_models/{mask_type}"
     os.makedirs(model_save_dir,exist_ok=True)
     train()

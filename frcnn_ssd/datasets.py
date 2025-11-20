@@ -11,8 +11,18 @@ class CocoDetectionDataset(Dataset):
     def __init__(self, image_dir, annotation_path, transforms=None):
         self.image_dir = image_dir
         self.coco = COCO(annotation_path)
-        self.image_ids = list(self.coco.imgs.keys())
+        all_image_ids = list(self.coco.imgs.keys())
         self.transforms = transforms
+
+        # 过滤掉没有任何标注的图片
+        self.image_ids = []
+        for img_id in all_image_ids:
+            ann_ids = self.coco.getAnnIds(imgIds=img_id)
+            if len(ann_ids) == 0:
+                # 这张图没有任何目标，跳过
+                continue
+            self.image_ids.append(img_id)
+        print(f"Total images: {len(all_image_ids)}, valid images with anns: {len(self.image_ids)}")
  
     # Returns total number of images
     def __len__(self):

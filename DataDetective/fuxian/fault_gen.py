@@ -145,7 +145,7 @@ if __name__ == "__main__":
 
     random.seed(42)
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012"
+    dataset_name = "VisDrone" # VOC2012, VisDrone, KITTI
     fault_rate = 0.1 # 每种错误比例为10%
     
     anno_json_path = os.path.join(exp_data_root,"datasets", f"{dataset_name}-coco","train","_annotations.coco_correct.json")

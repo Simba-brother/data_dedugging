@@ -19,6 +19,17 @@ def aggregation(obj_list:list):
     sorted_img_name_list = sorted(image2loss, key=image2loss.get, reverse=True)
     return sorted_img_name_list
 
+def calcu_afpd(ranked_results):
+    fault_num = 0
+    rank_sum = 0
+    for i in range(len(ranked_results)):
+        if ranked_results[i]['fault_type'] != fault_type["no_fault"]:
+            fault_num += 1
+            rank_sum += i+1
+    apfd = 1-(rank_sum-1)/(fault_num*len(ranked_results))
+    return apfd
+
+
 def main():
     with open(crop_infer_results_path, 'r') as f:
         crop_list = json.load(f)
@@ -41,7 +52,7 @@ def main():
         crop_list[i]['loss'] = loss.item()
     crop_list.extend(others_list)
     results = sorted(crop_list, key=lambda x: x['loss'], reverse=True)
-    joblib.dump(results,rank_result_save_path)
+    
     fault_records_df = pd.read_csv(fault_records_csv_path)
     miss_img_name_list = []
     for row_i, row in fault_records_df.iterrows():
@@ -50,15 +61,28 @@ def main():
     for i in range(len(results)):
         if int(results[i]["gt_category_id"]) == 0 and results[i]["image_name"] in miss_img_name_list:
             results[i]["fault_type"] = fault_type["missing_fault"]
-    fault_num = 0
-    rank_sum = 0
-    for i in range(len(results)):
-        if results[i]['fault_type'] != fault_type["no_fault"]:
-            fault_num += 1
-            rank_sum += i+1
-    apfd = 1-(rank_sum-1)/(fault_num*len(results))
-    return apfd
+    joblib.dump(results,rank_result_save_path)
+    afpd = calcu_afpd(results)
+    return afpd
 
+
+def ours_effect():
+    ours_img_ranked_list_path = ""
+    ours_img_ranked_list = joblib.load(ours_img_ranked_list_path)
+    cut_off = 0.2
+    cut_num = int(len(ours_img_ranked_list)*cut_off)
+    keyi_img_list = ours_img_ranked_list[:cut_num]
+    ranked_list =joblib.load(os.path.join(exp_data_root,"DataDetective",dataset_name,"ranked_result","ranked_list.joblib"))
+    new_rank_list = []
+    removed_obj_list = []
+    for obj in ranked_list:
+        if obj["image_name"] in keyi_img_list:
+            new_rank_list.append(obj)
+        else:
+            removed_obj_list.append(obj)
+    new_rank_list.extend(removed_obj_list)
+    apfd = calcu_afpd(new_rank_list)
+    print(apfd)
 
 '''
 def get_labelmap():
@@ -86,5 +110,8 @@ if __name__ == "__main__":
     annotation_path=f'{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json'
     fault_records_csv_path = os.path.join(exp_data_root,"error_anno",dataset_name,"fault_records.csv")
     rank_result_save_path = f"{exp_data_root}/DataDetective/{dataset_name}/ranked_result/ranked_list.joblib"
+
+    
+
     apfd = main()
     print(apfd)
