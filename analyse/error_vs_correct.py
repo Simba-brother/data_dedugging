@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 
 
 def get_error_sample_id_list(error_record_df,imagename2sampleid):
-    img_name_list = error_record_df["img_file_name"].tolist()
+    img_name_set = set(error_record_df["img_name"].tolist())
     error_sample_id_list = []
-    for img_name in img_name_list:
+    for img_name in img_name_set:
         error_sample_id_list.append(imagename2sampleid[img_name])
     return error_sample_id_list
 
@@ -32,8 +32,6 @@ def get_sampleId22imagename(epoch0_csv_path):
         sampleId2imagename[sample_id] = image_name
         imagename2sampleid[image_name] = sample_id
     return sampleId2imagename,imagename2sampleid
-
-
 
 
 def main():
@@ -73,15 +71,15 @@ def main():
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
-    model_name = "SSD" # YOLOv7,FRCNN,SSD
-    error_record_df = pd.read_csv(os.path.join(exp_root_dir,"datasets",f"{dataset_name}_error_record","error_record_simple.csv"))
+    dataset_name = "VOC2012" # VOC2012|VisDrone|KITTI
+    model_name = "YOLOv7" # YOLOv7,FRCNN,SSD
+    error_record_df = pd.read_csv(os.path.join(exp_root_dir,"error_anno",dataset_name,"fault_records.csv"))
     epoch0_csv_path = os.path.join(exp_root_dir,"collection_indicator",dataset_name,model_name,"epoch_0.csv")
     if model_name in["YOLOv7","FRCNN"]:
         # metric_name_list =  ["loss_box","loss_obj","loss_cls","loss","conf_avg"]
-        metric_name_list = ["conf_avg"]
+        metric_name_list = ["loss"]
     elif model_name in["SSD"]:
         # metric_name_list =  ["loss_box","loss_objcls","loss","conf_avg"]
-        metric_name_list = ["conf_avg"]
+        metric_name_list = ["loss"]
     main()
     
