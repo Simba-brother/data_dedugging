@@ -32,7 +32,7 @@ def infer():
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=4)
     model = build_model()
     model.eval()
-    device = torch.device("cuda:0")
+    device = torch.device("cuda:1")
     model.to(device)
     loss_func = torch.nn.CrossEntropyLoss()
     # 所有解构出的instance_img的推理结果
@@ -67,7 +67,7 @@ def infer():
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|VisDrone|KITTI
+    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
     img_root = f"{exp_data_root}/datasets/{dataset_name}-coco/train"
     annotation_path = f"{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json"
     if dataset_name == "VOC2012":
@@ -76,7 +76,7 @@ if __name__ == "__main__":
         class_num = 11
     elif dataset_name == "KITTI":
         class_num = 10
-    mask_type = "crop" # crop and other_objects
+    mask_type = "other_objects" # crop and other_objects
     trained_model_path = f"{exp_data_root}/DataDetective/{dataset_name}/saved_models/{mask_type}/epoch_12.pt"
     results_save_path = f"{exp_data_root}/DataDetective/{dataset_name}/infer_results/{mask_type}.json"
     infer()

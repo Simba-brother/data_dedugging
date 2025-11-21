@@ -60,7 +60,7 @@ def gen_loc_fault(object_id_list,anno_list):
                 ori_y2 = ori_y1+original_bbox[3]
                 image_info = coco.loadImgs(anno["image_id"])[0]
                 image_size = (image_info["width"],image_info["height"])
-                
+
 
                 # generate a random location while the IoU is in [0.1, 0.5]
                 while True:
@@ -77,7 +77,7 @@ def gen_loc_fault(object_id_list,anno_list):
                     IoU = cal_IoU([ori_x1, ori_y1, ori_x2, ori_y2], [new_x1, new_y1, new_x2, new_y2]).item()
                     if 0.1 <= IoU <= 0.5:
                         break
-                anno["bbox"] = [new_x1, new_y1, new_x2, new_y2]
+                anno["bbox"] = [new_x1, new_y1, new_x2-new_x1, new_y2-new_y1]
                 anno["fault_type"] = fault_type["loc_fault"]
                 fault_info = {
                     "obj_id":object_id,

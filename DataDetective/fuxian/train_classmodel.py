@@ -145,7 +145,7 @@ def train():
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
+    dataset_name = "VisDrone" # VOC2012|VisDrone|KITTI
     img_root_dir = f"{exp_data_root}/datasets/{dataset_name}-coco/train"
     annotation_path = f"{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json"
     mask_type = "other_objects" # crop | other_objects
