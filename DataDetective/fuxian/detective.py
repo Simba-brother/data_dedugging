@@ -1,4 +1,5 @@
 import os
+import random
 import joblib
 import pandas as pd
 import json
@@ -74,6 +75,10 @@ def ours_effect():
     ranked_list =joblib.load(os.path.join(exp_data_root,"DataDetective",dataset_name,"ranked_result","ranked_list.joblib"))
     apfd = calcu_afpd(ranked_list)
     print("baseline:",apfd)
+    
+    shuffled = random.sample(ranked_list, k=len(ranked_list))
+    apfd = calcu_afpd(shuffled)
+    print("random:",apfd)
 
     ours_img_ranked_list_path = os.path.join(exp_data_root,"Ours",dataset_name,"YOLOv7","ranked_img_name_list.joblib")
     ours_img_ranked_list = joblib.load(ours_img_ranked_list_path)
@@ -104,7 +109,7 @@ def get_labelmap():
 '''
 
 if __name__ == "__main__":
-    
+    random.seed(42)
     fault_type = {
             'no_fault': 0,
             'cls_fault': 1,
@@ -128,6 +133,5 @@ if __name__ == "__main__":
 
     # apfd = main()
     # print(apfd)
-    
     ours_effect()
     
