@@ -27,6 +27,7 @@ def calcu_afpd(ranked_results):
             fault_num += 1
             rank_sum += i+1
     apfd = 1-(rank_sum-1)/(fault_num*len(ranked_results))
+    apfd = round(apfd,3)
     return apfd
 
 
@@ -69,31 +70,21 @@ def main():
 
 
 def ours_effect():
-    ours_img_ranked_list_path = os.path.join(exp_data_root,"Ours",dataset_name,"YOLOv7","ranked_img_name_list.joblib")
-    ours_img_ranked_list = joblib.load(ours_img_ranked_list_path)
-    cut_off = 0.2
-    cut_num = int(len(ours_img_ranked_list)*cut_off)
-    keyi_img_list = ours_img_ranked_list[:cut_num]
+
     ranked_list =joblib.load(os.path.join(exp_data_root,"DataDetective",dataset_name,"ranked_result","ranked_list.joblib"))
     apfd = calcu_afpd(ranked_list)
     print("baseline:",apfd)
-    epoch_0 = pd.read_csv("/data/mml/data_debugging_data/collection_indicator/VOC2012/YOLOv7/epoch_0.csv") 
-    youxiao_img_name_list = list(epoch_0["image_name"])
 
-    coco = COCO("/data/mml/data_debugging_data/datasets/VOC2012-coco/train/_annotations.coco_correct.json")
-    img_ids = coco.getImgIds()
-    imgs = coco.loadImgs(img_ids)
-    img_names = [img['file_name'] for img in imgs]
-
-    wuxiao_img_name_list = list(set(img_names) - set(youxiao_img_name_list))
-
-    print(f"Total images: {len(img_names)}, no valid images with anns: {len(wuxiao_img_name_list)}")
-    keyi_img_list.extend(wuxiao_img_name_list)
+    ours_img_ranked_list_path = os.path.join(exp_data_root,"Ours",dataset_name,"YOLOv7","ranked_img_name_list.joblib")
+    ours_img_ranked_list = joblib.load(ours_img_ranked_list_path)
+    cut_off = 0.7
+    cut_num = int(len(ours_img_ranked_list)*cut_off)
+    suspicious_img_list = ours_img_ranked_list[:cut_num]
 
     new_rank_list = []
     removed_obj_list = []
     for obj in ranked_list:
-        if obj["image_name"] in keyi_img_list:
+        if obj["image_name"] in suspicious_img_list:
             new_rank_list.append(obj)
         else:
             removed_obj_list.append(obj)
@@ -122,7 +113,7 @@ if __name__ == "__main__":
             'missing_fault': 4,
     }
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
+    dataset_name = "VOC2012" # VOC2012|VisDrone|KITTI
     crop_infer_results_path=f'{exp_data_root}/DataDetective/{dataset_name}/infer_results/crop.json'
     others_infer_results_path=f'{exp_data_root}/DataDetective/{dataset_name}/infer_results/other_objects.json'
     annotation_path=f'{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json'
@@ -135,8 +126,8 @@ if __name__ == "__main__":
     elif dataset_name == "VisDrone":
         bg_clss_id = 10
 
-    apfd = main()
-    print(apfd)
+    # apfd = main()
+    # print(apfd)
     
-    # ours_effect()
+    ours_effect()
     
