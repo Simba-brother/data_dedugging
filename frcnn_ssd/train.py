@@ -15,9 +15,9 @@ import pandas as pd
 import os
 
 exp_data_root_dir = "/data/mml/data_debugging_data"
-dataset_name = "VOC2012" # VOC2012|VisDrone|KITTI
-model_name = "FRCNN" # SSD|FRCNN
-gpu_id = 1
+dataset_name = "VisDrone" # VOC2012|VisDrone|KITTI
+model_name = "SSD" # FRCNN|SSD
+gpu_id = 0
 conf_threshold = 0.8
 # Transform PIL image --> PyTorch tensor
 def get_transform():

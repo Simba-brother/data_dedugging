@@ -158,7 +158,7 @@ if __name__ == "__main__":
     else:
         raise Exception("数据集名称错误")
     epoches = 13
-    device = torch.device("cuda:1")
+    device = torch.device("cuda:0")
     model_save_dir = f"{exp_data_root}/DataDetective/{dataset_name}/saved_models/{mask_type}"
     os.makedirs(model_save_dir,exist_ok=True)
     train()

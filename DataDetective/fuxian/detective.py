@@ -70,8 +70,7 @@ def main():
     return afpd
 
 
-def ours_effect():
-
+def ours_effect(model_name):
     ranked_list =joblib.load(os.path.join(exp_data_root,"DataDetective",dataset_name,"ranked_result","ranked_list.joblib"))
     apfd = calcu_afpd(ranked_list)
     print("baseline:",apfd)
@@ -80,7 +79,7 @@ def ours_effect():
     apfd = calcu_afpd(shuffled)
     print("random:",apfd)
 
-    ours_img_ranked_list_path = os.path.join(exp_data_root,"Ours",dataset_name,"YOLOv7","ranked_img_name_list.joblib")
+    ours_img_ranked_list_path = os.path.join(exp_data_root,"Ours",dataset_name,model_name,"ranked_img_name_list.joblib")
     ours_img_ranked_list = joblib.load(ours_img_ranked_list_path)
     cut_off = 0.7
     cut_num = int(len(ours_img_ranked_list)*cut_off)
@@ -118,7 +117,7 @@ if __name__ == "__main__":
             'missing_fault': 4,
     }
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|VisDrone|KITTI
+    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
     crop_infer_results_path=f'{exp_data_root}/DataDetective/{dataset_name}/infer_results/crop.json'
     others_infer_results_path=f'{exp_data_root}/DataDetective/{dataset_name}/infer_results/other_objects.json'
     annotation_path=f'{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json'
@@ -133,5 +132,6 @@ if __name__ == "__main__":
 
     # apfd = main()
     # print(apfd)
-    ours_effect()
+    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
+    ours_effect(model_name)
     
