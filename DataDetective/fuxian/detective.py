@@ -132,6 +132,6 @@ if __name__ == "__main__":
 
     # apfd = main()
     # print(apfd)
-    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
+    model_name = "SSD" # YOLOv7|FRCNN|SSD
     ours_effect(model_name)
     

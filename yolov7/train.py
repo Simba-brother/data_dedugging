@@ -544,7 +544,7 @@ if __name__ == '__main__':
 
     exp_data_root = "/data/mml/data_debugging_data"
     dataset_name = "KITTI" # VOC2012 | VisDrone | KITTI
-    model_name = "VisDrone"
+    model_name = "YOLOv7"
     collection_save_dir = os.path.join(exp_data_root,"collection_indicator", dataset_name,model_name)
 
     parser = argparse.ArgumentParser()
