@@ -165,9 +165,9 @@ if __name__ == "__main__":
     # 准备注入错误
     total_object_num = len(ann_ids)
     sample_num = int(total_object_num*fault_rate)
-
     # missing fault id 采样
     candi_id_set = set(ann_ids)
+
     missing_fault_obj_id_list = random.sample(list(candi_id_set),sample_num) # 随机不重复抽取
 
     # cls fault id 采样
