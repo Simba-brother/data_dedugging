@@ -1,3 +1,0 @@
-/home/mml/anaconda3/envs/yolov7/lib/python3.10/site-packages/torch/functional.py:505: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at /pytorch/aten/src/ATen/native/TensorShape.cpp:4317.)
-  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
-[34m[1mtrain: [0mScanning '/data/mml/data_debugging_data/datasets/VOC2012-yolo/train/labels.cache' images and labels... 5717 found, 0 missing, 269 empty, 0 corrupted: 100%|██████████| 5717/5717 [00:00<?, ?it/s][34m[1mtrain: [0mScanning '/data/mml/data_debugging_data/datasets/VOC2012-yolo/train/labels.cache' images and labels... 5717 found, 0 missing, 269 empty, 0 corrupted: 100%|██████████| 5717/5717 [00:00<?, ?it/s]
