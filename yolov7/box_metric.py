@@ -4,6 +4,7 @@ import json
 from PIL import Image
 import numpy as np
 from collections import defaultdict
+import time
 
 def calu_iou(gt_bbox,predicted_bbox):
     x1_min, y1_min, x1_max, y1_max = gt_bbox
@@ -68,7 +69,7 @@ def search_match(gt_box_list, predicted_box_list, iou_thre=0.5):
         # 每个p_box(行)匹配最好的g_box
         best_gt_box_id_list = iou_matrix.argmax(axis=1)
         # 每个p_box(行)匹配最好的g_box对应的iou值
-        best_iou_list = iou_matrix.argmax(axis=1)
+        best_iou_list = iou_matrix.max(axis=1)
         for i,iou_val in enumerate(best_iou_list):
             iou_val = iou_val.item()
             if iou_val < iou_thre:
@@ -119,7 +120,8 @@ def pretty_print(content,count,col_nums=10):
     if count % col_nums == 0:  # 如果计数器是10的倍数
         print()  # 打印换行符
 
-def main():
+def match():
+    start_time = time.time()  # 记录开始时间
     all_gt_predicted_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"all_gt_predicted.json")
     with open(all_gt_predicted_json_path,"r") as file:
         all_gt_predicted_dict = json.load(file)
@@ -135,7 +137,7 @@ def main():
         gt_bboxs = all_gt_predicted_dict[img_name]["gt_bboxs"]
         # 当前图像的g_boxs的bbox格式进行转换
         for gt_box in gt_bboxs:
-            gt_box["bbox"] = xcycwh_to_x1y1x2y2(gt_box["gt_bbox"],width,height)
+            gt_box["gt_bbox"] = xcycwh_to_x1y1x2y2(gt_box["gt_bbox"],width,height)
         # 当前图像的所有epochs下的p_boxs
         predicted_bboxs_over_epoch = all_gt_predicted_dict[img_name]["predicted_bboxs_over_epoch"]
         # 遍历epoch
@@ -145,7 +147,7 @@ def main():
             if cur_epoch_p_boxs == None:
                 continue
             # 获得当前图像g_boxs与p_boxs的匹配关系
-            matches = search_match(gt_bboxs,predicted_bboxs_over_epoch[epoch])
+            matches = search_match(gt_bboxs,cur_epoch_p_boxs)
             for match in matches:
                 matched_g_box = match[0]
                 p_box = match[1]
@@ -158,6 +160,50 @@ def main():
     save_path = os.path.join(save_dir,save_file_name)
     with open(save_path, "w", encoding="utf-8") as f:
         json.dump(gt_box_match, f, indent=4)
+    print(f"\ngt_box_match is saved in {save_path}")
+    end_time = time.time()  # 记录结束时间
+    elapsed_time = end_time - start_time  # 计算运行时间（秒）
+    hours = int(elapsed_time // 3600)  # 计算小时数
+    minutes = int((elapsed_time % 3600) // 60)  # 计算分钟数
+    seconds = elapsed_time % 60  # 计算剩余的秒数
+
+    print(f"运行时间：{hours:02d}:{minutes:02d}:{seconds:02.0f}")
+
+
+def main():
+    gt_box_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gt_bboxs.json")
+
+    gt_box_match_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gt_box_match.json")
+    with open(gt_box_match_path, 'r') as f:
+        gt_box_match = json.load(f)
+    
+    for g_box_id in gt_box_match.keys():
+        matched_info_over_epoch = gt_box_match[g_box_id]
+
+        temp_dict = {}
+        for matched_info in matched_info_over_epoch:
+            epoch = matched_info["epoch"]
+            temp_dict[epoch] = {
+                "g_box":matched_info["g_box"],
+                "p_box":matched_info["p_box"],
+                "iou_val":matched_info["iou_val"]
+            }
+        for epoch in range(epochs):
+            match_info = temp_dict.get(epoch)
+            if matched_info is None:
+                pass
+            else:
+                conf = matched_info["p_box"]["conf"]
+                iou = matched_info["iou_val"]
+
+            
+                
+        
+
+    print()
+    
+    
+
 
 
 if __name__ == "__main__":
@@ -165,4 +211,7 @@ if __name__ == "__main__":
     dataset_name = "VOC2012"
     model_name = "YOLOv7"
     epochs = 50
+    # match()
     main()
+    
+    
