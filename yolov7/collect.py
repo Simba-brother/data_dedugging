@@ -10,6 +10,7 @@ from utils.general import colorstr,non_max_suppression,scale_coords,xyxy2xywh
 from pathlib import Path
 from collections import defaultdict
 from PIL import Image
+import pandas as pd
 
 def collect_one_epoch(model,dataloader,epoch):
     predicted_box_dict = {}
@@ -35,6 +36,7 @@ def collect_one_epoch(model,dataloader,epoch):
             # Statistics per image
             for si, pred in enumerate(out):
                 if len(pred) == 0:
+                    # 如果当前图像没有预测信息，则直接跳过该图像
                     continue
                 img_name = paths[si].split("/")[-1]
                 predn = pred.clone()
@@ -109,32 +111,48 @@ def get_all_files(directory):
             files.append(filepath)
     return files
 
+
+def search_annotations_by_img_id(img_id,annotations_no_miss):
+    annos_of_img = []
+    annotations = annotations_no_miss["annotations"]
+    for anno in annotations:
+        if anno["image_id"] == img_id:
+            annos_of_img.append(anno)
+    return annos_of_img
+
 def collect_gt_box():
-    # 拿到数据yaml文件
-    dataset_label_dir = os.path.join(exp_data_root,"datasets",f"{dataset_name}-yolo","train","labels")
-    label_file_list = get_all_files(dataset_label_dir)
+    annotations_no_miss_path = os.path.join(exp_data_root,"error_anno",dataset_name,"annotations_no_miss.json")
+    with open(annotations_no_miss_path, 'r') as f:
+        annotations_no_miss = json.load(f)
+    images_list = annotations_no_miss["images"]
     gt_box_dict  = defaultdict(list)
     box_id = 0
     no_anno_count = 0
-    for label_file in label_file_list:
-        img_name = label_file.split("/")[-1]
-        img_name = img_name.replace("txt","jpg")
-        with open(label_file, 'r') as f:
+    for image in images_list:
+        img_id = image["id"]
+        annos_of_img = search_annotations_by_img_id(img_id,annotations_no_miss)
+        img_name = image["file_name"]
+        imge_name_no_ext = img_name.split(".")[0]
+        txt_path = os.path.join(exp_data_root,"datasets",f"{dataset_name}-yolo","train","labels",f"{imge_name_no_ext}.txt")
+        with open(txt_path, 'r') as f:
             lines = f.readlines()
             if len(lines) == 0:
                 no_anno_count += 1
-            for line in lines:
+            assert len(lines) == len(annos_of_img), "标注对应错误"
+            for l_id, line in enumerate(lines):
                 box_line = line.split()
                 cls = int(box_line[0])
                 x_center = float(box_line[1])
                 y_center = float(box_line[2])
                 width = float(box_line[3])
                 height = float(box_line[4])
+                fault_type = annos_of_img[l_id]["fault_type"]
                 box = {
                     "box_id":box_id,
                     "img_name":img_name,
                     "cls":cls,
-                    "gt_bbox":[x_center,y_center,width,height]
+                    "gt_bbox":[x_center,y_center,width,height],
+                    "fault_type":fault_type
                 }
                 box_id += 1
                 gt_box_dict[img_name].append(box)
@@ -143,6 +161,7 @@ def collect_gt_box():
     save_json_path = os.path.join(save_dir,save_json_file_name)
     with open(save_json_path, "w", encoding="utf-8") as f:
         json.dump(gt_box_dict, f, indent=4)
+    print(f"collect_gt_box完成，并保存在:{save_json_path}")
 
 def merge_gt_predicted_box():
     # 加载gt box
