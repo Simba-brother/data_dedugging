@@ -41,9 +41,19 @@ def test_3():
     b = data[:-1]
     print(b)
 
+def test_4():
+    a = [1,"b.j"]
+    print(a)
+
+def test_5():
+    a = ["a","b","c"]
+    print(a[-2:])
+def test_6():
+    data = [1]*10
+    print(data)
 if __name__ == "__main__":
     # test_2()
-    test_3()
+    test_6()
     # bbox = [0.499,0.4866666666666667,0.106,0.14666666666666667]
     # W = 500
     # H = 375

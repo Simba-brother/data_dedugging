@@ -1,4 +1,6 @@
 
+
+import joblib
 import math
 import os
 import json
@@ -8,6 +10,7 @@ from collections import defaultdict
 import time
 import matplotlib.pyplot as plt
 import pandas as pd
+import topsispy as tp
 
 def calu_iou(gt_bbox,predicted_bbox):
     x1_min, y1_min, x1_max, y1_max = gt_bbox
@@ -59,7 +62,7 @@ def search_match(gt_box_list, predicted_box_list, iou_thre=0.5):
     matches = []
     # 所有的cls
     cls_set = set([gt_box["cls"] for gt_box in gt_box_list])
-    # 分类操作，遍历cls_set
+    # 分类下的match，遍历cls_set
     for cls in cls_set:
         # 当前类别的gt boxs
         cur_cls_gt_box_list = [box for box in gt_box_list if box["cls"] == cls]
@@ -83,7 +86,7 @@ def search_match(gt_box_list, predicted_box_list, iou_thre=0.5):
             # 这个g_box被p_box[i]匹配上了
             matched_gt_box = cur_cls_gt_box_list[best_gt_id]
             if matched_gt_box["box_id"] in used_gt:
-                # p_box看中的g_box已经被conf 更大的p_box占有了，就不管你（当前p_box[i]）了
+                # p_box看中的g_box已经被conf 更大的p_box占有了，就不管你（当前p_box[i]）了!!
                 continue
             used_gt.add(matched_gt_box["box_id"])
             p_box = cur_cls_p_box_list[i]
@@ -126,37 +129,47 @@ def pretty_print(content,count,col_nums=10):
 
 
 def match():
+    '''
+    收集数据集中g_boxs与每个epoch的p_box的匹配关系
+    '''
     start_time = time.time()  # 记录开始时间
+    # 加载g_box json, no anno的img_name是不存在这个json中的
+    # bbox 坐标还是归一的xcycwh
     gt_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gt_bboxs.json")
     with open(gt_json_path,"r") as file:
         gt_json = json.load(file)
+    # 收集每个g_box在所有轮次中的匹配信息
+    # {g_id:[{"epoch":epoch,"g_box":g_box,"p_box":p_box}]}
     gt_box_match = defaultdict(list)
-    # 遍历所有的图像
+    # 遍历所有的图像和其g_boxs
     count = 0
-    for img_name in gt_json.keys():
+    for img_name,g_boxs in gt_json.items():
         count += 1
         pretty_print(img_name,count)
         # 当前图像的g_boxs
-        gt_bboxs = gt_json[img_name]
         image_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-yolo","train","images",img_name)
+        # 当前图像的width,height
         image = Image.open(image_path)
         width, height = image.size
         # 当前图像的g_boxs的bbox格式进行转换
-        for gt_box in gt_bboxs:
-            gt_box["gt_bbox"] = xcycwh_to_x1y1x2y2(gt_box["gt_bbox"],width,height)
-        # 遍历epoch
+        for g_box in g_boxs:
+            g_box["gt_bbox"] = xcycwh_to_x1y1x2y2(g_box["gt_bbox"],width,height)
+
+        # 在该图像下，遍历所有的epoch预测结果
         for epoch in range(epochs):
             epoch_predicted_bboxs_json_path =  os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,f"epoch_{epoch}_predicted_bboxs.json")
             with open(epoch_predicted_bboxs_json_path,"r") as f:
                  epoch_predicted_bboxs_dict = json.load(f)
-            # 该图像当前epoch下的p_boxs
             if img_name not in epoch_predicted_bboxs_dict:
+                # 图像在当前epoch下没有预测结果,则直接跳过当前epoch
                 continue
+            # 得到当前epoch该图像的预测p_boxs
             cur_epoch_p_boxs = epoch_predicted_bboxs_dict[img_name]["predicted_bboxs"]
             if cur_epoch_p_boxs == None:
+                # 图像在当前epoch下没有预测结果,则直接跳过当前epoch,此处可能是多余
                 continue
-            # 获得当前图像g_boxs与p_boxs的匹配关系
-            matches = search_match(gt_bboxs,cur_epoch_p_boxs)
+            # 获得当前图像g_boxs与当前epoch的p_boxs的匹配关系
+            matches = search_match(g_boxs,cur_epoch_p_boxs,iou_thre=0.5)
             for match in matches:
                 matched_g_box = match[0]
                 p_box = match[1]
@@ -175,30 +188,34 @@ def match():
     hours = int(elapsed_time // 3600)  # 计算小时数
     minutes = int((elapsed_time % 3600) // 60)  # 计算分钟数
     seconds = elapsed_time % 60  # 计算剩余的秒数
-
     print(f"运行时间：{hours:02d}:{minutes:02d}:{seconds:02.0f}")
 
 
 def gt_box_metric_collection():
+    '''
+    收集所有gt_box在over epoch上的预测conf和iou
+    '''
     start_time = time.time()  # 记录开始时间
-    # gt_box_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gt_bboxs.json")
-    # with open(gt_box_path, 'r') as f:
-    #     gt_boxs = json.load(f)
-
+    # 加载每个g_box在所有轮次中的匹配信息
+    # {g_id:[{"epoch":epoch,"g_box":g_box,"p_box":p_box}]}
     gt_box_match_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gt_box_match.json")
     with open(gt_box_match_path, 'r') as f:
         gt_box_match = json.load(f)
+    # 结果容器
     collect = []
+    # g_boxs数量
     count = 0
     for g_box_id in gt_box_match.keys():
         count += 1
         pretty_print(g_box_id,count,col_nums=50)
+        # 该g_box的match info [{"epoch":epoch,"g_box":g_box,"p_box":p_box},{}]
         matched_info_over_epoch = gt_box_match[g_box_id]
-        row = {
+        instance = {
             "g_box_id":int(g_box_id),
             "conf_list":[],
             "iou_list":[]
         }
+        # epoch => gbox,pbox,iou
         temp_dict = {}
         for matched_info in matched_info_over_epoch:
             epoch = matched_info["epoch"]
@@ -207,18 +224,19 @@ def gt_box_metric_collection():
                 "p_box":matched_info["p_box"],
                 "iou_val":matched_info["iou_val"]
             }
-        
+        # 遍历所有的epoch
         for epoch in range(epochs):
             matched_info = temp_dict.get(epoch)
             if matched_info is None:
+                # 当前epoch，该g_box没有p_box匹配
                 conf = 0
                 iou = 0
             else:
                 conf = matched_info["p_box"]["conf"]
                 iou = matched_info["iou_val"]
-            row["conf_list"].append(conf)
-            row["iou_list"].append(iou)
-        collect.append(row)
+            instance["conf_list"].append(conf)
+            instance["iou_list"].append(iou)
+        collect.append(instance)
     save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name)
     save_file_name = "collection.json"
     save_path = os.path.join(save_dir,save_file_name)
@@ -234,13 +252,28 @@ def gt_box_metric_collection():
 
     print(f"运行时间：{hours:02d}:{minutes:02d}:{seconds:02.0f}")
 
-def correct_vs_fault():
+
+def get_all_gids():
+    g_boxs_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gt_bboxs.json")
+    with open(g_boxs_json_path, "r") as f:
+        g_boxs_dict = json.load(f)
+    all_g_box_id_list = []
+    for img_name, g_box_list in g_boxs_dict.items():
+        for g_box in g_box_list:
+            all_g_box_id_list.append(g_box["box_id"])
+    return all_g_box_id_list
+
+
+
+def get_g_id_to_metric():
     gt_box_metric_collection_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "collection.json")
     with open(gt_box_metric_collection_json_path, "r", encoding="utf-8") as f:
         gt_box_metric_collection_list = json.load(f)
-    print(f"gt_box数量:{len(gt_box_metric_collection_list)}")
+    print(f"matched gt_box数量:{len(gt_box_metric_collection_list)}")
 
     g_box_id_to_metric = {}
+    
+    
     for collection in gt_box_metric_collection_list:
         g_box_id = collection["g_box_id"]
         conf_list = collection["conf_list"]
@@ -249,8 +282,14 @@ def correct_vs_fault():
             "conf_list":conf_list,
             "iou_list":iou_list,
         }
+
     
+
+    return g_box_id_to_metric
+
+def correct_vs_fault():
     
+    g_box_id_to_metric = get_g_id_to_metric()
     gt_bboxs_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gt_bboxs.json")
     with open(gt_bboxs_json_path, "r", encoding="utf-8") as f:
         gt_bboxs_dict = json.load(f)
@@ -264,21 +303,33 @@ def correct_vs_fault():
 
     # gt_box按照fault_type分组
     group_dict = defaultdict(list)
-    for g_id in g_box_id_to_metric.keys():
-        metric_dict = g_box_id_to_metric[g_id]
-        conf_list = metric_dict["conf_list"]
-        iou_list = metric_dict["iou_list"]
-        box_info = g_box_id_to_info[g_id]
-        fault_type = box_info["fault_type"]
-        item = {
-            "g_id":g_id,
-            "img_name":box_info["img_name"],
-            "cls":box_info["cls"],
-            "bbox":box_info["gt_bbox"],
-            "conf_list":conf_list,
-            "iou_list":iou_list,
-            "fault_type":fault_type
-        }
+    for g_id in g_box_id_to_info.keys():
+        if g_id in g_box_id_to_metric:
+            metric_dict = g_box_id_to_metric[g_id]
+            conf_list = metric_dict["conf_list"]
+            iou_list = metric_dict["iou_list"]
+            box_info = g_box_id_to_info[g_id]
+            fault_type = box_info["fault_type"]
+            item = {
+                "g_id":g_id,
+                "img_name":box_info["img_name"],
+                "cls":box_info["cls"],
+                "bbox":box_info["gt_bbox"],
+                "conf_list":conf_list,
+                "iou_list":iou_list,
+                "fault_type":fault_type
+            }
+            
+        else:
+            item = {
+                "g_id":g_id,
+                "img_name":box_info["img_name"],
+                "cls":box_info["cls"],
+                "bbox":box_info["gt_bbox"],
+                "conf_list":[0]*epochs,
+                "iou_list":[0]*epochs,
+                "fault_type":fault_type
+            }
         group_dict[fault_type].append(item)
 
     fault_to_metric_list = {}
@@ -335,7 +386,6 @@ def find(x,parent):
         x = parent[x]
     return x
 
-
 def union(a, b, parent, rank):
     ra, rb = find(a,parent), find(b,parent)
     if ra == rb:
@@ -354,10 +404,8 @@ def clusing(box_list,thre):
     rank = [0]*N
     for i in range(N):
         for j in range(i+1,N):
-            box_i = box_list[i]
-            box_j = box_list[j]
-            i_bbox = box_i["bbox"]
-            j_bbox = box_j["bbox"]
+            i_bbox  = box_list[i]["bbox"]
+            j_bbox = box_list[j]["bbox"]
             if calu_iou(i_bbox,j_bbox) > thre:
                 union(i,j,parent,rank)
 
@@ -396,11 +444,10 @@ def get_img_to_p_box_list(img_name_to_no_match_p):
                 img_to_p_list[img_name].append(p_box)
     return img_to_p_list
 
-def get_img_to_clusters(img_to_p_box_list):
+def get_img_to_clusters(img_to_p_box_list,iou_thre=0.8):
     img_to_clusters = defaultdict(list)
-    for img_name in img_to_p_box_list.keys():
-        p_box_list = img_to_p_box_list[img_name]
-        cluster_list = clusing(p_box_list,thre=0.8)
+    for img_name,p_box_list in img_to_p_box_list.items():
+        cluster_list = clusing(p_box_list,thre=iou_thre)
         for cluster in cluster_list:
             cur_cluster_p_box_list = []
             for id in cluster:
@@ -444,55 +491,33 @@ def cls_consis_score(boxes):
             max_cls = cls
     return max_count/len(boxes)
 
-def epoch_freq(boxes):
+def epoch_freq(boxes,last_epoch):
     epoch_cover = set()
     for p_box in boxes:
         epoch_cover.add(p_box["epoch"])
-    return len(epoch_cover) / 5
+    return len(epoch_cover) / last_epoch
 
 
 
-def total_score(freq, conf, stab, cls_cons,
-                   w_conf=1.0, w_freq=2.0, w_stab=1.0, w_cls=1.0,
-                   eps=1e-12):
-    """
-    加权几何平均，保证输出在[0,1]（前提：输入在[0,1]）
-    S = (conf^w_conf * freq^w_freq * stab^w_stab * cls^w_cls)^(1/sum_w)
-    """
-    # clamp to [0,1]
-    freq = max(0.0, min(1.0, float(freq)))
-    conf = max(0.0, min(1.0, float(conf)))
-    stab = max(0.0, min(1.0, float(stab)))
-    cls_cons = max(0.0, min(1.0, float(cls_cons)))
 
-    sum_w = w_conf + w_freq + w_stab + w_cls
-    if sum_w <= 0:
-        return 0.0
 
-    # 用 log 防止下溢
-    val = (w_conf * math.log(conf + eps) +
-           w_freq * math.log(freq + eps) +
-           w_stab * math.log(stab + eps) +
-           w_cls  * math.log(cls_cons + eps))
-
-    return math.exp(val / sum_w)
-
-def caclu_cluster_score(cluster):
+def caclu_cluster_score(cluster,last_epoch):
     
-    conf = conf_score(cluster)
-    stab = stability_pairwise_mean_iou(cluster)  
-    cls_consis = cls_consis_score(cluster)
-    e_freq = epoch_freq(cluster)
-    s = total_score(e_freq,conf,stab,cls_consis)
-    return s
+    conf = conf_score(cluster) # [0,1]
+    stab = stability_pairwise_mean_iou(cluster) # [0,1]
+    cls_consis = cls_consis_score(cluster) # [0,1]
+    e_freq = epoch_freq(cluster,last_epoch) # [0,1]
+    
+    score=0.30*conf+0.20*stab+0.20*cls_consis+0.30*e_freq
+    return score
 
 
 
-def sort_cluster(img_to_clusters):
+def sort_cluster(img_to_clusters,last_epoch):
     cluster_list = []
     for img_name,clusters in img_to_clusters.items():
         for cluster in clusters:
-            s = caclu_cluster_score(cluster)
+            s = caclu_cluster_score(cluster,last_epoch)
             cluster_list.append({
                 "cluster":cluster,
                 "img_name":img_name,
@@ -501,66 +526,276 @@ def sort_cluster(img_to_clusters):
     sorted_cluster_list = sorted(cluster_list, key=lambda x: x['score'], reverse=True)
     return sorted_cluster_list
 
-    
-    
+
+def get_img_epoch_to_unmatched_p_boxs(epoch_to_matched_p_boxs,last_epoch,conf_threshold=0.6):
+    '''
+    epoch_to_matched_p_boxs:记录了每个epoch对应的被gt_box匹配到的p_box
+    last_epoch:从倒数第几个轮次开始记录
+    threshold:只有大于这个阈值的p_box才需要被考虑匹不匹配的问题
+    '''
+    img_name_to_no_match_p = {}
+    # 只关心最后5个epoch的预测情况
+    for epoch in range(epochs-last_epoch,epochs):
+        # 加载当前epoch的预测结果
+        predicted_epoch_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,f"epoch_{epoch}_predicted_bboxs.json")
+        with open(predicted_epoch_json_path,mode="r") as f:
+            predicted_epoch_dict = json.load(f)
+        # 统计所有图像中没被gt_box匹配到的高置信度预测box
+        for img_name in predicted_epoch_dict.keys():
+            # img_name在该epoch下的所有预测框
+            p_box_list = predicted_epoch_dict[img_name]["predicted_bboxs"]
+            # 遍历预测框
+            for p_box in p_box_list:
+                p_id = p_box["predicted_box_id"]
+                if p_id not in epoch_to_matched_p_boxs[epoch] and p_box["conf"] > conf_threshold:
+                    add_path_value(img_name_to_no_match_p,keys=[img_name,epoch],value=p_box)
+    return img_name_to_no_match_p
+
+def sort_img(sorted_clusters):
+    '''
+    sorted_clusters:根据簇得分排序后的簇
+    '''
+    img_name_to_score = defaultdict(float)
+    for cluster in sorted_clusters:
+        img_name = cluster['img_name']
+        score = cluster["score"]
+        if score > img_name_to_score[img_name]:
+            img_name_to_score[img_name] = score
+    # [(img_name,max_cluster_score),...]
+    sorted_imgs = sorted(img_name_to_score.items(), key=lambda item: item[1], reverse=True)
+    return sorted_imgs
+
+def filter_imgs(sorted_imgs,threshold_score=0.6):
+    filterd_imgs = []
+    for img_name,score in sorted_imgs:
+        if score > threshold_score:
+            filterd_imgs.append(img_name)
+    return filterd_imgs
+
+def get_fault_imgs_by_type(fault_type_list):
+    '''
+    fault_type:0(no)|1(cls)|2(loc)|3(red)|4(mis)
+    '''
+    fault_df = pd.read_csv(os.path.join(exp_root_dir,"error_anno",dataset_name,"fault_records.csv")) 
+    mis_df = fault_df[fault_df['fault_type'].isin(fault_type_list)]
+    fault_img_set = set(mis_df["img_name"])
+    return fault_img_set
+
+def get_all_img_name():
+    g_box_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gt_bboxs.json")
+    with open(g_box_json_path,"r") as f:
+        g_boxs_dict = json.load(f) 
+    all_img_name_list = list(g_boxs_dict.keys())
+    return all_img_name_list
 
 
-def mis_detect():
+def misimg_detect(last_epoch=5):
+    all_img_name_list = get_all_img_name()
     # 读取所有gt_box的匹配信息
     gt_match_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gt_box_match.json")
     with open(gt_match_json_path,mode="r") as f:
         gt_match_dict = json.load(f)
     epoch_to_matched_p_boxs = get_epoch_to_matched_p_boxs(gt_match_dict)
 
-    img_name_to_no_match_p = {}
-    for epoch in range(epochs-5,epochs):
-        predicted_epoch_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,f"epoch_{epoch}_predicted_bboxs.json")
-        with open(predicted_epoch_json_path,mode="r") as f:
-            predicted_epoch_dict = json.load(f)
-        for img_name in predicted_epoch_dict.keys():
-            # img_name在该epoch下的所有预测框
-            p_box_list = predicted_epoch_dict[img_name]["predicted_bboxs"]
-            for p_box in p_box_list:
-                p_id = p_box["predicted_box_id"]
-                if p_id not in epoch_to_matched_p_boxs[epoch] and p_box["conf"] > 0.6:
-                    add_path_value(img_name_to_no_match_p,keys=[img_name,epoch],value=p_box)
+    # 获得每张图像在后面几个epoch中每被g_box匹配的高置信度p_box
+    # {img__name:{epoch:[] # no_matched_p_boxs }}
+    img_name_to_no_match_p = get_img_epoch_to_unmatched_p_boxs(epoch_to_matched_p_boxs,last_epoch,conf_threshold=0.6)
+
+    # 把每个epoch未匹配到的p_box拉平
+    # {img__name:[] # no_matched_p_boxs}
     img_to_p_box_list  = get_img_to_p_box_list(img_name_to_no_match_p)
-    img_to_clusters = get_img_to_clusters(img_to_p_box_list)
 
-    sorted_clusters = sort_cluster(img_to_clusters)
-    img_name_to_score = defaultdict(float)
+    # 采用并查集算法将该img这些高置信度未匹配p_box进行分簇，一个簇其实就是一个统一的p_box
+    img_to_clusters = get_img_to_clusters(img_to_p_box_list,iou_thre=0.6)
+    # 对簇进行打分且排序
+    # [{"cluster":c,"img_name":img_name,"score":s},..,]
+    sorted_clusters = sort_cluster(img_to_clusters,last_epoch)
+    sorted_img_name_list = sort_img(sorted_clusters)
+    detected_mis_img_name_list = filter_imgs(sorted_img_name_list,threshold_score=-1)
 
-    for cluster in sorted_clusters:
-        img_name = cluster['img_name']
-        score = cluster["score"]
-        if score > img_name_to_score[img_name]:
-            img_name_to_score[img_name] = score
-
-    sorted_img_name_to_score = sorted(img_name_to_score.items(), key=lambda item: item[1], reverse=True)
-    img_name_list = []
-    for img_name,score in sorted_img_name_to_score:
-        if score > 0.2:
-            img_name_list.append(img_name)
-
-    fault_df = pd.read_csv(os.path.join(exp_root_dir,"error_anno",dataset_name,"fault_records.csv")) 
-    mis_df = fault_df[fault_df['fault_type'] == 4]
-    mis_img_name_set = set(mis_df["img_name"])
-
-    fn = len(mis_img_name_set - set(img_name_list))
-    tp = len(mis_img_name_set & set(img_name_list))
-    fp = len(set(img_name_list) - mis_img_name_set)
-
-    precision = tp / (tp+fp)
-    recall = tp / (tp+fn)
-    f1 = 2*precision*recall / (precision+recall)
-
-    print()
-
-
+    ranked_img_list = []
+    for detected_img_name in detected_mis_img_name_list:
+        ranked_img_list.append(detected_img_name)
+    for img_name in all_img_name_list:
+        if img_name not in ranked_img_list:
+            ranked_img_list.append(img_name)
     
+    return ranked_img_list,detected_mis_img_name_list
 
 
+    # save_dir = os.path.join(exp_root_dir,"Ours",dataset_name,model_name)
+    # save_file_name = "detected_mis_imgs.joblib"
+    # save_path = os.path.join(save_dir,save_file_name)
+    # joblib.dump(detected_mis_img_name_list,save_path)
 
+    # print(f"detected_mis_imgs被保存在:{save_path}")
+    # fault_img_name_set = get_fault_imgs_by_type(fault_type_list=[2,4])
+
+
+    # fn = len(fault_img_name_set - set(filterd_img_name_list))
+    # tp = len(fault_img_name_set & set(filterd_img_name_list))
+    # fp = len(set(filterd_img_name_list) - fault_img_name_set)
+
+    # precision = tp / (tp+fp)
+    # recall = tp / (tp+fn)
+    # f1 = 2*precision*recall / (precision+recall)
+
+    # print("precision:",precision)
+    # print("recall:",recall)
+    # print("f1:",f1)
+
+
+def gt_box_features_build():
+    g_box_id_to_metric = get_g_id_to_metric()
+    
+    g_id_to_features = {}
+    for g_id in g_box_id_to_metric.keys():
+        conf_list = g_box_id_to_metric[g_id]["conf_list"]
+        iou_list = g_box_id_to_metric[g_id]["iou_list"]
+        epochs = len(conf_list)
+        W_e = int(0.2*epochs)
+        W_l = int(0.2*epochs)
+        # 早期置信度均值，越小越可疑
+        early_conf_mean = np.mean(conf_list[0:W_e])
+        # 后期置信度均值，越小越可疑
+        lastly_conf_mean = np.mean(conf_list[-W_l:])
+        # 早期iou均值，越小越可疑
+        early_iou_mean = np.mean(iou_list[0:W_e])
+        # 后期iou均值，越小越可疑
+        lastly_iou_mean = np.mean(iou_list[-W_l:])
+
+        # 全局均值，越小越可疑
+        conf_mean = np.mean(conf_list)
+        iou_mean = np.mean(iou_list)
+
+        conf_threshold = 0.5*lastly_conf_mean
+        iou_threshold = 0.5*lastly_iou_mean
+
+        min_e_conf = 0
+        min_e_iou = 0
+        for e in range(epochs):
+            if conf_list[e] > conf_threshold:
+                min_e_conf = e
+                break
+        for e in range(epochs):
+            if iou_list[e] > iou_threshold:
+                min_e_iou = e
+                break
+        # 起量延迟（显式刻画“涨得晚”）
+        # 越大越可疑
+        D_conf = min_e_conf / epochs
+        D_iou = min_e_iou / epochs
+
+        g_id_to_features[g_id] = {
+            "early_conf_mean":early_conf_mean,
+            "early_iou_mean":early_iou_mean,
+            "lastly_conf_mean":lastly_conf_mean,
+            "lastly_iou_mean":lastly_iou_mean,
+            "conf_mean":conf_mean,
+            "iou_mean":iou_mean,
+            "D_conf":D_conf,
+            "D_iou":D_iou,
+        }
+    feature_name_to_sign = {
+        "early_conf_mean":-1, # 越小越可疑
+        "early_iou_mean":-1,
+        "lastly_conf_mean":-1,
+        "lastly_iou_mean":-1,
+        "conf_mean":-1,
+        "iou_mean":-1,
+        "D_conf":1,
+        "D_iou":1
+    }
+    all_gids =  get_all_gids()
+    print(f"all gbox数量:{len(all_gids)}")
+    print(f"matched gbox数量:{len(g_id_to_features)}")
+    
+    for g_id in all_gids:
+        if g_id not in g_id_to_features:
+            g_id_to_features[g_id] = {
+                "early_conf_mean":0,
+                "early_iou_mean":0,
+                "lastly_conf_mean":0,
+                "lastly_iou_mean":0,
+                "conf_mean":0,
+                "iou_mean":0,
+                "D_conf":1,
+                "D_iou":1,
+            }
+    return g_id_to_features,feature_name_to_sign
+
+
+def rank_gid(g_id_to_features,feature_name_to_sign):
+    '''
+    g_id_to_features:{g_id:{attr:(value,flag),},}
+    '''
+    g_id_list = list(g_id_to_features.keys())
+    g_id_list.sort() # 升序
+    data = []
+    id_to_gid ={}
+    id = 0
+    feature_name_list = [
+        "early_conf_mean",
+        "early_iou_mean",
+        "lastly_conf_mean",
+        "lastly_iou_mean",
+        "conf_mean",
+        "iou_mean",
+        "D_conf",
+        "D_iou",
+    ]
+    sign_list = []
+    for feature_name in feature_name_list:
+        sign_list.append(feature_name_to_sign[feature_name])
+
+    for g_id in g_id_list:
+        feature_dict = g_id_to_features[g_id]
+        feature_list = []
+        for feature_name, value in feature_dict.items():
+            feature_list.append(value)
+        data.append(feature_list)
+        id_to_gid[id]= g_id
+        id += 1
+    for id,gid in id_to_gid.items():
+        assert id == gid, "数据有误"
+    assert len(sign_list) > 0, "数据有误"
+    data_array = np.array(data)
+    n_features = data_array.shape[1]
+    assert data_array.shape[1] == len(sign_list), "数据有误"
+    weights = np.ones(n_features) / n_features
+    best_id, score_array = tp.topsis(data_array, weights, sign_list)
+    # 从大到小排序并返回索引
+    sorted_gt_id = np.argsort(score_array)[::-1]
+
+    ranked_gid_list = [int(g_id) for g_id in sorted_gt_id]
+    return ranked_gid_list
+
+
+def total_rank(ranked_gid_list,ranked_img_list):
+    gid_num = len(ranked_gid_list)
+    img_num = len(ranked_img_list)
+    all_img_name_list = get_all_img_name()
+    all_gid_list = get_all_gids()
+    assert gid_num == len(all_gid_list), "gid数量错误"
+    assert img_num == len(all_img_name_list), "img数量错误"
+
+    data_list = []
+    for rank,gid in enumerate(ranked_gid_list):
+        score = rank / gid_num
+        data_list.append((gid,score))
+    for rank,img_name in enumerate(ranked_img_list):
+        score = rank / img_num
+        data_list.append((img_name,score))
+    # 根据二元组的第二个元素进行排序
+    data_list.sort(key=lambda x: x[1])
+    res = [ ID for ID,score in data_list]
+    assert len(res) == (gid_num+img_num)
+    return res
+
+
+def eval_apfd(rank_res):
+    /data/mml/data_debugging_data/collection_indicator_bbox_level/VOC2012/YOLOv7/gt_bboxs.json
+    
 
 
 if __name__ == "__main__":
@@ -571,7 +806,17 @@ if __name__ == "__main__":
     # match()
     # gt_box_metric_collection()
     # correct_vs_fault()
-    mis_detect()
+
+    # gid排序
+    g_id_to_features,feature_name_to_sign = gt_box_features_build()
+    ranked_gid_list = rank_gid(g_id_to_features,feature_name_to_sign)
+    # img排序
+    ranked_img_list,detected_mis_img_name_list = misimg_detect()
+    rank_res = total_rank(ranked_gid_list,ranked_img_list)
+
+
+
+    
 
     
     

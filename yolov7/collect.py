@@ -1,3 +1,6 @@
+'''
+收集gt_box和p_box的信息
+'''
 import os
 import argparse
 import torch
@@ -159,8 +162,8 @@ def collect_gt_box():
     save_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,"YOLOv7")
     save_json_file_name = "gt_bboxs.json"
     save_json_path = os.path.join(save_dir,save_json_file_name)
-    with open(save_json_path, "w", encoding="utf-8") as f:
-        json.dump(gt_box_dict, f, indent=4)
+    # with open(save_json_path, "w", encoding="utf-8") as f:
+    #     json.dump(gt_box_dict, f, indent=4)
     print(f"collect_gt_box完成，并保存在:{save_json_path}")
 
 def merge_gt_predicted_box():
@@ -201,6 +204,49 @@ def merge_gt_predicted_box():
     with open(save_file_path, "w", encoding="utf-8") as f:
         json.dump(all_dict, f, indent=4)
 
+def record_no_anno_imgs():
+
+    annotations_no_miss_path = os.path.join(exp_data_root,"error_anno",dataset_name,"annotations_no_miss.json")
+    with open(annotations_no_miss_path, 'r') as f:
+        annotations_no_miss = json.load(f)
+    images_list = annotations_no_miss["images"]
+    
+    no_anno_img_name_list = []
+    for image in images_list:
+        img_id = image["id"]
+        annos_of_img = search_annotations_by_img_id(img_id,annotations_no_miss)
+        img_name = image["file_name"]
+        imge_name_no_ext = img_name.split(".")[0]
+        txt_path = os.path.join(exp_data_root,"datasets",f"{dataset_name}-yolo","train","labels",f"{imge_name_no_ext}.txt")
+        with open(txt_path, 'r') as f:
+            lines = f.readlines()
+            if len(lines) == 0:
+                no_anno_img_name_list.append(img_name)
+    
+
+
+    print(len(no_anno_img_name_list))
+    
+                
+
+    # 拿到数据yaml文件
+    data = f"data/{dataset_name}.yaml"
+    with open(data) as f:
+        data = yaml.load(f, Loader=yaml.SafeLoader)
+    gs = max(int(model.stride.max()), 32)  # grid size (max stride)
+    parser = argparse.ArgumentParser()
+    opt = parser.parse_args()
+    opt.single_cls = False
+    dataloader = create_dataloader(data["train"], 640, 32, gs, opt, pad=0.5, rect=True,
+                                prefix=colorstr(f'train: '))[0]
+    loaded_img_size = 0
+    for batch_i, (img, targets, paths, shapes) in enumerate(dataloader):
+        loaded_img_size += len(paths)
+    print(loaded_img_size)
+    
+    
+    
+
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
@@ -212,4 +258,5 @@ if __name__ == "__main__":
     epochs = 50
     # collect_predicted_box()
     # collect_gt_box()
-    merge_gt_predicted_box()
+    # merge_gt_predicted_box()
+    record_no_anno_imgs()
