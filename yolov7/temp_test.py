@@ -1,4 +1,5 @@
 
+import os
 def test_1():
     data = [3,4,2,1]
     b = data[[0,8]]
@@ -51,9 +52,21 @@ def test_5():
 def test_6():
     data = [1]*10
     print(data)
+
+def test_7():
+    def get_all_img_name():
+        img_dir = "/data/mml/data_debugging_data/datasets/VOC2012-yolo/train/images"
+        img_name_list = []
+        for filename in os.listdir(img_dir):
+            filepath = os.path.join(img_dir, filename)
+            if os.path.isfile(filepath):
+                img_name_list.append(filename)
+        return img_name_list
+    img_name_list = get_all_img_name()
+
 if __name__ == "__main__":
     # test_2()
-    test_6()
+    test_7()
     # bbox = [0.499,0.4866666666666667,0.106,0.14666666666666667]
     # W = 500
     # H = 375

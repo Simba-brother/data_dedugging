@@ -581,12 +581,17 @@ def get_fault_imgs_by_type(fault_type_list):
     fault_img_set = set(mis_df["img_name"])
     return fault_img_set
 
+
 def get_all_img_name():
-    g_box_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gt_bboxs.json")
-    with open(g_box_json_path,"r") as f:
-        g_boxs_dict = json.load(f) 
-    all_img_name_list = list(g_boxs_dict.keys())
-    return all_img_name_list
+    img_dir = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-yolo","train","images")
+    img_name_list = []
+    for filename in os.listdir(img_dir):
+        filepath = os.path.join(img_dir, filename)
+        if os.path.isfile(filepath):
+            img_name_list.append(filename)
+    return img_name_list
+
+    
 
 
 def misimg_detect(last_epoch=5):
@@ -616,6 +621,7 @@ def misimg_detect(last_epoch=5):
     ranked_img_list = []
     for detected_img_name in detected_mis_img_name_list:
         ranked_img_list.append(detected_img_name)
+
     for img_name in all_img_name_list:
         if img_name not in ranked_img_list:
             ranked_img_list.append(img_name)
@@ -792,17 +798,54 @@ def total_rank(ranked_gid_list,ranked_img_list):
     assert len(res) == (gid_num+img_num)
     return res
 
+def compute_apfd(fault_set:set, rankded_list):
+    """
+    list_A: set/list, 真实错误图像路径
+    list_B: list, 按可疑度排序的图像路径
+    """
+    n = len(rankded_list)
+    
+    TF_positions = []
+
+    # 遍历 list_B 找到真实错误的位置
+    for idx, ID in enumerate(rankded_list, start=1):  # 从1开始计数
+        if ID in fault_set:
+            TF_positions.append(idx)
+
+    m = len(fault_set)
+    if m == 0:
+        return 0.0  # 防止除零
+
+    apfd = 1 - sum(TF_positions) / (n * m) + 1 / (2 * n)
+    return apfd
 
 def eval_apfd(rank_res):
-    /data/mml/data_debugging_data/collection_indicator_bbox_level/VOC2012/YOLOv7/gt_bboxs.json
-    
 
+    g_box_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "gt_bboxs.json")
+    with open(g_box_json_path,"r") as f:
+        g_box_dict = json.load(f)
+    fault_g_id_set = set()
+    for img_name,g_box_list in g_box_dict.items():
+        for g_box in g_box_list:
+            g_id = g_box["box_id"]
+            fault_type = g_box["fault_type"]
+            if fault_type != 0:
+                fault_g_id_set.add(g_id)
+    fault_csv_path = os.path.join(exp_root_dir,"error_anno",dataset_name,"fault_records.csv")
+    fault_df = pd.read_csv(fault_csv_path)
+    mis_fault_df = fault_df[fault_df["fault_type"] == 4]
+    mis_fault_img_name_set = set(mis_fault_df["img_name"].tolist())
+
+    fault_set = fault_g_id_set.union(mis_fault_img_name_set)
+    apfd = compute_apfd(fault_set, rank_res)
+    print(f"apfd:{apfd}")
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VOC2012"
     model_name = "YOLOv7"
     epochs = 50
+    
     # match()
     # gt_box_metric_collection()
     # correct_vs_fault()
@@ -813,10 +856,4 @@ if __name__ == "__main__":
     # img排序
     ranked_img_list,detected_mis_img_name_list = misimg_detect()
     rank_res = total_rank(ranked_gid_list,ranked_img_list)
-
-
-
-    
-
-    
-    
+    eval_apfd(rank_res)
