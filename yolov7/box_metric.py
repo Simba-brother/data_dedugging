@@ -157,7 +157,7 @@ def match():
 
         # 在该图像下，遍历所有的epoch预测结果
         for epoch in range(epochs):
-            epoch_predicted_bboxs_json_path =  os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,f"epoch_{epoch}_predicted_bboxs.json")
+            epoch_predicted_bboxs_json_path =  os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box",f"epoch_{epoch}_predicted_bboxs.json")
             with open(epoch_predicted_bboxs_json_path,"r") as f:
                  epoch_predicted_bboxs_dict = json.load(f)
             if img_name not in epoch_predicted_bboxs_dict:
@@ -842,18 +842,20 @@ def eval_apfd(rank_res):
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012"
+    dataset_name = "KITTI" # VOC2012, KITTI
     model_name = "YOLOv7"
     epochs = 50
-    
-    # match()
+    match()
+
     # gt_box_metric_collection()
     # correct_vs_fault()
 
     # gid排序
+    '''
     g_id_to_features,feature_name_to_sign = gt_box_features_build()
     ranked_gid_list = rank_gid(g_id_to_features,feature_name_to_sign)
     # img排序
     ranked_img_list,detected_mis_img_name_list = misimg_detect()
     rank_res = total_rank(ranked_gid_list,ranked_img_list)
     eval_apfd(rank_res)
+    '''

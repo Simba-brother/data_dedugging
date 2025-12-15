@@ -76,7 +76,8 @@ def collect_one_epoch(model,dataloader,epoch):
                     item["predicted_cls"] = int(cls)
                 '''
 
-    save_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,"YOLOv7")
+    save_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,"YOLOv7","collected_predicted_box")
+    os.makedirs(save_dir,exist_ok=True)
     save_json_file_name = f"epoch_{epoch}_predicted_bboxs.json"
     save_json_path = os.path.join(save_dir,save_json_file_name)
     with open(save_json_path, "w", encoding="utf-8") as f:
@@ -94,6 +95,10 @@ def collect_predicted_box():
     # 数据加载器
     dataloader = create_dataloader(data["train"], 640, 32, gs, opt, pad=0.5, rect=True,
                                     prefix=colorstr(f'train: '))[0]
+    imgs_num = 0
+    for batch_i, (img, targets, paths, shapes) in enumerate(dataloader):
+        imgs_num += img.shape[0]
+    print(f"总共图像数量:{imgs_num}")
 
     for epoch in range(epochs):
         # 轮次权重
@@ -162,8 +167,8 @@ def collect_gt_box():
     save_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,"YOLOv7")
     save_json_file_name = "gt_bboxs.json"
     save_json_path = os.path.join(save_dir,save_json_file_name)
-    # with open(save_json_path, "w", encoding="utf-8") as f:
-    #     json.dump(gt_box_dict, f, indent=4)
+    with open(save_json_path, "w", encoding="utf-8") as f:
+        json.dump(gt_box_dict, f, indent=4)
     print(f"collect_gt_box完成，并保存在:{save_json_path}")
 
 def merge_gt_predicted_box():
@@ -250,13 +255,15 @@ def record_no_anno_imgs():
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012"
+    dataset_name = "KITTI" # VOC2012, KITTI
+    nc = 9
     model_name = "YOLOv7"
+    # 脚本设备
     device = select_device('0')
     # create model 结构
-    model = Model("cfg/training/yolov7.yaml", ch=3, nc=20, anchors=3).to(device)
+    model = Model("cfg/training/yolov7.yaml", ch=3, nc=nc, anchors=3).to(device)
     epochs = 50
     # collect_predicted_box()
     # collect_gt_box()
     # merge_gt_predicted_box()
-    record_no_anno_imgs()
+    # record_no_anno_imgs()
