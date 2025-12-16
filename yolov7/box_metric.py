@@ -843,7 +843,7 @@ def eval_apfd(rank_res):
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012, KITTI
+    dataset_name = "KITTI" # VOC2012, KITTI, 
     model_name = "YOLOv7"
     epochs = 50
     # match()

@@ -417,12 +417,12 @@ def train(hyp, opt, device, tb_writer=None):
             if not opt.notest or final_epoch:  # Calculate mAP
                 wandb_logger.current_epoch = epoch + 1
                 
-                test.collect_sample_train_indicator(ema.ema, # 从训练脚本传递过来的
-                                                    data_dict,
-                                                    train_t_loader,
-                                                    compute_loss,
-                                                    epoch,
-                                                    collection_save_dir)
+                # test.collect_sample_train_indicator(ema.ema, # 从训练脚本传递过来的
+                #                                     data_dict,
+                #                                     train_t_loader,
+                #                                     compute_loss,
+                #                                     epoch,
+                #                                     collection_save_dir)
                 
                 results, maps, times = test.test(data_dict,
                                                  batch_size=batch_size * 2,
@@ -543,9 +543,9 @@ def train(hyp, opt, device, tb_writer=None):
 if __name__ == '__main__':
 
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012 | VisDrone | KITTI
+    dataset_name = "VisDrone" # VOC2012 | VisDrone | KITTI
     model_name = "YOLOv7"
-    collection_save_dir = os.path.join(exp_data_root,"collection_indicator", dataset_name,model_name)
+    # collection_save_dir = os.path.join(exp_data_root,"collection_indicator", dataset_name,model_name)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', type=str, default='yolov7.pt', help='initial weights path')
@@ -564,7 +564,7 @@ if __name__ == '__main__':
     parser.add_argument('--bucket', type=str, default='', help='gsutil bucket')
     parser.add_argument('--cache-images', action='store_true', help='cache images for faster training')
     parser.add_argument('--image-weights', action='store_true', help='use weighted image selection for training')
-    parser.add_argument('--device', default='1', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+    parser.add_argument('--device', default='0', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--multi-scale', action='store_true', help='vary img-size +/- 50%%')
     parser.add_argument('--single-cls', action='store_true', help='train multi-class data as single-class')
     parser.add_argument('--adam', action='store_true', help='use torch.optim.Adam() optimizer')
