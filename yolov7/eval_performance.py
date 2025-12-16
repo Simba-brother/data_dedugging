@@ -14,43 +14,58 @@ import numpy as np
 from utils.metrics import ap_per_class,ConfusionMatrix
 
 
-def main():
-    # 拿到数据yaml文件
-    data = f"data/{dataset_name}.yaml"
-    with open(data) as f:
-        data = yaml.load(f, Loader=yaml.SafeLoader)
-    gs = max(int(model.stride.max()), 32)  # grid size (max stride)
-    parser = argparse.ArgumentParser()
-    opt = parser.parse_args()
-    opt.single_cls = False
-    # 数据加载器
-    dataloader = create_dataloader(data["train"], 640, 32, gs, opt, pad=0.5, rect=True,
-                                    prefix=colorstr(f'train: '))[0]
 
-    imgsz = 640
-    batch_size = 32
-    names = {k: v for k, v in enumerate(model.names if hasattr(model, 'names') else model.module.names)}
-    epoch = 49
+def get_model(epoch,model,device):
     # 加载模型权重
     weights_path = os.path.join(exp_data_root,"models",f"{dataset_name.lower()}_error","yolov7",f"epoch_{epoch}.pt")
     state_dict = torch.load(weights_path, map_location=device)  # load checkpoint
     # 注入权重
     model.load_state_dict(state_dict, strict=True)
-    model.eval()
+    return model
 
+
+def main():
+    # 拿到数据yaml文件
+    data = f"data/{dataset_name}.yaml"
+    with open(data) as f:
+        data = yaml.load(f, Loader=yaml.SafeLoader)
+
+    # 数据集中的类别数量
     nc = int(data['nc'])  # number of classes
-    confusion_matrix = ConfusionMatrix(nc=nc)
+    # 指定GPU设备
+
+    device = select_device('0')
+    # 获得模型
+    model = Model("cfg/training/yolov7.yaml", ch=3, nc=nc, anchors=3).to(device)
+    epoch = 0
+    model = get_model(epoch,model,device)
+    model.eval()
+    names = {k: v for k, v in enumerate(model.names if hasattr(model, 'names') else model.module.names)}
+
+    # 获得数据集加载器
+    gs = max(int(model.stride.max()), 32)  # grid size (max stride)
+    parser = argparse.ArgumentParser()
+    opt = parser.parse_args()
+    opt.single_cls = False
+    # 数据加载器
+    batch_size = 32
+    imgsz = 640
+    dataloader = create_dataloader(data["train"], imgsz, batch_size, gs, opt, pad=0.5, rect=True,
+                                    prefix=colorstr(f'train: '))[0]
+
+    # confusion_matrix = ConfusionMatrix(nc=nc)
     iouv = torch.linspace(0.5, 0.95, 10).to(device)  # iou vector for mAP@0.5:0.95
     niou = iouv.numel()
 
-    seen = 0
-    p, r, f1, mp, mr, map50, map, t0, t1 = 0., 0., 0., 0., 0., 0., 0., 0., 0.
-    loss = torch.zeros(3, device=device)
-    jdict, stats, ap, ap_class, wandb_images = [], [], [], [], []
+    seen = 0 # 统计总共的图像数量
+    p, r, mp, mr, map50, map, t0, t1 = 0., 0., 0., 0., 0., 0., 0., 0.
+
+    jdict, stats, ap, ap_class = [], [], [], []
 
     # 批次遍历数据集
     for batch_i, (img, targets, paths, shapes) in enumerate(tqdm(dataloader)):
         img = img.to(device, non_blocking=True)
+        img = img.float()
         img /= 255.0  # 0 - 255 to 0.0 - 1.0
         targets = targets.to(device)
         nb, _, height, width = img.shape  # batch size, channels, height, wid
@@ -107,12 +122,10 @@ def main():
             for *xyxy, conf, cls in predn.tolist():
                 jdict.append({
                     "img_name":img_name,
-                    "cls":int(p[5]),
-                    "bbox":xyxy,
-                    "conf":round(p[4], 5)
-
+                    "cls":int(cls),
+                    "bbox_xyxy":xyxy,
+                    "conf":round(conf, 5)
                 })
-
 
             # Assign all predictions as incorrect
             correct = torch.zeros(pred.shape[0], niou, dtype=torch.bool, device=device)
@@ -169,7 +182,9 @@ def main():
     stats = [np.concatenate(x, 0) for x in zip(*stats)]  # to numpy
     if len(stats) and stats[0].any(): # .any() 表示里面至少有一个元素为 True / 非零。
         p, r, ap, f1, ap_class = ap_per_class(*stats, plot=False, v5_metric=False, names=names)
+        # ap：shape=[len(ap_class),niou]
         ap50, ap = ap[:, 0], ap.mean(1)  # AP@0.5, AP@0.5:0.95
+        # map就是map@0.5:0.95
         mp, mr, map50, map = p.mean(), r.mean(), ap50.mean(), ap.mean()
         nt = np.bincount(stats[3].astype(np.int64), minlength=nc)  # number of targets per class
     else:
@@ -179,7 +194,7 @@ def main():
     pf = '%20s' + '%12i' * 2 + '%12.3g' * 4  # print format
     print(pf % ('all', seen, nt.sum(), mp, mr, map50, map))
 
-    # Print results per class
+    # 分类统计的评估结果
     if len(stats):
         for i, c in enumerate(ap_class):
             print(pf % (names[c], seen, nt[c], p[i], r[i], ap50[i], ap[i]))
@@ -192,11 +207,7 @@ def main():
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012, KITTI
+    dataset_name = "KITTI" # VOC2012, KITTI, VisDrone
     model_name = "YOLOv7"
-    # 脚本设备
-    device = select_device('0')
-    # create model 结构
-    model = Model("cfg/training/yolov7.yaml", ch=3, nc=20, anchors=3).to(device)
     main()
 

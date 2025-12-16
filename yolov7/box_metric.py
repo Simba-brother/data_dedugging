@@ -238,11 +238,11 @@ def gt_box_metric_collection():
             instance["iou_list"].append(iou)
         collect.append(instance)
     save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name)
-    save_file_name = "collection.json"
+    save_file_name = "collection_metrics.json"
     save_path = os.path.join(save_dir,save_file_name)
     with open(save_path, "w", encoding="utf-8") as f:
         json.dump(collect, f, indent=4)
-    print(f"\ncollection is saved in {save_path}")
+    print(f"\ncollection_metrics is saved in {save_path}")
     
     end_time = time.time()  # 记录结束时间
     elapsed_time = end_time - start_time  # 计算运行时间（秒）
@@ -266,7 +266,7 @@ def get_all_gids():
 
 
 def get_g_id_to_metric():
-    gt_box_metric_collection_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "collection.json")
+    gt_box_metric_collection_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "collection_metrics.json")
     with open(gt_box_metric_collection_json_path, "r", encoding="utf-8") as f:
         gt_box_metric_collection_list = json.load(f)
     print(f"matched gt_box数量:{len(gt_box_metric_collection_list)}")
@@ -348,26 +348,27 @@ def correct_vs_fault():
             "conf_avg":conf_avg.tolist(),
             "iou_avg":iou_avg.tolist(),
         }
+    metric_name = "conf" # iou,conf
     # 准备 x 轴 epoch
-    no_fault_list = fault_to_metric_list[0]["iou_avg"]
-    cls_fault_list = fault_to_metric_list[1]["iou_avg"]
-    loc_fault_list = fault_to_metric_list[2]["iou_avg"]
-    redundancy_fault_list = fault_to_metric_list[3]["iou_avg"]
+    no_fault_list = fault_to_metric_list[0][f"{metric_name}_avg"]
+    cls_fault_list = fault_to_metric_list[1][f"{metric_name}_avg"]
+    loc_fault_list = fault_to_metric_list[2][f"{metric_name}_avg"]
+    redundancy_fault_list = fault_to_metric_list[3][f"{metric_name}_avg"]
 
-    epochs = range(1, 51)
+    epoch_list = range(1, 51)
     plt.figure(figsize=(8, 5))
-    plt.plot(epochs, no_fault_list, label="no fault", marker='o', color = "green")
-    plt.plot(epochs, cls_fault_list, label="cls fault", marker='o', color = "red")
-    plt.plot(epochs, loc_fault_list, label="loc fault", marker='o', color = "blue")
-    plt.plot(epochs, redundancy_fault_list, label="redundancy fault", marker='o', color = "black")
+    plt.plot(epoch_list, no_fault_list, label="no fault", marker='o', color = "green")
+    plt.plot(epoch_list, cls_fault_list, label="cls fault", marker='o', color = "red")
+    plt.plot(epoch_list, loc_fault_list, label="loc fault", marker='o', color = "blue")
+    plt.plot(epoch_list, redundancy_fault_list, label="redundancy fault", marker='o', color = "black")
 
     plt.xlabel("Epoch")
-    plt.ylabel(f"Mean IOU")
-    plt.title(f"Mean IOU Over 50 Epochs")
+    plt.ylabel(f"Mean {metric_name.upper()}")
+    plt.title(f"Mean {metric_name.upper()} Over 50 Epochs")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    save_dir = os.path.join(exp_root_dir,"imgs","correct_vs_error_box","iou_avg")
+    save_dir = os.path.join(exp_root_dir,"imgs","correct_vs_error_box",f"{metric_name}_avg")
     os.makedirs(save_dir,exist_ok=True)
     save_path = os.path.join(save_dir,f"{dataset_name}_{model_name}.png")
     plt.savefig(save_path)
@@ -537,7 +538,7 @@ def get_img_epoch_to_unmatched_p_boxs(epoch_to_matched_p_boxs,last_epoch,conf_th
     # 只关心最后5个epoch的预测情况
     for epoch in range(epochs-last_epoch,epochs):
         # 加载当前epoch的预测结果
-        predicted_epoch_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,f"epoch_{epoch}_predicted_bboxs.json")
+        predicted_epoch_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box", f"epoch_{epoch}_predicted_bboxs.json")
         with open(predicted_epoch_json_path,mode="r") as f:
             predicted_epoch_dict = json.load(f)
         # 统计所有图像中没被gt_box匹配到的高置信度预测box
@@ -845,7 +846,7 @@ if __name__ == "__main__":
     dataset_name = "KITTI" # VOC2012, KITTI
     model_name = "YOLOv7"
     epochs = 50
-    match()
+    # match()
 
     # gt_box_metric_collection()
     # correct_vs_fault()
@@ -859,3 +860,4 @@ if __name__ == "__main__":
     rank_res = total_rank(ranked_gid_list,ranked_img_list)
     eval_apfd(rank_res)
     '''
+    
