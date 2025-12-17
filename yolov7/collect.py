@@ -249,21 +249,30 @@ def record_no_anno_imgs():
         loaded_img_size += len(paths)
     print(loaded_img_size)
     
-    
-    
+def get_nc(dataset_name):
+    if dataset_name == "VOC2012":
+        nc = 20
+    elif dataset_name == "KITTI":
+        nc = 9
+    elif dataset_name == "VisDrone":
+        nc = 10
+    else:
+        raise Exception("数据集参数错误")
+    return nc
+
 
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012, KITTI
-    nc = 9
+    dataset_name = "VisDrone" # VOC2012, KITTI, VisDrone
+    nc = get_nc(dataset_name)
     model_name = "YOLOv7"
     # 脚本设备
     device = select_device('0')
     # create model 结构
     model = Model("cfg/training/yolov7.yaml", ch=3, nc=nc, anchors=3).to(device)
     epochs = 50
-    # collect_predicted_box()
+    collect_predicted_box()
     # collect_gt_box()
     # merge_gt_predicted_box()
     # record_no_anno_imgs()

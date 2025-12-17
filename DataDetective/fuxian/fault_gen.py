@@ -117,14 +117,14 @@ def gen_redundancy_fault(object_id_list, anno_list):
                 }
                 
                 anno_list.append(new_obj)
-                new_id += 1
                 fault_info = {
-                    "obj_id":object_id,
+                    "obj_id":new_id,
                     "img_id":anno["image_id"],
                     "img_name": coco.loadImgs(anno["image_id"])[0]["file_name"],
                     "fault_type":fault_type["redundancy_fault"]
                 }
                 fault_recorder.append(fault_info)
+                new_id += 1
     return anno_list
 
 

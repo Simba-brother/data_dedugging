@@ -64,9 +64,27 @@ def test_7():
         return img_name_list
     img_name_list = get_all_img_name()
 
+def test_8():
+    import numpy as np
+    from collections import defaultdict
+
+    path = "/data/mml/data_debugging_data/datasets/VisDrone-yolo/train/labels/9999945_00000_d_0000114.txt"
+    arr = np.loadtxt(path).reshape(-1, 5)          # [cls, x, y, w, h]
+    arr = np.round(arr, 6)                         # 适当四舍五入避免格式差异
+
+    m = defaultdict(list)
+    for i, row in enumerate(arr, 1):
+        m[tuple(row.tolist())].append(i)
+
+    for k, idxs in m.items():
+        if len(idxs) > 1:
+            print(f"重复行号 {idxs}: {k}")
+
+
+
 if __name__ == "__main__":
     # test_2()
-    test_7()
+    test_8()
     # bbox = [0.499,0.4866666666666667,0.106,0.14666666666666667]
     # W = 500
     # H = 375
