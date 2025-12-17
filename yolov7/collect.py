@@ -272,7 +272,7 @@ if __name__ == "__main__":
     # create model 结构
     model = Model("cfg/training/yolov7.yaml", ch=3, nc=nc, anchors=3).to(device)
     epochs = 50
-    collect_predicted_box()
+    # collect_predicted_box()
     # collect_gt_box()
     # merge_gt_predicted_box()
     # record_no_anno_imgs()

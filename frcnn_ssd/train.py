@@ -274,7 +274,7 @@ def collection_FRCNN_indicator(model,device,dataloader,epoch):
                 # label = label_list[labels[i]]
                 conf = scores[i].item()
                 conf_list.append(conf)
-        # box_count_dif = len(conf) - 
+        
         if len(conf_list) == 0:
             conf_avg = 0
         else:

@@ -126,7 +126,15 @@ def pretty_print(content,count,col_nums=10):
     if count % col_nums == 0:  # 如果计数器是10的倍数
         print()  # 打印换行符
 
-
+def get_all_epoch():
+    _dict = {}
+    for epoch in range(epochs):
+        epoch_predicted_bboxs_json_path =  os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box",f"epoch_{epoch}_predicted_bboxs.json")
+        with open(epoch_predicted_bboxs_json_path,"r") as f:
+            epoch_predicted_bboxs_dict = json.load(f)
+        _dict[epoch] = epoch_predicted_bboxs_dict
+    return _dict
+    
 
 def match():
     '''
@@ -142,6 +150,9 @@ def match():
     # {g_id:[{"epoch":epoch,"g_box":g_box,"p_box":p_box}]}
     gt_box_match = defaultdict(list)
     # 遍历所有的图像和其g_boxs
+
+    epoch_to_predicts = get_all_epoch()
+
     count = 0
     for img_name,g_boxs in gt_json.items():
         count += 1
@@ -154,12 +165,9 @@ def match():
         # 当前图像的g_boxs的bbox格式进行转换
         for g_box in g_boxs:
             g_box["gt_bbox"] = xcycwh_to_x1y1x2y2(g_box["gt_bbox"],width,height)
-
         # 在该图像下，遍历所有的epoch预测结果
         for epoch in range(epochs):
-            epoch_predicted_bboxs_json_path =  os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box",f"epoch_{epoch}_predicted_bboxs.json")
-            with open(epoch_predicted_bboxs_json_path,"r") as f:
-                 epoch_predicted_bboxs_dict = json.load(f)
+            epoch_predicted_bboxs_dict = epoch_to_predicts[epoch]
             if img_name not in epoch_predicted_bboxs_dict:
                 # 图像在当前epoch下没有预测结果,则直接跳过当前epoch
                 continue
@@ -272,8 +280,7 @@ def get_g_id_to_metric():
     print(f"matched gt_box数量:{len(gt_box_metric_collection_list)}")
 
     g_box_id_to_metric = {}
-    
-    
+
     for collection in gt_box_metric_collection_list:
         g_box_id = collection["g_box_id"]
         conf_list = collection["conf_list"]
@@ -348,7 +355,7 @@ def correct_vs_fault():
             "conf_avg":conf_avg.tolist(),
             "iou_avg":iou_avg.tolist(),
         }
-    metric_name = "conf" # iou,conf
+    metric_name = "iou" # conf,iou
     # 准备 x 轴 epoch
     no_fault_list = fault_to_metric_list[0][f"{metric_name}_avg"]
     cls_fault_list = fault_to_metric_list[1][f"{metric_name}_avg"]
@@ -843,11 +850,11 @@ def eval_apfd(rank_res):
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012, KITTI, 
+    dataset_name = "VisDrone" # VOC2012, KITTI, VisDrone
     model_name = "YOLOv7"
     epochs = 50
-    # match()
 
+    # match()
     # gt_box_metric_collection()
     # correct_vs_fault()
 
@@ -860,4 +867,4 @@ if __name__ == "__main__":
     rank_res = total_rank(ranked_gid_list,ranked_img_list)
     eval_apfd(rank_res)
     '''
-    
+

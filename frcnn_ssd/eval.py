@@ -114,6 +114,7 @@ def build_ssd_model(num_classes):
         num_classes
     )
     return model
+
 def build_frcnn_model(num_classes):
     model =torchvision.models.detection.fasterrcnn_resnet50_fpn(weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT)
     # Number of input features for the classifier head
@@ -163,6 +164,7 @@ def main():
     os.makedirs(save_dir,exist_ok=True)
     save_file_path = os.path.join(save_dir,"epoch_trian_loss_value_list.joblib")
     joblib.dump(epoch_loss_value_list,save_file_path)
+
 if __name__ == "__main__":
     main()
     # test()

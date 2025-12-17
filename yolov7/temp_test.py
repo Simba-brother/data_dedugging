@@ -68,7 +68,7 @@ def test_8():
     import numpy as np
     from collections import defaultdict
 
-    path = "/data/mml/data_debugging_data/datasets/VisDrone-yolo/train/labels/9999945_00000_d_0000114.txt"
+    path = "/data/mml/data_debugging_data/datasets/VisDrone-yolo/train/labels/9999987_00000_d_0000049.txt"
     arr = np.loadtxt(path).reshape(-1, 5)          # [cls, x, y, w, h]
     arr = np.round(arr, 6)                         # 适当四舍五入避免格式差异
 
