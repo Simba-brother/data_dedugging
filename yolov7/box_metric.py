@@ -134,7 +134,19 @@ def get_all_epoch():
             epoch_predicted_bboxs_dict = json.load(f)
         _dict[epoch] = epoch_predicted_bboxs_dict
     return _dict
-    
+
+def get_gt_boxs():
+    gt_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,"YOLOv7","gt_bboxs.json")
+    with open(gt_json_path,"r") as file:
+        gt_json = json.load(file)
+    return gt_json
+
+def get_img_path_by_img_name(img_name,style):
+    if style == "yolo":
+        image_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-yolo","train","images",img_name)
+    elif style == "coco":
+        image_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train",img_name)
+    return image_path
 
 def match():
     '''
@@ -143,9 +155,7 @@ def match():
     start_time = time.time()  # 记录开始时间
     # 加载g_box json, no anno的img_name是不存在这个json中的
     # bbox 坐标还是归一的xcycwh
-    gt_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gt_bboxs.json")
-    with open(gt_json_path,"r") as file:
-        gt_json = json.load(file)
+    gt_json = get_gt_boxs()
     # 收集每个g_box在所有轮次中的匹配信息
     # {g_id:[{"epoch":epoch,"g_box":g_box,"p_box":p_box}]}
     gt_box_match = defaultdict(list)
@@ -158,7 +168,7 @@ def match():
         count += 1
         pretty_print(img_name,count)
         # 当前图像的g_boxs
-        image_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-yolo","train","images",img_name)
+        image_path = get_img_path_by_img_name(img_name,"yolo")
         # 当前图像的width,height
         image = Image.open(image_path)
         width, height = image.size
@@ -850,11 +860,11 @@ def eval_apfd(rank_res):
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012, KITTI, VisDrone
-    model_name = "YOLOv7"
+    dataset_name = "VOC2012" # VOC2012, KITTI, VisDrone
+    model_name = "FRCNN" # YOLOv7, FRCNN, SSD
     epochs = 50
 
-    # match()
+    match()
     # gt_box_metric_collection()
     # correct_vs_fault()
 

@@ -5,6 +5,7 @@ Docstring for collection
 import os
 import time
 import json
+from PIL import Image
 from torch.utils.data import DataLoader
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor,FasterRCNN_ResNet50_FPN_Weights
 from torchvision.models.detection import ssd300_vgg16, SSD300_VGG16_Weights
@@ -12,7 +13,7 @@ from torchvision.models.detection.ssd import SSDClassificationHead
 from torchvision.transforms import ToTensor
 from datasets import CocoDetectionDataset
 import torch,torchvision
-
+from collections import defaultdict
 
 # Transform PIL image --> PyTorch tensor
 def get_transform():
@@ -73,7 +74,7 @@ def model_load_weight(model,epoch):
     model.load_state_dict(state_dict)
     return model
 
-def collect_help(img_name,p_boxes,p_labels,confs,global_id):
+def collect_help(img_name,p_boxes,p_labels,confs, global_id):
     p_boxs = []
     for i in range(p_boxes.shape[0]):
         p_box = p_boxes[i].tolist()
@@ -88,7 +89,7 @@ def collect_help(img_name,p_boxes,p_labels,confs,global_id):
         }
         p_boxs.append(p_box)
         global_id += 1
-    return p_boxs,global_id
+    return p_boxs
 
 
 def collect_one_epoch(model,dataset_loader,device):
@@ -106,7 +107,7 @@ def collect_one_epoch(model,dataset_loader,device):
             confs = pred['scores']
             if p_boxes.shape[0] > 0:
                 # 模型对该图像有预测输出
-                collected_p_boxs = collect_help(img_name,p_boxes,p_labels,confs,global_id)
+                collected_p_boxs = collect_help(img_name,p_boxes,p_labels,confs, global_id)
                 collect_dict[img_name] = {
                     "predicted_bboxs":collected_p_boxs
                 } 
@@ -146,13 +147,11 @@ def collect_predicted_box():
     seconds = elapsed_time % 60  # 计算剩余的秒数
     print(f"耗时: {hours:02d}:{minutes:02d}:{seconds:02.0f}")
 
-def collect_g_box():
-    
-
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
+    dataset_name = "KITTI" # VOC2012|KITTI|VisDrone
     model_name = "FRCNN" # FRCNN|SSD
-    gpu_id = 1
+    gpu_id = 0
     num_epochs = 50
     collect_predicted_box()
+    

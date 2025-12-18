@@ -19,7 +19,6 @@ yolo_output.save(label_input=coco_input)
 print("Conversion from COCO to YOLOv7 completed successfully!")
 
 
-
 '''
 # Load KITTI labels
 label_input = KittiObjectDetectionInput(
