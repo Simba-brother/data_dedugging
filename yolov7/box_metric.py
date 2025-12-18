@@ -272,9 +272,7 @@ def gt_box_metric_collection():
 
 
 def get_all_gids():
-    g_boxs_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gt_bboxs.json")
-    with open(g_boxs_json_path, "r") as f:
-        g_boxs_dict = json.load(f)
+    g_boxs_dict = get_gt_boxs()
     all_g_box_id_list = []
     for img_name, g_box_list in g_boxs_dict.items():
         for g_box in g_box_list:
@@ -299,17 +297,38 @@ def get_g_id_to_metric():
             "conf_list":conf_list,
             "iou_list":iou_list,
         }
-
-    
-
     return g_box_id_to_metric
+
+def draw_line(fault_to_metric_list,metric_name):
+     # 准备 x 轴 epoch
+    no_fault_list = fault_to_metric_list[0][f"{metric_name}_avg"]
+    cls_fault_list = fault_to_metric_list[1][f"{metric_name}_avg"]
+    loc_fault_list = fault_to_metric_list[2][f"{metric_name}_avg"]
+    redundancy_fault_list = fault_to_metric_list[3][f"{metric_name}_avg"]
+
+    epoch_list = range(1, 51)
+    plt.figure(figsize=(8, 5))
+    plt.plot(epoch_list, no_fault_list, label="no fault", marker='o', color = "green")
+    plt.plot(epoch_list, cls_fault_list, label="cls fault", marker='o', color = "red")
+    plt.plot(epoch_list, loc_fault_list, label="loc fault", marker='o', color = "blue")
+    plt.plot(epoch_list, redundancy_fault_list, label="redundancy fault", marker='o', color = "black")
+
+    plt.xlabel("Epoch")
+    plt.ylabel(f"Mean {metric_name.upper()}")
+    plt.title(f"Mean {metric_name.upper()} Over 50 Epochs")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    save_dir = os.path.join(exp_root_dir,"imgs","correct_vs_error_box",f"{metric_name}_avg")
+    os.makedirs(save_dir,exist_ok=True)
+    save_path = os.path.join(save_dir,f"{dataset_name}_{model_name}.png")
+    plt.savefig(save_path)
+    print("correct_vs_error is saved in",save_path)
 
 def correct_vs_fault():
     
     g_box_id_to_metric = get_g_id_to_metric()
-    gt_bboxs_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gt_bboxs.json")
-    with open(gt_bboxs_json_path, "r", encoding="utf-8") as f:
-        gt_bboxs_dict = json.load(f)
+    gt_bboxs_dict = get_gt_boxs()
     
     g_box_id_to_info = {}
     for img_name in gt_bboxs_dict.keys():
@@ -336,8 +355,9 @@ def correct_vs_fault():
                 "iou_list":iou_list,
                 "fault_type":fault_type
             }
-            
         else:
+            box_info = g_box_id_to_info[g_id]
+            fault_type = box_info["fault_type"]
             item = {
                 "g_id":g_id,
                 "img_name":box_info["img_name"],
@@ -365,31 +385,9 @@ def correct_vs_fault():
             "conf_avg":conf_avg.tolist(),
             "iou_avg":iou_avg.tolist(),
         }
-    metric_name = "iou" # conf,iou
-    # 准备 x 轴 epoch
-    no_fault_list = fault_to_metric_list[0][f"{metric_name}_avg"]
-    cls_fault_list = fault_to_metric_list[1][f"{metric_name}_avg"]
-    loc_fault_list = fault_to_metric_list[2][f"{metric_name}_avg"]
-    redundancy_fault_list = fault_to_metric_list[3][f"{metric_name}_avg"]
-
-    epoch_list = range(1, 51)
-    plt.figure(figsize=(8, 5))
-    plt.plot(epoch_list, no_fault_list, label="no fault", marker='o', color = "green")
-    plt.plot(epoch_list, cls_fault_list, label="cls fault", marker='o', color = "red")
-    plt.plot(epoch_list, loc_fault_list, label="loc fault", marker='o', color = "blue")
-    plt.plot(epoch_list, redundancy_fault_list, label="redundancy fault", marker='o', color = "black")
-
-    plt.xlabel("Epoch")
-    plt.ylabel(f"Mean {metric_name.upper()}")
-    plt.title(f"Mean {metric_name.upper()} Over 50 Epochs")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    save_dir = os.path.join(exp_root_dir,"imgs","correct_vs_error_box",f"{metric_name}_avg")
-    os.makedirs(save_dir,exist_ok=True)
-    save_path = os.path.join(save_dir,f"{dataset_name}_{model_name}.png")
-    plt.savefig(save_path)
-    print("correct_vs_error is saved in",save_path)
+    draw_line(fault_to_metric_list,metric_name="conf")
+    draw_line(fault_to_metric_list,metric_name="iou")
+   
 
 
 def add_path_value(d, keys, value):
@@ -838,10 +836,7 @@ def compute_apfd(fault_set:set, rankded_list):
     return apfd
 
 def eval_apfd(rank_res):
-
-    g_box_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "gt_bboxs.json")
-    with open(g_box_json_path,"r") as f:
-        g_box_dict = json.load(f)
+    g_box_dict = get_gt_boxs()
     fault_g_id_set = set()
     for img_name,g_box_list in g_box_dict.items():
         for g_box in g_box_list:
@@ -860,21 +855,19 @@ def eval_apfd(rank_res):
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012, KITTI, VisDrone
+    dataset_name = "KITTI" # VOC2012, KITTI, VisDrone
     model_name = "FRCNN" # YOLOv7, FRCNN, SSD
     epochs = 50
 
-    match()
+    # match()
     # gt_box_metric_collection()
     # correct_vs_fault()
 
     # gid排序
-    '''
     g_id_to_features,feature_name_to_sign = gt_box_features_build()
     ranked_gid_list = rank_gid(g_id_to_features,feature_name_to_sign)
     # img排序
     ranked_img_list,detected_mis_img_name_list = misimg_detect()
     rank_res = total_rank(ranked_gid_list,ranked_img_list)
     eval_apfd(rank_res)
-    '''
 
