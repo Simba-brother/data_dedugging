@@ -1,4 +1,6 @@
-'''看一下我们训练的模型在val上的性能'''
+'''
+用于评估YOLOv7模型的mAP
+'''
 
 import os
 import yaml
@@ -12,8 +14,9 @@ from utils.torch_utils import select_device,time_synchronized
 from tqdm import tqdm
 import numpy as np
 from utils.metrics import ap_per_class,ConfusionMatrix
-
-
+from pycocotools.coco import COCO
+from pycocotools.cocoeval import COCOeval
+import json
 
 def get_model(epoch,model,device):
     # 加载模型权重
@@ -23,8 +26,139 @@ def get_model(epoch,model,device):
     model.load_state_dict(state_dict, strict=True)
     return model
 
+def xiufu_anno_file():
+    
+    if train_or_val == "train":
+        in_path = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco","train","_annotations.coco_error.json")
+        out_path = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco","train","_annotations.coco_error_xiufu.json")
+    elif train_or_val == "val":
+        in_path = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco","val","_annotations.coco.json")
+        out_path = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco","val","_annotations.coco_xiufu.json")
+    
+    with open(in_path, "r", encoding="utf-8") as f:
+        coco = json.load(f)
+    for ann in coco.get("annotations", []):
+        if "area" not in ann:
+            x, y, w, h = ann["bbox"]  # COCO bbox: [x, y, w, h]
+            ann["area"] = float(w * h)
+        if "iscrowd" not in ann:
+            ann["iscrowd"] = 0
 
-def main():
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(coco, f, ensure_ascii=False)
+
+    print("saved:", out_path)
+
+
+def get_name_id_map(ANN_FILE):
+    
+    coco = COCO(ANN_FILE)
+
+    # 1) file_name -> img_id（假设 file_name 唯一）
+    name2id = {img_info["file_name"]: img_id for img_id, img_info in coco.imgs.items()}
+
+    # 2) 反向：img_id -> file_name
+    id2name = {img_id: img_info["file_name"] for img_id, img_info in coco.imgs.items()}
+
+    return name2id,id2name
+
+
+def xyxy2xywh(xyxy:list):
+    x1,y1,x2,y2 = xyxy
+    w = x2-x1
+    h = y2-y1
+    return [x1,y1,w,h]
+
+
+def get_batch_res(imgs,outs,paths,shapes,name2id):
+    batch_res = []
+    for si, pred in enumerate(outs):
+        # si: 这批图像的局部索引
+        # 拷贝一份这张图像的预测
+        predn = pred.clone()
+        path = Path(paths[si])
+        img_name = path.name
+        img_id = name2id[img_name]
+        scale_coords(imgs[si].shape[1:], predn[:, :4], shapes[si][0], shapes[si][1])  # native-space pred
+
+        for *xyxy, conf, cls in predn.tolist():
+            xywh = xyxy2xywh(xyxy)
+            batch_res.append({
+                "image_id": int(img_id),
+                "category_id": int(cls),
+                "bbox":xywh,
+                "score": float(conf),
+            })
+    return batch_res
+
+def get_coco_results(dataloader,device,model,name2id):
+    coco_res = []
+    for batch_i, (imgs, targets, paths, shapes) in enumerate(tqdm(dataloader)):
+        imgs = imgs.to(device, non_blocking=True)
+        imgs = imgs.float()
+        imgs /= 255.0  # 0 - 255 to 0.0 - 1.0
+        targets = targets.to(device)
+        nb, _, height, width = imgs.shape  # batch size, channels, height, wid
+        with torch.no_grad():
+            # out:shape:(bs,anchors*grids,nc+5)
+            outs, train_outs = model(imgs, augment=False)  # inference and training outputs
+            targets[:, 2:] *= torch.Tensor([width, height, width, height]).to(device)  # to pixels
+            # lb = [targets[targets[:, 0] == i, 1:] for i in range(nb)]
+            lb = []
+            # [shape:(boxs_num,6),]
+            outs = non_max_suppression(outs, conf_thres=0.001, iou_thres=0.65, labels=lb, multi_label=True)
+            batch_res = get_batch_res(imgs,outs,paths,shapes,name2id)
+            coco_res.extend(batch_res)
+    return coco_res
+
+def eval_perform_coco_style():
+    # 拿到数据yaml文件
+    data = f"data/{dataset_name}.yaml"
+    with open(data) as f:
+        data = yaml.load(f, Loader=yaml.SafeLoader)
+    # 数据集中的类别数量
+    nc = int(data['nc'])  # number of classes
+    # 指定GPU设备
+
+    device = select_device(f'{gpu_id}')
+    # 获得模型
+    model = Model("cfg/training/yolov7.yaml", ch=3, nc=nc, anchors=3).to(device)
+    used_epoch = 49
+    model = get_model(used_epoch,model,device)
+    model.eval()
+    name2id,id2name = get_name_id_map(ANN_FILE)
+    # 获得数据集加载器
+    gs = max(int(model.stride.max()), 32)  # grid size (max stride)
+    parser = argparse.ArgumentParser()
+    opt = parser.parse_args()
+    opt.single_cls = False
+    # 数据加载器
+    batch_size = 32
+    imgsz = 640
+
+    dataloader = create_dataloader(data[train_or_val], imgsz, batch_size, gs, opt, pad=0.5, rect=True,
+                                    prefix=colorstr(f'{train_or_val}: '))[0]
+
+    coco_results = get_coco_results(dataloader,device,model,name2id)
+    cocoGt = COCO(ANN_FILE)
+    cocoDt = cocoGt.loadRes(coco_results)
+    coco_eval = COCOeval(cocoGt, cocoDt, iouType="bbox")
+    coco_eval.evaluate()
+    coco_eval.accumulate()
+    coco_eval.summarize()
+    return coco_eval
+
+    '''
+    save_dir = os.path.join(exp_data_root,"eval_model_performance",dataset_name,model_name)
+    save_file_name = "coco_res.json"
+    save_path = os.path.join(save_dir,save_file_name)
+    with open(save_path,"w") as f:
+        json.dump(coco_res,save_path)
+    print(f"coco res is saved in: {save_path}")
+    '''
+
+
+def eval_performance_yolo_style():
     # 拿到数据yaml文件
     data = f"data/{dataset_name}.yaml"
     with open(data) as f:
@@ -205,9 +339,23 @@ def main():
     print('Speed: %.1f/%.1f/%.1f ms inference/NMS/total per %gx%g image at batch-size %g' % t)
 
 
+def get_COCOANN_FILE(train_or_val:str):
+    if train_or_val == "train":
+        ANN_FILE = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco",f"{train_or_val}","_annotations.coco_error_xiufu.json")
+    elif train_or_val == "val":
+        ANN_FILE = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco",f"{train_or_val}","_annotations.coco_xiufu.json")
+    else:
+        raise Exception("get anno coco 错误")
+    return ANN_FILE
+
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012, KITTI, VisDrone
+    dataset_name = "VisDrone" # VOC2012, KITTI, VisDrone
     model_name = "YOLOv7"
-    main()
+    train_or_val = "val"
+    gpu_id = 1
+    ANN_FILE = get_COCOANN_FILE(train_or_val)
+    # xiufu_anno_file()
+    # main()
+    eval_perform_coco_style()
 

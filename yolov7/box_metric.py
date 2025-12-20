@@ -853,21 +853,27 @@ def eval_apfd(rank_res):
     apfd = compute_apfd(fault_set, rank_res)
     print(f"apfd:{apfd}")
 
+
+
+
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012, KITTI, VisDrone
-    model_name = "FRCNN" # YOLOv7, FRCNN, SSD
+    dataset_name = "VisDrone" # VOC2012, KITTI, VisDrone
+    model_name = "SSD" # YOLOv7, FRCNN, SSD
     epochs = 50
 
     # match()
     # gt_box_metric_collection()
     # correct_vs_fault()
 
+    
     # gid排序
     g_id_to_features,feature_name_to_sign = gt_box_features_build()
     ranked_gid_list = rank_gid(g_id_to_features,feature_name_to_sign)
     # img排序
     ranked_img_list,detected_mis_img_name_list = misimg_detect()
     rank_res = total_rank(ranked_gid_list,ranked_img_list)
-    eval_apfd(rank_res)
+    eval_apfd(rank_res) 
+    
+
 
