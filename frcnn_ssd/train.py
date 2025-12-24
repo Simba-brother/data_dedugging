@@ -23,7 +23,7 @@ def get_train_and_val_dataset():
     # Load training dataset
     train_dataset = CocoDetectionDataset(
         image_dir=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/train", 
-        annotation_path=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json",
+        annotation_path=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/train/_annotations.coco_correct.json",
         transforms=get_transform()
     )
 
@@ -329,10 +329,10 @@ if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
     model_name = "FRCNN" # FRCNN|SSD
-    gpu_id = 0
+    gpu_id = 1
     init_lr = 5e-3
     num_epochs = 50
-    epoch_save_dir = f"{exp_data_root_dir}/models/{dataset_name}_error/{model_name}/v2"
+    epoch_save_dir = f"{exp_data_root_dir}/models/{dataset_name}_correct/{model_name}"
     os.makedirs(epoch_save_dir,exist_ok=True)
     train()
     # test()

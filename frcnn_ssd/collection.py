@@ -69,7 +69,7 @@ def set_nms(model, model_name, conf_threshold=0.25,iou_threshold=0.65):
 
 def model_load_weight(model,epoch):
     # 加载模型
-    w_path = os.path.join(exp_data_root_dir,"models",f"{dataset_name.lower()}_error", model_name, f"epoch_{epoch}.pth")
+    w_path = os.path.join(model_pth_dir,f"epoch_{epoch}.pth")
     state_dict = torch.load(w_path,map_location="cpu")
     model.load_state_dict(state_dict)
     return model
@@ -114,6 +114,13 @@ def collect_one_epoch(model,dataset_loader,device):
                 global_id += len(collected_p_boxs)
     return collect_dict
 
+def save_one_epoch(collect_dict,epoch):
+    save_file_name = f"epoch_{epoch}_predicted_bboxs.json"
+    save_path = os.path.join(collect_save_dir,save_file_name)
+    with open(save_path, "w", encoding="utf-8") as f:
+        json.dump(collect_dict,f,indent=4)
+    return save_path
+
 
 def collect_predicted_box():
     start_time = time.time()  # 记录开始时间
@@ -125,20 +132,16 @@ def collect_predicted_box():
     num_classes = len(train_dataset.coco.getCatIds()) + 1
     # 构建模型
     model = get_model(num_classes)
-    model = set_nms(model,model_name=model_name)
+    # model = set_nms(model,model_name=model_name)
     # 得到设备
     device = torch.device(f"cuda:{gpu_id}")
     model.to(device)
+    # 开始收集
     for epoch in range(num_epochs):
         print(f"\nEpoch {epoch}/{num_epochs}")
         model = model_load_weight(model,epoch)
         collect_dict = collect_one_epoch(model,train_loader,device)
-        save_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box")
-        os.makedirs(save_dir,exist_ok=True)
-        save_file_name = f"epoch_{epoch}_predicted_bboxs.json"
-        save_path = os.path.join(save_dir,save_file_name)
-        with open(save_path, "w", encoding="utf-8") as f:
-            json.dump(collect_dict,f,indent=4)
+        save_path = save_one_epoch(collect_dict,epoch)
         print(f"收集的数据保存在: {save_path}")
     end_time = time.time()  # 记录结束时间
     elapsed_time = end_time - start_time  # 计算运行时间（秒）
@@ -153,4 +156,7 @@ if __name__ == "__main__":
     model_name = "FRCNN" # FRCNN|SSD
     gpu_id = 1
     num_epochs = 50
+    model_pth_dir = os.path.join(exp_data_root_dir,"models",f"{dataset_name.lower()}_error", model_name, "v2")
+    collect_save_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box", "v2")
+    os.makedirs(collect_save_dir,exist_ok=True)
     collect_predicted_box()
