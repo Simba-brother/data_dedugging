@@ -150,7 +150,7 @@ def collect_predicted_box():
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "KITTI" # VOC2012|KITTI|VisDrone
-    model_name = "SSD" # FRCNN|SSD
+    model_name = "FRCNN" # FRCNN|SSD
     gpu_id = 1
     num_epochs = 50
     collect_predicted_box()

@@ -53,7 +53,7 @@ class CocoDetectionDataset(Dataset):
                 ymax += 1
                 print(f"img:{image_path}, box高度有问题")
             boxes.append([xmin, ymin, xmax, ymax])
-            labels.append(obj['category_id'])
+            labels.append(int(obj['category_id'])+1) # anno file 中 category_id 我是从 0 开始的所以要从 1 开始
             obj["area"] = width * height
  
         # Convert annotations to PyTorch tensors

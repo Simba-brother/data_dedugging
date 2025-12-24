@@ -78,6 +78,17 @@ def get_coco_results(model, data_loader, device, score_thresh=0.5):
     return results
 
 
+def set_nms(model, model_name, conf_threshold=0.25,iou_threshold=0.65):
+    if model_name == "SSD":
+        model.score_thresh = conf_threshold
+        model.nms_thresh = iou_threshold
+    elif model_name == "FRCNN":
+        model.roi_heads.nms_thresh = iou_threshold
+        model.roi_heads.score_thresh = conf_threshold
+    else:
+        raise Exception("模型名称错误")
+    return model
+
 def main():
     # 加载数据
     train_dataset = CocoDetectionDataset(
@@ -98,8 +109,9 @@ def main():
     
     device = torch.device(f"cuda:{gpu_id}")
     model.to(device)
-
     model = model_load_weight(model,epoch=49)
+    model = set_nms(model, model_name, conf_threshold=0.25,iou_threshold=0.65)
+    
     model.eval()
 
     # 开始评估
@@ -115,13 +127,20 @@ def main():
     coco_eval.summarize()
     return coco_eval
 
-
+def get_COCOANN_FILE(train_or_val:str):
+    if train_or_val == "train":
+        ANN_FILE = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco",f"{train_or_val}","_annotations.coco_error_xiufu.json")
+    elif train_or_val == "val":
+        ANN_FILE = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco",f"{train_or_val}","_annotations.coco_xiufu.json")
+    else:
+        raise Exception("get anno coco 错误")
+    return ANN_FILE
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|KITTI|VisDrone
-    model_name = "FRCNN" # FRCNN, SSD
+    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
+    model_name = "SSD" # FRCNN, SSD
     gpu_id = 0
-    train_or_val = "train" # train|val
-    ANN_FILE = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco",f"{train_or_val}","_annotations.coco_error_xiufu.json")
+    train_or_val = "val" # train|val
+    ANN_FILE = get_COCOANN_FILE(train_or_val)
     main()

@@ -14,33 +14,27 @@ from PIL import Image
 import pandas as pd
 import os
 
-exp_data_root_dir = "/data/mml/data_debugging_data"
-dataset_name = "VisDrone" # VOC2012|VisDrone|KITTI
-model_name = "SSD" # FRCNN|SSD
-gpu_id = 0
-conf_threshold = 0.8
+# conf_threshold = 0.8
 # Transform PIL image --> PyTorch tensor
 def get_transform():
     return ToTensor()
-# Load training dataset
-train_dataset = CocoDetectionDataset(
-    image_dir=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/train", 
-    annotation_path=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json",
-    transforms=get_transform()
-)
 
-# Load validation dataset
-val_dataset = CocoDetectionDataset(
-    image_dir=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/val",
-    annotation_path=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/val/_annotations.coco.json",
-    transforms=get_transform()
-)
+def get_train_and_val_dataset():
+    # Load training dataset
+    train_dataset = CocoDetectionDataset(
+        image_dir=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/train", 
+        annotation_path=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json",
+        transforms=get_transform()
+    )
 
-# Load dataset with DataLoaders, you can change batch_size 
-train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=lambda x: tuple(zip(*x)))
-val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False, collate_fn=lambda x: tuple(zip(*x)))
-train_t_loader = DataLoader(train_dataset, batch_size=1, shuffle=False, collate_fn=lambda x: tuple(zip(*x)))
+    # Load validation dataset
+    val_dataset = CocoDetectionDataset(
+        image_dir=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/val",
+        annotation_path=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/val/_annotations.coco.json",
+        transforms=get_transform()
+    )
 
+    return train_dataset, val_dataset
 def test():
     # class names
     label_list= ["","ball", "goalkeeper", "player", "referee",""]
@@ -102,25 +96,58 @@ def test():
     # plt.show()
     plt.savefig("test.png")
 
-def build_ssd_model(num_classes):
-    model = ssd300_vgg16(weights=SSD300_VGG16_Weights.DEFAULT)
-    model.head.classification_head = SSDClassificationHead(
-        [512, 1024, 512, 256, 256, 256],
-        model.anchor_generator.num_anchors_per_location(), 
-        num_classes
-    )
-    return model
-def build_frcnn_model(num_classes):
-    model =torchvision.models.detection.fasterrcnn_resnet50_fpn(weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT)
-    # Number of input features for the classifier head
-    in_features = model.roi_heads.box_predictor.cls_score.in_features
-    """  
-    Number of classes must be equal to your label number
-    """
-    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+
+def build_model(model_name,nc):
+    if model_name == "FRCNN":
+        model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights="DEFAULT")
+        # model =torchvision.models.detection.fasterrcnn_resnet50_fpn(weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT)
+        # Number of input features for the classifier head
+        in_features = model.roi_heads.box_predictor.cls_score.in_features
+        """  
+        Number of classes must be equal to your label number
+        """
+        model.roi_heads.box_predictor = FastRCNNPredictor(in_features, nc)
+    elif model_name == "SSD":
+        model = ssd300_vgg16(weights=SSD300_VGG16_Weights.DEFAULT)
+        model.head.classification_head = SSDClassificationHead(
+            [512, 1024, 512, 256, 256, 256],
+            model.anchor_generator.num_anchors_per_location(), 
+            nc
+        )
+    else:
+        raise Exception("模型名称传入错误")
     return model
 
-def main():
+
+def custom_train_one_epoch(model,train_loader,epoch,NUM_EPOCHS,DEVICE,optimizer):
+    model.train()
+    epoch_loss = 0
+    total_batches = len(train_loader)
+
+    print(f"\nEpoch {epoch+1}/{NUM_EPOCHS} -----------------------------")
+    for batch_idx, (images, targets) in enumerate(train_loader):
+        images = list(image.to(DEVICE) for image in images)
+        targets = [{k: v.to(DEVICE) if isinstance(v, torch.Tensor) else v for k, v in t.items()} for t in targets]
+
+        loss_dict = model(images, targets)
+        losses = sum(loss for loss in loss_dict.values())
+
+        optimizer.zero_grad()
+        losses.backward()
+        optimizer.step()
+
+        epoch_loss += losses.item()
+        print(f"  Batch {batch_idx+1}/{total_batches} | Loss: {losses.item():.4f}")
+
+def save_epoch(model,epoch):
+    save_file_name = f"epoch_{epoch}.pth"
+    save_path = os.path.join(epoch_save_dir,save_file_name)
+    torch.save(model.state_dict(), save_path)
+    return save_path
+
+
+
+def train():
     # 加载FRCNN模型（预训练）
     # Load a pre-trained Faster R-CNN model with ResNet50 backbone and FPN, , you change this 
     # weights=FasterRCNN_ResNet50_FPN_Weights.COCO_V1,
@@ -128,44 +155,51 @@ def main():
     # model =torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
     # Number of classes in the dataset (including background)
     # +1 for bg class
+
+    # 加载数据集
+    train_dataset, val_dataset = get_train_and_val_dataset()
+    # Load dataset with DataLoaders, you can change batch_size 
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, collate_fn=lambda x: tuple(zip(*x)))
+    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False, collate_fn=lambda x: tuple(zip(*x)))
+    # train_t_loader = DataLoader(train_dataset, batch_size=1, shuffle=False, collate_fn=lambda x: tuple(zip(*x)))
+
+    # 构建模型
     num_classes = len(train_dataset.coco.getCatIds()) + 1
-    if model_name == "SSD":
-        model = build_ssd_model(num_classes)
-    elif model_name == "FRCNN":
-        model = build_frcnn_model(num_classes)
-    else:
-        raise Exception("模型名称错误")
-    # Move the model to the GPU for faster training
+    model = build_model(model_name,num_classes)
+
+    # 设备
     device = torch.device(f"cuda:{gpu_id}")
     model.to(device)
 
-    # Get parameters that require gradients (the model's trainable parameters)
+    # 训练参数
     params = [p for p in model.parameters() if p.requires_grad]
-    
-    # Define the optimizer SGD(Stochastic Gradient Descent) 
-    optimizer = torch.optim.SGD(params, lr=0.005,momentum=0.9, weight_decay=0.0005)
-    # Number of epochs for training
-    num_epochs = 50
-    
-    # Loop through each epoch
+    # 参数优化器
+    optimizer = torch.optim.SGD(params,lr=init_lr,momentum=0.9,weight_decay=0.0005)
+    # optimizer = torch.optim.Adam(params, lr=1e-4)
+    # lr 调度器
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(
+        optimizer,
+        step_size=10,
+        gamma=0.1
+    )
+    # train loop
     for epoch in range(num_epochs):
         print(f"\nEpoch {epoch}/{num_epochs}")
         # Train the model for one epoch, printing status every 25 iterations
         train_one_epoch(model, optimizer, train_loader, device, epoch, print_freq=25)  # Using train_loader for training
+        lr_scheduler.step()
+        # custom_train_one_epoch(model,train_loader,epoch,num_epochs,device,optimizer)
         # Evaluate the model only on the validation dataset, not training
         evaluate(model, val_loader, device=device)  # Using val_loader for evaluation
-        
+        epoch_save_path = save_epoch(model,epoch)
+        print(f"model pth is saved in: {epoch_save_path}")
+
+        '''
         if model_name == "FRCNN":
             collection_FRCNN_indicator(model,device,train_t_loader,epoch)
         elif model_name == "SSD":
             collection_SSD_indicator(model,device,train_t_loader,epoch)
-        
-        # save the model after each epoch
-        save_dir = f"{exp_data_root_dir}/models/{dataset_name}_error/{model_name}"
-        os.makedirs(save_dir,exist_ok=True)
-        save_path = os.path.join(save_dir,f"epoch_{epoch}.pt")
-        torch.save(model.state_dict(), save_path)
-
+        '''
 
 def collection_SSD_indicator(model,device,dataloader,epoch):
     item_list = []
@@ -291,5 +325,14 @@ def collection_FRCNN_indicator(model,device,dataloader,epoch):
     print(f"保存在：{save_path}")
 
 if __name__ == "__main__":
-    main()
+
+    exp_data_root_dir = "/data/mml/data_debugging_data"
+    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
+    model_name = "FRCNN" # FRCNN|SSD
+    gpu_id = 0
+    init_lr = 5e-3
+    num_epochs = 50
+    epoch_save_dir = f"{exp_data_root_dir}/models/{dataset_name}_error/{model_name}/v2"
+    os.makedirs(epoch_save_dir,exist_ok=True)
+    train()
     # test()
