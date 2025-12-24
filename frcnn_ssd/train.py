@@ -33,8 +33,8 @@ def get_train_and_val_dataset():
         annotation_path=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/val/_annotations.coco.json",
         transforms=get_transform()
     )
-
     return train_dataset, val_dataset
+
 def test():
     # class names
     label_list= ["","ball", "goalkeeper", "player", "referee",""]
