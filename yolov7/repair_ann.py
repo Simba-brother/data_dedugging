@@ -1,0 +1,178 @@
+
+import os
+import joblib
+import json
+from collections import defaultdict
+
+def get_gid_to_img_line():
+    res = {}
+    with open(gt_json_path,mode='r') as f:
+        gt_box = json.load(f)
+    for img_name,g_box_list in gt_box.items():
+        line_no = 0
+        for g_box in g_box_list:
+            gid = g_box["box_id"]
+            res[gid] = {
+                "img_name":img_name,
+                "line_no":line_no
+            }
+            line_no += 1
+    return res
+
+def get_img_name_to_ann_ids():
+
+    res = defaultdict(list)
+
+    with open(anno_no_miss_path, 'r') as f:
+        anno_no_miss = json.load(f)
+    annos = anno_no_miss["annotations"]
+
+    images = anno_no_miss["images"]
+    img_id_to_img_name = {}
+    for image in images:
+        img_id = image["id"]
+        img_name = image["file_name"]
+        img_id_to_img_name[img_id] = img_name
+
+    for anno in annos:
+        anno_id = anno["id"]
+        image_id = anno["image_id"]
+        img_name = img_id_to_img_name[image_id]
+        res[img_name].append(anno_id)
+
+    return res
+
+
+
+def get_anno_correct_id_to_anno():
+    res = {}
+    with open(anno_correct_path,mode="r") as f:
+        anno_correct_dict = json.load(f)
+    annos = anno_correct_dict["annotations"]
+    for anno in annos:
+        anno_id = anno["id"]
+        res[anno_id] = anno
+    return res
+
+def get_anno_correct_img_name_to_annos():
+    res = defaultdict(list)
+
+    with open(anno_correct_path,mode="r") as f:
+        anno_correct_dict = json.load(f)
+    
+    image_id_to_img_name = {}
+    images = anno_correct_dict["images"]
+    for image in images:
+        image_id_to_img_name[image["id"]] = image["file_name"]
+
+    annos = anno_correct_dict["annotations"]
+
+    for anno in annos:
+        image_name = image_id_to_img_name[anno["image_id"]]
+        res[image_name].append(anno)
+
+    return res
+
+
+def get_repair_info():
+    # {idd:{"missed":[],"other_fault":anno}}
+    recify_res = {}
+    # {gid:{"img_name":img_name,"line_no":line_no}}
+    gid_to_img_line = get_gid_to_img_line()
+    # {img_name:[ann_ids]}
+    img_name_to_anno_ids = get_img_name_to_ann_ids()
+    # {corrected_anno_id:anno}
+    correct_anno_id_to_anno = get_anno_correct_id_to_anno()
+    # {corrected_image_name:[anno_list]}
+    correct_image_name_to_annos = get_anno_correct_img_name_to_annos()
+    cut_off = int(0.4*len(rank_res))
+    top_ranked_idd_list = rank_res[:cut_off]
+
+    recify_res["miss"] = {}
+    recify_res["cls_loc"] = {}
+    recify_res["red"] = []
+    
+    for idd in top_ranked_idd_list:
+        if type(idd) is str:
+            missd_annos = []
+            # 说明是img_name，可能是missing_fault
+            image_name = idd
+            # 这张图像所有的正确的annos
+            correct_annos = correct_image_name_to_annos[image_name]
+            correct_anno_ids = [anno["id"] for anno in correct_annos]
+            # 这张图像现在的anno_ids
+            cur_anno_ids = img_name_to_anno_ids[image_name]
+            missed_anno_id_set = set(correct_anno_ids) - set(cur_anno_ids)
+            missed_anno_id_list = list(missed_anno_id_set)
+            if len(missed_anno_id_list) > 0:
+                # 该图像(idd)真的有missed annos
+                for missed_anno_id in missed_anno_id_list:
+                    missed_anno = correct_anno_id_to_anno[missed_anno_id]
+                    missd_annos.append(missed_anno)
+                recify_res["miss"][idd] = missd_annos
+
+        else:
+            # 说明是gbox_id
+            gid = idd
+            img_name = gid_to_img_line[gid]["img_name"]
+            line_no = gid_to_img_line[gid]["line_no"]
+            anno_ids = img_name_to_anno_ids[img_name]
+            anno_id = anno_ids[line_no]
+            if anno_id in correct_anno_id_to_anno:
+                # 可能是cls_fault|loc_fault
+                correct_anno = correct_anno_id_to_anno[anno_id]
+                correct_cls = correct_anno["category_id"]
+                correct_box = correct_anno["bbox"] # xcycwh
+                recify_res["cls_loc"][idd] = correct_anno
+            else:
+                # 可能是redundancy_fault
+                recify_res["red"].append(idd)
+        return recify_res
+    
+
+def recify_anno_json(cur_anno_json,recify_info):
+    annos = cur_anno_json["annotations"]
+    cls_loc_xiufu_dict = recify_info["cls_loc"]
+    # 修复cls_loc
+    for anno in annos:
+        anno_id = anno["id"]
+        if anno_id in cls_loc_xiufu_dict:
+            correct_anno = cls_loc_xiufu_dict[anno_id]
+            anno["category_id"] = correct_anno["category_id"]
+            anno["bbox"] = correct_anno["bbox"]
+    # 修复miss_fault
+    miss_dict = recify_info["miss"]
+    for img_name, missed_anns in miss_dict.items():
+        annos.extend(missed_anns)
+    # 修复可能是redundancy_fault
+    redundancy_idd_list = recify_info["red"]
+    new_annos = []
+    for anno in annos:
+        if anno["id"] not in redundancy_idd_list:
+            new_annos.append(anno)
+    return new_annos
+
+
+
+
+def main():
+    # 得到修复信息
+    recify_info = get_repair_info()
+    # 修复anno
+    with open(anno_no_miss_path,"r") as f:
+        anno_no_miss_json = json.load(f)
+    new_annos = recify_anno_json(anno_no_miss_json,recify_info)
+    with open(new_anno_save_path,"w") as f:
+        json.dump(new_annos,f)
+    print(f"修复的anno json保存在:{new_annos}")
+    
+if __name__ == "__main__":
+    exp_root_dir = "/data/mml/data_debugging_data"
+    dataset_name = "VOC2012" # VOC2012, KITTI, VisDrone
+    model_name = "YOLOv7" # YOLOv7, FRCNN, SSD
+    rank_res = joblib.load(os.path.join(exp_root_dir,"Ours",dataset_name,model_name,"rank_res","rank.joblib"))
+    gt_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,"YOLOv7","gt_bboxs.json")
+    anno_no_miss_path = os.path.join(exp_root_dir,"error_anno",dataset_name,"annotations_no_miss.json")
+    anno_correct_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train","_annotations.coco_correct.json")
+    new_anno_save_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train","_annotations.coco_repair.json")
+    main()

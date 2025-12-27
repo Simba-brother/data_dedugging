@@ -123,9 +123,11 @@ def get_all_files(directory):
 def search_annotations_by_img_id(img_id,annotations_no_miss):
     annos_of_img = []
     annotations = annotations_no_miss["annotations"]
+    # 按照顺序变量annos
     for anno in annotations:
         if anno["image_id"] == img_id:
             annos_of_img.append(anno)
+    # 这张图像顺序的anns
     return annos_of_img
 
 def collect_gt_box():
@@ -138,32 +140,35 @@ def collect_gt_box():
     no_anno_count = 0
     for image in images_list:
         img_id = image["id"]
+        # 这张图像顺序的annos,与line是对齐的
         annos_of_img = search_annotations_by_img_id(img_id,annotations_no_miss)
         img_name = image["file_name"]
         imge_name_no_ext = img_name.split(".")[0]
+        # 这张图像的yolo anno txt
         txt_path = os.path.join(exp_data_root,"datasets",f"{dataset_name}-yolo","train","labels",f"{imge_name_no_ext}.txt")
         with open(txt_path, 'r') as f:
             lines = f.readlines()
-            if len(lines) == 0:
-                no_anno_count += 1
-            assert len(lines) == len(annos_of_img), "标注对应错误"
-            for l_id, line in enumerate(lines):
-                box_line = line.split()
-                cls = int(box_line[0])
-                x_center = float(box_line[1])
-                y_center = float(box_line[2])
-                width = float(box_line[3])
-                height = float(box_line[4])
-                fault_type = annos_of_img[l_id]["fault_type"]
-                box = {
-                    "box_id":box_id,
-                    "img_name":img_name,
-                    "cls":cls,
-                    "gt_bbox":[x_center,y_center,width,height],
-                    "fault_type":fault_type
-                }
-                box_id += 1
-                gt_box_dict[img_name].append(box)
+        
+        if len(lines) == 0:
+            no_anno_count += 1 # 统计了不含有anno的img的数量
+        assert len(lines) == len(annos_of_img), "标注对应错误"
+        for l_id, line in enumerate(lines):
+            box_line = line.split()
+            cls = int(box_line[0])
+            x_center = float(box_line[1])
+            y_center = float(box_line[2])
+            width = float(box_line[3])
+            height = float(box_line[4])
+            fault_type = annos_of_img[l_id]["fault_type"]
+            box = {
+                "box_id":box_id,
+                "img_name":img_name,
+                "cls":cls,
+                "gt_bbox":[x_center,y_center,width,height],
+                "fault_type":fault_type
+            }
+            box_id += 1
+            gt_box_dict[img_name].append(box)
     save_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,"YOLOv7")
     save_json_file_name = "gt_bboxs.json"
     save_json_path = os.path.join(save_dir,save_json_file_name)

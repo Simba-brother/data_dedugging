@@ -2,6 +2,7 @@
 
 import joblib
 import math
+from datetime import datetime
 import os
 import json
 from PIL import Image
@@ -126,17 +127,16 @@ def pretty_print(content,count,col_nums=10):
     if count % col_nums == 0:  # 如果计数器是10的倍数
         print()  # 打印换行符
 
-def get_all_epoch():
+def get_all_epoch(predicted_bboxs_dir):
     _dict = {}
     for epoch in range(epochs):
-        epoch_predicted_bboxs_json_path =  os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box",f"epoch_{epoch}_predicted_bboxs.json")
+        epoch_predicted_bboxs_json_path = os.path.join(predicted_bboxs_dir,f"epoch_{epoch}_predicted_bboxs.json")
         with open(epoch_predicted_bboxs_json_path,"r") as f:
             epoch_predicted_bboxs_dict = json.load(f)
         _dict[epoch] = epoch_predicted_bboxs_dict
     return _dict
 
 def get_gt_boxs():
-    gt_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,"YOLOv7","gt_bboxs.json")
     with open(gt_json_path,"r") as file:
         gt_json = json.load(file)
     return gt_json
@@ -148,7 +148,13 @@ def get_img_path_by_img_name(img_name,style):
         image_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train",img_name)
     return image_path
 
-def match():
+def offset_p_label(p_box_list):
+    # predicted box数量
+    for box in p_box_list:
+        box["predicted_cls"] -= 1
+    return p_box_list
+
+def match(match_save_path, offset):
     '''
     收集数据集中g_boxs与每个epoch的p_box的匹配关系
     '''
@@ -161,8 +167,15 @@ def match():
     gt_box_match = defaultdict(list)
     # 遍历所有的图像和其g_boxs
 
-    epoch_to_predicts = get_all_epoch()
-
+    epoch_to_predicts = get_all_epoch(predicted_bboxs_dir)
+    '''
+    p_cls_set = set()
+    for img_name in epoch_to_predicts[49].keys():
+        p_box_list = epoch_to_predicts[49][img_name]["predicted_bboxs"]
+        for p_box in p_box_list:
+            p_cls_set.add(p_box['predicted_cls'])
+    '''
+    
     count = 0
     for img_name,g_boxs in gt_json.items():
         count += 1
@@ -187,6 +200,8 @@ def match():
                 # 图像在当前epoch下没有预测结果,则直接跳过当前epoch,此处可能是多余
                 continue
             # 获得当前图像g_boxs与当前epoch的p_boxs的匹配关系
+            if offset:
+                cur_epoch_p_boxs = offset_p_label(cur_epoch_p_boxs)
             matches = search_match(g_boxs,cur_epoch_p_boxs,iou_thre=0.5)
             for match in matches:
                 matched_g_box = match[0]
@@ -195,12 +210,9 @@ def match():
                 g_box_id = matched_g_box["box_id"]
                 gt_box_match[g_box_id].append({"epoch":epoch, "g_box":matched_g_box, "p_box":p_box,"iou_val":iou_val})
 
-    save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name)
-    save_file_name = "gt_box_match.json"
-    save_path = os.path.join(save_dir,save_file_name)
-    with open(save_path, "w", encoding="utf-8") as f:
+    with open(match_save_path, "w", encoding="utf-8") as f:
         json.dump(gt_box_match, f, indent=4)
-    print(f"\ngt_box_match is saved in {save_path}")
+    print(f"\ngt_box_match is saved in {match_save_path}")
     end_time = time.time()  # 记录结束时间
     elapsed_time = end_time - start_time  # 计算运行时间（秒）
     hours = int(elapsed_time // 3600)  # 计算小时数
@@ -209,16 +221,16 @@ def match():
     print(f"运行时间：{hours:02d}:{minutes:02d}:{seconds:02.0f}")
 
 
-def gt_box_metric_collection():
+def gt_box_metric_collection(match_json_path, metric_save_path):
     '''
     收集所有gt_box在over epoch上的预测conf和iou
     '''
     start_time = time.time()  # 记录开始时间
     # 加载每个g_box在所有轮次中的匹配信息
     # {g_id:[{"epoch":epoch,"g_box":g_box,"p_box":p_box}]}
-    gt_box_match_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gt_box_match.json")
-    with open(gt_box_match_path, 'r') as f:
+    with open(match_json_path, 'r') as f:
         gt_box_match = json.load(f)
+
     # 结果容器
     collect = []
     # g_boxs数量
@@ -255,12 +267,11 @@ def gt_box_metric_collection():
             instance["conf_list"].append(conf)
             instance["iou_list"].append(iou)
         collect.append(instance)
-    save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name)
-    save_file_name = "collection_metrics.json"
-    save_path = os.path.join(save_dir,save_file_name)
-    with open(save_path, "w", encoding="utf-8") as f:
+    
+    
+    with open(metric_save_path, "w", encoding="utf-8") as f:
         json.dump(collect, f, indent=4)
-    print(f"\ncollection_metrics is saved in {save_path}")
+    print(f"\ncollection_metrics is saved in {metric_save_path}")
     
     end_time = time.time()  # 记录结束时间
     elapsed_time = end_time - start_time  # 计算运行时间（秒）
@@ -281,9 +292,9 @@ def get_all_gids():
 
 
 
-def get_g_id_to_metric():
-    gt_box_metric_collection_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "collection_metrics.json")
-    with open(gt_box_metric_collection_json_path, "r", encoding="utf-8") as f:
+def get_g_id_to_metric(metric_json_path):
+    
+    with open(metric_json_path, "r", encoding="utf-8") as f:
         gt_box_metric_collection_list = json.load(f)
     print(f"matched gt_box数量:{len(gt_box_metric_collection_list)}")
 
@@ -298,6 +309,11 @@ def get_g_id_to_metric():
             "iou_list":iou_list,
         }
     return g_box_id_to_metric
+
+def get_formatted_time():
+    """返回当前时间的格式化字符串（YYYY-MM-DD HH:MM:SS）"""
+    now = datetime.now()
+    return now.strftime("%Y-%m-%d_%H:%M:%S")
 
 def draw_line(fault_to_metric_list,metric_name):
      # 准备 x 轴 epoch
@@ -321,13 +337,14 @@ def draw_line(fault_to_metric_list,metric_name):
     plt.tight_layout()
     save_dir = os.path.join(exp_root_dir,"imgs","correct_vs_error_box",f"{metric_name}_avg")
     os.makedirs(save_dir,exist_ok=True)
-    save_path = os.path.join(save_dir,f"{dataset_name}_{model_name}.png")
+    suffix = get_formatted_time()
+    save_path = os.path.join(save_dir,f"{dataset_name}_{model_name}_{suffix}.png")
     plt.savefig(save_path)
     print("correct_vs_error is saved in",save_path)
 
-def correct_vs_fault():
+def correct_vs_fault(metric_json_path):
     
-    g_box_id_to_metric = get_g_id_to_metric()
+    g_box_id_to_metric = get_g_id_to_metric(metric_json_path)
     gt_bboxs_dict = get_gt_boxs()
     
     g_box_id_to_info = {}
@@ -553,7 +570,7 @@ def get_img_epoch_to_unmatched_p_boxs(epoch_to_matched_p_boxs,last_epoch,conf_th
     # 只关心最后5个epoch的预测情况
     for epoch in range(epochs-last_epoch,epochs):
         # 加载当前epoch的预测结果
-        predicted_epoch_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box", f"epoch_{epoch}_predicted_bboxs.json")
+        predicted_epoch_json_path = os.path.join(predicted_bboxs_dir, f"epoch_{epoch}_predicted_bboxs.json")
         with open(predicted_epoch_json_path,mode="r") as f:
             predicted_epoch_dict = json.load(f)
         # 统计所有图像中没被gt_box匹配到的高置信度预测box
@@ -610,11 +627,11 @@ def get_all_img_name():
     
 
 
-def misimg_detect(last_epoch=5):
+def misimg_detect(match_json_path, last_epoch=5):
     all_img_name_list = get_all_img_name()
     # 读取所有gt_box的匹配信息
-    gt_match_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gt_box_match.json")
-    with open(gt_match_json_path,mode="r") as f:
+    
+    with open(match_json_path,mode="r") as f:
         gt_match_dict = json.load(f)
     epoch_to_matched_p_boxs = get_epoch_to_matched_p_boxs(gt_match_dict)
 
@@ -667,8 +684,8 @@ def misimg_detect(last_epoch=5):
     # print("f1:",f1)
 
 
-def gt_box_features_build():
-    g_box_id_to_metric = get_g_id_to_metric()
+def gt_box_features_build(metric_json_path):
+    g_box_id_to_metric = get_g_id_to_metric(metric_json_path)
     
     g_id_to_features = {}
     for g_id in g_box_id_to_metric.keys():
@@ -854,26 +871,49 @@ def eval_apfd(rank_res):
     print(f"apfd:{apfd}")
 
 
-
-
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012, KITTI, VisDrone
-    model_name = "SSD" # YOLOv7, FRCNN, SSD
+    model_name = "FRCNN" # YOLOv7, FRCNN, SSD
     epochs = 50
 
-    # match()
-    # gt_box_metric_collection()
-    # correct_vs_fault()
+    gt_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,"YOLOv7","gt_bboxs.json")
+    predicted_bboxs_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box","v2")
 
+    '''1:match'''
+    match_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "gp_box_match")
+    os.makedirs(match_save_dir,exist_ok=True)
+    match_json_save_path = os.path.join(match_save_dir,"match_v2.json")
+    if model_name == "YOLOv7":
+        offset = False
+    else:
+        offset = True
+    match(match_json_save_path,offset=offset)
+
+    '''2:metirc'''
+    collection_metric_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "collection_metric")
+    os.makedirs(collection_metric_save_dir,exist_ok=True)
+    metric_save_path = os.path.join(collection_metric_save_dir,"collection_metrics_v2.json")
+    gt_box_metric_collection(match_json_save_path,metric_save_path)
     
+    '''3: 绘制metric line'''
+    correct_vs_fault(metric_save_path)
+
+    '''4: 保存排序结果'''
     # gid排序
-    g_id_to_features,feature_name_to_sign = gt_box_features_build()
+    g_id_to_features,feature_name_to_sign = gt_box_features_build(metric_save_path)
     ranked_gid_list = rank_gid(g_id_to_features,feature_name_to_sign)
     # img排序
-    ranked_img_list,detected_mis_img_name_list = misimg_detect()
+    ranked_img_list,detected_mis_img_name_list = misimg_detect(match_json_save_path)
     rank_res = total_rank(ranked_gid_list,ranked_img_list)
+    rank_res_save_dir = os.path.join(exp_root_dir, "Ours", dataset_name, model_name, "rank_res")
+    os.makedirs(rank_res_save_dir,exist_ok=True)
+    rank_res_save_file_name = "rank.joblib"
+    rank_res_save_path = os.path.join(rank_res_save_dir, rank_res_save_file_name)
+    joblib.dump(rank_res, rank_res_save_path)
+    print(f"rank res is saved in {rank_res_save_path}")
     eval_apfd(rank_res) 
+    
     
 
 

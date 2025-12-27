@@ -4,6 +4,7 @@ from torchvision.transforms import ToTensor
 from datasets import CocoDetectionDataset
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor,FasterRCNN_ResNet50_FPN_Weights
 from torchvision.models.detection import ssd300_vgg16, SSD300_VGG16_Weights
+
 from torchvision.models.detection.ssd import SSDClassificationHead
 import torch,torchvision
 from engine import train_one_epoch, evaluate
@@ -23,7 +24,7 @@ def get_train_and_val_dataset():
     # Load training dataset
     train_dataset = CocoDetectionDataset(
         image_dir=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/train", 
-        annotation_path=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/train/_annotations.coco_correct.json",
+        annotation_path=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/train/_annotations.coco_{correct_or_error}.json",
         transforms=get_transform()
     )
 
@@ -109,11 +110,21 @@ def build_model(model_name,nc):
         model.roi_heads.box_predictor = FastRCNNPredictor(in_features, nc)
     elif model_name == "SSD":
         model = ssd300_vgg16(weights=SSD300_VGG16_Weights.DEFAULT)
+        '''
         model.head.classification_head = SSDClassificationHead(
             [512, 1024, 512, 256, 256, 256],
             model.anchor_generator.num_anchors_per_location(), 
             nc
         )
+        '''
+
+        c_in_features=[model.head.classification_head.module_list[i].in_channels for i in range(len(model.head.classification_head.module_list))]
+        num_anchors=model.anchor_generator.num_anchors_per_location()
+        # # 用新的头部替换预先训练好的头部
+        model.head.classification_head=SSDClassificationHead(in_channels=c_in_features,num_anchors=num_anchors,num_classes=nc)
+
+        
+
     else:
         raise Exception("模型名称传入错误")
     return model
@@ -172,7 +183,10 @@ def train():
     model.to(device)
 
     # 训练参数
+    for param in model.backbone.parameters():
+        param.requires_grad = False
     params = [p for p in model.parameters() if p.requires_grad]
+    
     # 参数优化器
     optimizer = torch.optim.SGD(params,lr=init_lr,momentum=0.9,weight_decay=0.0005)
     # optimizer = torch.optim.Adam(params, lr=1e-4)
@@ -327,12 +341,14 @@ def collection_FRCNN_indicator(model,device,dataloader,epoch):
 if __name__ == "__main__":
 
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012|VisDrone|KITTI
+    dataset_name = "VOC2012" # VOC2012|VisDrone|KITTI
     model_name = "FRCNN" # FRCNN|SSD
-    gpu_id = 1
-    init_lr = 5e-3
+    gpu_id = 0
+    init_lr = 5e-4  # FRCNN:5e-4,SSD:1e-3
     num_epochs = 50
-    epoch_save_dir = f"{exp_data_root_dir}/models/{dataset_name}_correct/{model_name}"
+    correct_or_error = "error" # error | correct
+    epoch_save_dir = os.path.join(exp_data_root_dir,"models",f"{dataset_name}_{correct_or_error}", model_name, "v2")
     os.makedirs(epoch_save_dir,exist_ok=True)
+
     train()
     # test()

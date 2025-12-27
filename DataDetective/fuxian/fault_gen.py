@@ -150,8 +150,9 @@ if __name__ == "__main__":
     
     anno_json_path = os.path.join(exp_data_root,"datasets", f"{dataset_name}-coco","train","_annotations.coco_correct.json")
     coco = COCO(anno_json_path)
+    # 数据集中anno的ids
     ann_ids = coco.getAnnIds()
-    # 根据 ID 载入所有 annotation
+    # 根据 annoIds 载入所有 annotation
     annotations = coco.loadAnns(ann_ids)
     catIds = coco.getCatIds()
     fault_type = {
@@ -182,21 +183,24 @@ if __name__ == "__main__":
     candi_id_set = set(ann_ids) - set(missing_fault_obj_id_list) - set(cls_fault_obj_id_list) - set(loc_fault_obj_id_list)
     redundancy_fault_obj_id_list = random.sample(list(candi_id_set),sample_num)
     annotations = add_fault_type_attr(annotations)
+    print("1:miss错误注入...")
     annotations = gen_missing_fault(missing_fault_obj_id_list,annotations)
-    print("1:miss错误注入完成")
+    print("2:cls错误注入...")
     annotations = gen_class_fault(cls_fault_obj_id_list,annotations)
-    print("2:cls错误注入完成")
+    print("3:loc错误注入...")
     annotations = gen_loc_fault(loc_fault_obj_id_list,annotations)
-    print("3:loc错误注入完成")
+    print("4:redundancy错误注入...")
     annotations = gen_redundancy_fault(redundancy_fault_obj_id_list,annotations)
-    print("4:redundancy错误注入完成")
-    print(f"数据集{dataset_name}注错完成")
+    
+    print(f"数据集: {dataset_name} 注错完成")
 
     annotations_no_miss = remove_miss_fault_anno(annotations)
 
-
+    # 数据集中图像ids
     img_ids = coco.getImgIds()
+    # 基于图像ids加载imgs
     images = coco.loadImgs(img_ids)
+    # 基于cat ids加载categories
     categories = coco.loadCats(catIds)
 
     _json = {
