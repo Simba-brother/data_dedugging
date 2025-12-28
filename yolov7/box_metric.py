@@ -873,7 +873,7 @@ def eval_apfd(rank_res):
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012, KITTI, VisDrone
+    dataset_name = "VOC2012" # VOC2012, KITTI, VisDrone
     model_name = "FRCNN" # YOLOv7, FRCNN, SSD
     epochs = 50
 

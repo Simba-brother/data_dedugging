@@ -256,10 +256,12 @@ def train(hyp, opt, device, tb_writer=None):
                                        hyp=hyp, cache=opt.cache_images and not opt.notest, rect=True, rank=-1,
                                        world_size=opt.world_size, workers=opt.workers,
                                        pad=0.5, prefix=colorstr('val: '))[0]
+        '''
         train_t_loader = create_dataloader(train_path, imgsz_test, 1, gs, opt,  # testloader
                                        hyp=hyp, cache=opt.cache_images and not opt.notest, rect=True, rank=-1,
                                        world_size=opt.world_size, workers=opt.workers,
                                        pad=0.5, prefix=colorstr('val: '))[0]
+        '''
 
         if not opt.resume:
             labels = np.concatenate(dataset.labels, 0)
@@ -475,7 +477,7 @@ def train(hyp, opt, device, tb_writer=None):
                 # Save last, best and delete
                 torch.save(ckpt, last)
                 # 每个epoch的model.state_dict被保存下来
-                torch.save(ckpt['model'].float().state_dict(), wdir /f'epoch_{epoch}.pt')
+                # torch.save(ckpt['model'].float().state_dict(), wdir /f'epoch_{epoch}.pt')
                 if best_fitness == fi:
                     torch.save(ckpt, best)
                 '''
@@ -543,7 +545,7 @@ def train(hyp, opt, device, tb_writer=None):
 if __name__ == '__main__':
 
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012 | VisDrone | KITTI
+    dataset_name = "VOC2012" # VOC2012 | VisDrone | KITTI
     model_name = "YOLOv7"
     # collection_save_dir = os.path.join(exp_data_root,"collection_indicator", dataset_name,model_name)
 
@@ -594,9 +596,6 @@ if __name__ == '__main__':
     #if opt.global_rank in [-1, 0]:
     #    check_git_status()
     #    check_requirements()
-
-
-
     # Resume
     wandb_run = check_wandb_resume(opt)
     if opt.resume and not wandb_run:  # resume an interrupted run

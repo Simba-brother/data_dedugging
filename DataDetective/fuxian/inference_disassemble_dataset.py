@@ -5,31 +5,43 @@ from torch.utils.data import Dataset
 from pycocotools.coco import COCO
 from PIL import Image, ImageFilter
 
+
+    
+def xminyminwh_to_xyxy(xmin,ymin,width,height):
+        xmax = xmin + width
+        ymax = ymin + height
+        if xmin == xmax:
+            xmax += 1
+        if ymin == ymax:
+            ymax += 1
+        return [xmin,ymin,xmax,ymax]
+
 class Inference_classificationDataSet(Dataset):
     def __init__(self, 
                 img_root,
                 annotation_path,
                 mask_type,
                 transforms=None):
+        '''
+        :param img_root: trainset imgs root dir
+        :param annotation_path: coco style annotations.json
+        :param mask_type: 
+            other_objects|all_background: 把该图像中, 除了该obj的other obj给mask
+            crop: 把该图像中的该obj给裁剪出来
+        :param transforms: toTenser,normalize
+        '''
         self.img_root = img_root
         self.mask_type = mask_type # crop | other_objects | all_background
-        self.coco = COCO(annotation_path)
-        self.catIds = self.coco.getCatIds()
-        self.background_id = self.catIds[-1] + 1
-        ann_ids = self.coco.getAnnIds()
-        annotations = self.coco.loadAnns(ann_ids)
-        self.instances = []
+        self.coco = COCO(annotation_path) # 基于annotation json 得到 coco 对象
+        self.catIds = self.coco.getCatIds() # 所有的分类id, 从0开始
+        self.background_id = self.catIds[-1] + 1 # 设置bg catgory id
+        ann_ids = self.coco.getAnnIds() # 获得所有的anno_ids
+        annotations = self.coco.loadAnns(ann_ids) # 基于 anno_ids 得到 annos
+        self.instances = [] # 存放 所有 的 instances/objs
         # bbox -> xmin,ymin,xmax,ymax
         for instance in annotations:
             xmin, ymin, width, height = instance["bbox"]
-            xmax = xmin + width
-            ymax = ymin + height
-            instance["bbox"] = [int(xmin),int(ymin),int(xmax),int(ymax)]
-            # 保证box是个有效的整数矩形
-            if instance["bbox"][0] == instance["bbox"][2]:
-                instance["bbox"][2] += 1
-            if instance["bbox"][1] == instance["bbox"][3]:
-                instance["bbox"][3] += 1
+            instance["bbox"] = xminyminwh_to_xyxy(xmin, ymin, width, height)
         # 一个图像映射到其boxes
         self.imageid2boxes = defaultdict(list)
         # 遍历每个实例
@@ -98,7 +110,7 @@ class Inference_classificationDataSet(Dataset):
         img_box = img_box.filter(ImageFilter.GaussianBlur(radius=20))
         img.paste(img_box, box)
         return img
-
+    
     def __getitem__(self, idx):
         instance = self.instances[idx]
         img_path = os.path.join(self.img_root, instance['image_name'])
@@ -126,7 +138,6 @@ class Inference_classificationDataSet(Dataset):
 
             for bbox in in_boxes_list:
                 img = self.gaussian_blur(img, bbox)
-
 
         elif self.mask_type == 'crop':
             img = img.crop(cur_instance_bbox)

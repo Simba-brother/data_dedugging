@@ -356,6 +356,5 @@ if __name__ == "__main__":
     gpu_id = 1
     ANN_FILE = get_COCOANN_FILE(train_or_val)
     # xiufu_anno_file()
-    # main()
     eval_perform_coco_style()
 

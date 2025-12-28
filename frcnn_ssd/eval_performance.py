@@ -157,7 +157,7 @@ if __name__ == "__main__":
     dataset_name = "KITTI" # VOC2012|KITTI|VisDrone
     model_name = "FRCNN" # FRCNN, SSD
     gpu_id = 0
-    train_or_val = "train" # train|val
+    train_or_val = "val" # train|val
     ANN_FILE = get_COCOANN_FILE(train_or_val)
     model_pth_dir = os.path.join(exp_data_root_dir,"models",f"{dataset_name.lower()}_error", model_name, "v2")
     eval_performance()

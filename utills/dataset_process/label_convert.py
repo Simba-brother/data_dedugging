@@ -7,9 +7,13 @@ from labelformat.formats import (YOLOv7ObjectDetectionInput, COCOObjectDetection
 # coco -> yolov7
 
 exp_data_root = "/data/mml/data_debugging_data"
-dataset_name = "VisDrone"
-coco_input_path = Path(f"{exp_data_root}/error_anno/{dataset_name}/annotations_no_miss.json")
-yolo_output_path = Path(f"{exp_data_root}/error_anno/{dataset_name}/yolo_format/data.yaml")
+dataset_name = "VOC2012" # VOC2012|KITTI|VisDrone
+# coco_input_path = Path(f"{exp_data_root}/error_anno/{dataset_name}/annotations_no_miss.json")
+# yolo_output_path = Path(f"{exp_data_root}/error_anno/{dataset_name}/yolo_format/data.yaml")
+
+coco_input_path = Path(f"{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_repair.json")
+yolo_output_path = Path(f"{exp_data_root}/error_anno/{dataset_name}/yolo_format/repair/data.yaml")
+
 coco_input = COCOObjectDetectionInput(input_file=coco_input_path)
 yolo_output = YOLOv7ObjectDetectionOutput(
     output_file=yolo_output_path,

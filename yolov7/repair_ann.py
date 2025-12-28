@@ -4,7 +4,7 @@ import joblib
 import json
 from collections import defaultdict
 
-def get_gid_to_img_line():
+def get_gid_to_img_and_line():
     res = {}
     with open(gt_json_path,mode='r') as f:
         gt_box = json.load(f)
@@ -74,23 +74,33 @@ def get_anno_correct_img_name_to_annos():
     return res
 
 
+def get_gid_to_anno_id():
+    gid_to_anno_id = {}
+    gid_to_img_and_line =get_gid_to_img_and_line()
+    img_name_to_ann_ids = get_img_name_to_ann_ids()
+    for gid in gid_to_img_and_line.keys():
+        img_name = gid_to_img_and_line[gid]["img_name"]
+        line_no = gid_to_img_and_line[gid]["line_no"]
+        anno_id = img_name_to_ann_ids[img_name][line_no]
+        gid_to_anno_id[gid] = anno_id
+    return gid_to_anno_id
+
 def get_repair_info():
-    # {idd:{"missed":[],"other_fault":anno}}
-    recify_res = {}
-    # {gid:{"img_name":img_name,"line_no":line_no}}
-    gid_to_img_line = get_gid_to_img_line()
-    # {img_name:[ann_ids]}
+    repair_info = {}
+    # cur img_name to ann ids
     img_name_to_anno_ids = get_img_name_to_ann_ids()
+    gid_to_anno_id = get_gid_to_anno_id()
     # {corrected_anno_id:anno}
     correct_anno_id_to_anno = get_anno_correct_id_to_anno()
     # {corrected_image_name:[anno_list]}
     correct_image_name_to_annos = get_anno_correct_img_name_to_annos()
+
     cut_off = int(0.4*len(rank_res))
     top_ranked_idd_list = rank_res[:cut_off]
 
-    recify_res["miss"] = {}
-    recify_res["cls_loc"] = {}
-    recify_res["red"] = []
+    repair_info["miss"] = {}
+    repair_info["cls_loc"] = {}
+    repair_info["red"] = []
     
     for idd in top_ranked_idd_list:
         if type(idd) is str:
@@ -99,9 +109,11 @@ def get_repair_info():
             image_name = idd
             # 这张图像所有的正确的annos
             correct_annos = correct_image_name_to_annos[image_name]
+            # 这张图像所有的正确的anno ids，有肯能被mis,被red,被cls,被loc
             correct_anno_ids = [anno["id"] for anno in correct_annos]
-            # 这张图像现在的anno_ids
+            # 这张图像现在的anno_ids, 可能是red的，可能是
             cur_anno_ids = img_name_to_anno_ids[image_name]
+            # 正确的有，当前没有
             missed_anno_id_set = set(correct_anno_ids) - set(cur_anno_ids)
             missed_anno_id_list = list(missed_anno_id_set)
             if len(missed_anno_id_list) > 0:
@@ -109,33 +121,32 @@ def get_repair_info():
                 for missed_anno_id in missed_anno_id_list:
                     missed_anno = correct_anno_id_to_anno[missed_anno_id]
                     missd_annos.append(missed_anno)
-                recify_res["miss"][idd] = missd_annos
+                repair_info["miss"][image_name] = missd_annos
 
         else:
             # 说明是gbox_id
             gid = idd
-            img_name = gid_to_img_line[gid]["img_name"]
-            line_no = gid_to_img_line[gid]["line_no"]
-            anno_ids = img_name_to_anno_ids[img_name]
-            anno_id = anno_ids[line_no]
+            anno_id = gid_to_anno_id[gid]
             if anno_id in correct_anno_id_to_anno:
                 # 可能是cls_fault|loc_fault
                 correct_anno = correct_anno_id_to_anno[anno_id]
                 correct_cls = correct_anno["category_id"]
                 correct_box = correct_anno["bbox"] # xcycwh
-                recify_res["cls_loc"][idd] = correct_anno
+                repair_info["cls_loc"][anno_id] = correct_anno
             else:
                 # 可能是redundancy_fault
-                recify_res["red"].append(idd)
-        return recify_res
+                repair_info["red"].append(anno_id)
+    return repair_info
     
 
-def recify_anno_json(cur_anno_json,recify_info):
+def repair_anno_json(cur_anno_json,recify_info):
     annos = cur_anno_json["annotations"]
     cls_loc_xiufu_dict = recify_info["cls_loc"]
+
     # 修复cls_loc
     for anno in annos:
         anno_id = anno["id"]
+
         if anno_id in cls_loc_xiufu_dict:
             correct_anno = cls_loc_xiufu_dict[anno_id]
             anno["category_id"] = correct_anno["category_id"]
@@ -150,22 +161,31 @@ def recify_anno_json(cur_anno_json,recify_info):
     for anno in annos:
         if anno["id"] not in redundancy_idd_list:
             new_annos.append(anno)
-    return new_annos
+    cur_anno_json["annotations"] = new_annos
+    return cur_anno_json
+
+
 
 
 
 
 def main():
+    gid_to_anno_id = get_gid_to_anno_id()
     # 得到修复信息
-    recify_info = get_repair_info()
+    repair_info = get_repair_info()
     # 修复anno
     with open(anno_no_miss_path,"r") as f:
         anno_no_miss_json = json.load(f)
-    new_annos = recify_anno_json(anno_no_miss_json,recify_info)
+    new_annos = repair_anno_json(anno_no_miss_json,repair_info)
     with open(new_anno_save_path,"w") as f:
         json.dump(new_annos,f)
-    print(f"修复的anno json保存在:{new_annos}")
-    
+    print(f"修复的anno json保存在:{new_anno_save_path}")
+    print()
+
+
+
+
+
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VOC2012" # VOC2012, KITTI, VisDrone
