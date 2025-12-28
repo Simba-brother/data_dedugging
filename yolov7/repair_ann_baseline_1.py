@@ -3,21 +3,17 @@ import os
 import joblib
 import json
 from collections import defaultdict
+from pycocotools.coco import COCO
 
-def get_gid_to_img_and_line():
-    res = {}
-    with open(gt_json_path,mode='r') as f:
-        gt_box = json.load(f)
-    for img_name,g_box_list in gt_box.items():
-        line_no = 0
-        for g_box in g_box_list:
-            gid = g_box["box_id"]
-            res[gid] = {
-                "img_name":img_name,
-                "line_no":line_no
-            }
-            line_no += 1
-    return res
+def get_needed_rank_list():
+    needed_rank_list = []
+    for instance in ranked_list:
+        gt_category_id = instance["gt_category_id"]
+        if gt_category_id == bg_id:
+            needed_rank_list.append(instance["image_name"])
+        else:
+            needed_rank_list.append(instance["anno_id"])
+    return needed_rank_list
 
 def get_img_name_to_ann_ids():
 
@@ -41,8 +37,6 @@ def get_img_name_to_ann_ids():
         res[img_name].append(anno_id)
 
     return res
-
-
 
 def get_anno_correct_id_to_anno():
     res = {}
@@ -73,30 +67,18 @@ def get_anno_correct_img_name_to_annos():
 
     return res
 
-
-def get_gid_to_anno_id():
-    gid_to_anno_id = {}
-    gid_to_img_and_line =get_gid_to_img_and_line()
-    img_name_to_ann_ids = get_img_name_to_ann_ids()
-    for gid in gid_to_img_and_line.keys():
-        img_name = gid_to_img_and_line[gid]["img_name"]
-        line_no = gid_to_img_and_line[gid]["line_no"]
-        anno_id = img_name_to_ann_ids[img_name][line_no]
-        gid_to_anno_id[gid] = anno_id
-    return gid_to_anno_id
-
-def get_repair_info():
+def get_repair_info(needed_rank_list):
     repair_info = {}
     # cur img_name to ann ids
     img_name_to_anno_ids = get_img_name_to_ann_ids()
-    gid_to_anno_id = get_gid_to_anno_id()
-    # {corrected_anno_id:anno}
-    correct_anno_id_to_anno = get_anno_correct_id_to_anno()
     # {corrected_image_name:[anno_list]}
     correct_image_name_to_annos = get_anno_correct_img_name_to_annos()
+    # {corrected_anno_id:anno}
+    correct_anno_id_to_anno = get_anno_correct_id_to_anno()
+    
 
-    cut_off = int(0.4*len(rank_res))
-    top_ranked_idd_list = rank_res[:cut_off]
+    cut_off = int(0.4*len(needed_rank_list))
+    top_ranked_idd_list = needed_rank_list[:cut_off]
 
     repair_info["miss"] = {}
     repair_info["cls_loc"] = {}
@@ -104,9 +86,9 @@ def get_repair_info():
     
     for idd in top_ranked_idd_list:
         if type(idd) is str:
-            missd_annos = []
             # 说明是img_name，可能是missing_fault
             image_name = idd
+            missd_annos = []
             # 这张图像所有的正确的annos
             correct_annos = correct_image_name_to_annos[image_name]
             # 这张图像所有的正确的anno ids，有肯能被mis,被red,被cls,被loc
@@ -124,20 +106,18 @@ def get_repair_info():
                 repair_info["miss"][image_name] = missd_annos
 
         else:
-            # 说明是gbox_id
-            gid = idd
-            anno_id = gid_to_anno_id[gid]
+            # 说明是ann_id，可能是cls,loc
+            anno_id = idd
             if anno_id in correct_anno_id_to_anno:
                 # 可能是cls_fault|loc_fault
                 correct_anno = correct_anno_id_to_anno[anno_id]
                 correct_cls = correct_anno["category_id"]
-                correct_box = correct_anno["bbox"] # xcycwh
+                correct_box = correct_anno["bbox"] # xywh
                 repair_info["cls_loc"][anno_id] = correct_anno
             else:
                 # 可能是redundancy_fault
                 repair_info["red"].append(anno_id)
     return repair_info
-    
 
 def repair_anno_json(cur_anno_json,recify_info):
     annos = cur_anno_json["annotations"]
@@ -164,15 +144,10 @@ def repair_anno_json(cur_anno_json,recify_info):
     cur_anno_json["annotations"] = new_annos
     return cur_anno_json
 
-
-
-
-
-
 def main():
-    gid_to_anno_id = get_gid_to_anno_id()
+    needed_rank_list = get_needed_rank_list()
     # 得到修复信息
-    repair_info = get_repair_info()
+    repair_info = get_repair_info(needed_rank_list)
     # 修复anno
     with open(anno_no_miss_path,"r") as f:
         anno_no_miss_json = json.load(f)
@@ -181,17 +156,16 @@ def main():
         json.dump(new_annos,f)
     print(f"修复的anno json保存在:{new_anno_save_path}")
 
-
-
-
-
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012, KITTI, VisDrone
-    model_name = "YOLOv7" # YOLOv7, FRCNN, SSD
-    rank_res = joblib.load(os.path.join(exp_root_dir,"Ours",dataset_name,model_name,"rank_res","rank.joblib"))
-    gt_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,"YOLOv7","gt_bboxs.json")
+    dataset_name = "KITTI" # VOC2012|KITTI|VisDrone
+    ranked_list = joblib.load(os.path.join(exp_root_dir,"DataDetective",dataset_name,"ranked_result","ranked_list.joblib"))
     anno_no_miss_path = os.path.join(exp_root_dir,"error_anno",dataset_name,"annotations_no_miss.json")
-    anno_correct_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train","_annotations.coco_correct.json")
-    new_anno_save_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train","_annotations.coco_repair.json")
+    coco = COCO(anno_no_miss_path)
+    catIds = coco.getCatIds()
+    bg_id = catIds[-1]+1
+    anno_correct_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train",
+                                     "_annotations.coco_correct.json")
+    new_anno_save_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train",
+                                      "_annotations.coco_repair_baseline_1.json")
     main()

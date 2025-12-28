@@ -32,7 +32,7 @@ def infer():
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=4)
     model = build_model()
     model.eval()
-    device = torch.device("cuda:1")
+    device = torch.device(f"cuda:{gpu_id}")
     model.to(device)
     loss_func = torch.nn.CrossEntropyLoss()
     # 所有解构出的instance_img的推理结果
@@ -53,6 +53,7 @@ def infer():
             for j in range(len(predicted)):
                 content_dic = {
                     "image_name": targets["image_name"][j],
+                    "anno_id":targets["anno_id"][j].item(),
                     "full_scores": outputs[j].cpu().numpy().tolist(), # imgs[j]的prob_list
                     "pred_category_id":predicted[j].item(),
                     "gt_category_id": int(targets["category_id"][j]),
@@ -64,10 +65,11 @@ def infer():
     json_str = json.dumps(results, indent=4)
     with open(results_save_path,'w') as json_file:
         json_file.write(json_str)
+    print(f"结果保存在:{results_save_path}")
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|VisDrone|KITTI
+    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
     img_root = f"{exp_data_root}/datasets/{dataset_name}-coco/train"
     annotation_path = f"{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json"
     if dataset_name == "VOC2012":
@@ -76,7 +78,8 @@ if __name__ == "__main__":
         class_num = 11
     elif dataset_name == "KITTI":
         class_num = 10
-    mask_type = "other_objects" # crop and other_objects
+    gpu_id = 1
+    mask_type = "other_objects" # crop (裁剪模式,更加耗时些) and other_objects (背景推理模式)
     trained_model_path = f"{exp_data_root}/DataDetective/{dataset_name}/saved_models/{mask_type}/epoch_12.pt"
     results_save_path = f"{exp_data_root}/DataDetective/{dataset_name}/infer_results/{mask_type}.json"
     infer()
