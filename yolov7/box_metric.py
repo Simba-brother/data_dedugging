@@ -635,7 +635,7 @@ def misimg_detect(match_json_path, last_epoch=5):
         gt_match_dict = json.load(f)
     epoch_to_matched_p_boxs = get_epoch_to_matched_p_boxs(gt_match_dict)
 
-    # 获得每张图像在后面几个epoch中每被g_box匹配的高置信度p_box
+    # 获得每张图像在后面几个epoch中没被g_box匹配的高置信度p_box
     # {img__name:{epoch:[] # no_matched_p_boxs }}
     img_name_to_no_match_p = get_img_epoch_to_unmatched_p_boxs(epoch_to_matched_p_boxs,last_epoch,conf_threshold=0.6)
 

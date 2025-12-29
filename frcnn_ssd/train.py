@@ -190,6 +190,7 @@ def train():
     # 参数优化器
     optimizer = torch.optim.SGD(params,lr=init_lr,momentum=0.9,weight_decay=0.0005)
     # optimizer = torch.optim.Adam(params, lr=1e-4)
+    # optimizer = torch.optim.SGD(params, lr=0.005,momentum=0.9, weight_decay=0.0005)
     # lr 调度器
     lr_scheduler = torch.optim.lr_scheduler.StepLR(
         optimizer,
@@ -346,9 +347,9 @@ if __name__ == "__main__":
     gpu_id = 0
     init_lr = 5e-4  # FRCNN:5e-4,SSD:1e-3
     num_epochs = 50
-    epoch_save_dir = os.path.join(exp_data_root_dir,"models",dataset_name,model_name, "baseline_1_repair" "v2")
+    epoch_save_dir = os.path.join(exp_data_root_dir,"models",dataset_name,model_name, "our_repair","v2")
     os.makedirs(epoch_save_dir,exist_ok=True)
     train_annotation_path=os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco","train",
-                                       "_annotations.coco_repair_baseline_1.json")
+                                       "_annotations.coco_repair.json")
     train()
     # test()
