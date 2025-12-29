@@ -158,7 +158,7 @@ def main():
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012|KITTI|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
     ranked_list = joblib.load(os.path.join(exp_root_dir,"DataDetective",dataset_name,"ranked_result","ranked_list.joblib"))
     anno_no_miss_path = os.path.join(exp_root_dir,"error_anno",dataset_name,"annotations_no_miss.json")
     coco = COCO(anno_no_miss_path)

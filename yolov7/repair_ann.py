@@ -183,15 +183,13 @@ def main():
 
 
 
-
-
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012, KITTI, VisDrone
-    model_name = "YOLOv7" # YOLOv7, FRCNN, SSD
+    model_name = "FRCNN" # YOLOv7, FRCNN, SSD
     rank_res = joblib.load(os.path.join(exp_root_dir,"Ours",dataset_name,model_name,"rank_res","rank.joblib"))
     gt_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,"YOLOv7","gt_bboxs.json")
     anno_no_miss_path = os.path.join(exp_root_dir,"error_anno",dataset_name,"annotations_no_miss.json")
     anno_correct_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train","_annotations.coco_correct.json")
-    new_anno_save_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train","_annotations.coco_repair.json")
+    new_anno_save_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train",f"_annotations.coco_repair_{model_name}.json")
     main()

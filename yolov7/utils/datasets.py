@@ -353,7 +353,7 @@ def img2label_paths(img_paths):
 
 class LoadImagesAndLabels(Dataset):  # for training/testing
     def __init__(self, path, img_size=640, batch_size=16, augment=False, hyp=None, rect=False, image_weights=False,
-                 cache_images=False, single_cls=False, stride=32, pad=0.0, prefix=''):
+                 cache_images=False, single_cls=False, stride=32, pad=0.0, prefix='', label_dir="labels"):
         self.img_size = img_size
         self.augment = augment
         self.hyp = hyp
@@ -519,8 +519,8 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         x['hash'] = get_hash(self.label_files + self.img_files)
         x['results'] = nf, nm, ne, nc, i + 1
         x['version'] = 0.1  # cache version
-        torch.save(x, path)  # save for next time
-        logging.info(f'{prefix}New cache created: {path}')
+        # torch.save(x, path)  # save for next time
+        # logging.info(f'{prefix}New cache created: {path}')
         return x
 
     def __len__(self):
@@ -1256,7 +1256,7 @@ def flatten_recursive(path='../coco'):
         shutil.copyfile(file, new_path / Path(file).name)
 
 
-def extract_boxes(path='../coco/'):  # from utils.datasets import *; extract_boxes('../coco128')
+def extract_boxes(path='../coco/',label_dir="labels"):  # from utils.datasets import *; extract_boxes('../coco128')
     # Convert detection dataset into classification dataset, with one directory per class
 
     path = Path(path)  # images dir

@@ -873,8 +873,8 @@ def eval_apfd(rank_res):
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012, KITTI, VisDrone
-    model_name = "YOLOv7" # YOLOv7, FRCNN, SSD
+    dataset_name = "KITTI" # VOC2012, KITTI, VisDrone
+    model_name = "FRCNN" # YOLOv7, FRCNN, SSD
     epochs = 50
 
     gt_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,"YOLOv7","gt_bboxs.json")

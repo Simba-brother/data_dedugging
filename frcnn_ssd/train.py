@@ -24,7 +24,7 @@ def get_train_and_val_dataset():
     # Load training dataset
     train_dataset = CocoDetectionDataset(
         image_dir=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/train", 
-        annotation_path=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/train/_annotations.coco_{correct_or_error}.json",
+        annotation_path=train_annotation_path,
         transforms=get_transform()
     )
 
@@ -341,14 +341,14 @@ def collection_FRCNN_indicator(model,device,dataloader,epoch):
 if __name__ == "__main__":
 
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|VisDrone|KITTI
+    dataset_name = "VOC2012" # VOC2012|KITTI|VisDrone
     model_name = "FRCNN" # FRCNN|SSD
     gpu_id = 0
     init_lr = 5e-4  # FRCNN:5e-4,SSD:1e-3
     num_epochs = 50
-    correct_or_error = "error" # error | correct
-    epoch_save_dir = os.path.join(exp_data_root_dir,"models",f"{dataset_name}_{correct_or_error}", model_name, "v2")
+    epoch_save_dir = os.path.join(exp_data_root_dir,"models",dataset_name,model_name, "baseline_1_repair" "v2")
     os.makedirs(epoch_save_dir,exist_ok=True)
-
+    train_annotation_path=os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco","train",
+                                       "_annotations.coco_repair_baseline_1.json")
     train()
     # test()

@@ -127,7 +127,7 @@ if __name__ == "__main__":
             'missing_fault': 4,
     }
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|KITTI|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
     crop_infer_results_path=f'{exp_data_root}/DataDetective/{dataset_name}/infer_results/crop.json'
     others_infer_results_path=f'{exp_data_root}/DataDetective/{dataset_name}/infer_results/other_objects.json'
     annotation_path=f'{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json'
