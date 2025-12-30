@@ -26,14 +26,14 @@ def get_model(epoch,model,device):
     model.load_state_dict(state_dict, strict=True)
     return model
 
-def xiufu_anno_file():
+def buquan_anno_file():
     
     if train_or_val == "train":
         in_path = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco","train","_annotations.coco_error.json")
-        out_path = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco","train","_annotations.coco_error_xiufu.json")
+        out_path = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco","train","_annotations.coco_error_buquan.json")
     elif train_or_val == "val":
         in_path = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco","val","_annotations.coco.json")
-        out_path = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco","val","_annotations.coco_xiufu.json")
+        out_path = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco","val","_annotations.coco_buquan.json")
     
     with open(in_path, "r", encoding="utf-8") as f:
         coco = json.load(f)
@@ -341,20 +341,20 @@ def eval_performance_yolo_style():
 
 def get_COCOANN_FILE(train_or_val:str):
     if train_or_val == "train":
-        ANN_FILE = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco",f"{train_or_val}","_annotations.coco_error_xiufu.json")
+        ANN_FILE = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco",f"{train_or_val}","_annotations.coco_error_buquan.json")
     elif train_or_val == "val":
-        ANN_FILE = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco",f"{train_or_val}","_annotations.coco_xiufu.json")
+        ANN_FILE = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco",f"{train_or_val}","_annotations.coco_buquan.json")
     else:
         raise Exception("get anno coco 错误")
     return ANN_FILE
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012, KITTI, VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
     model_name = "YOLOv7"
     train_or_val = "val"
-    gpu_id = 1
+    gpu_id = 0
     ANN_FILE = get_COCOANN_FILE(train_or_val)
-    # xiufu_anno_file()
+    # buquan_anno_file()
     eval_perform_coco_style()
 
