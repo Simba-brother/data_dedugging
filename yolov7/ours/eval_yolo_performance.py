@@ -111,6 +111,19 @@ def get_coco_results(dataloader,device,model,name2id):
             coco_res.extend(batch_res)
     return coco_res
 
+
+def add_area_iscrowd(coco:COCO):
+    anns = coco.loadAnns(coco.getAnnIds())
+    for ann in anns:
+        if "area" not in ann:
+            x, y, w, h = ann["bbox"]
+            ann["area"] = float(w * h)
+        if "iscrowd" not in ann:
+            ann["iscrowd"] = 0
+    return coco
+
+
+
 def eval_perform_coco_style():
     # 拿到数据yaml文件
     data = f"data/{dataset_name}.yaml"
@@ -141,6 +154,7 @@ def eval_perform_coco_style():
 
     coco_results = get_coco_results(dataloader,device,model,name2id)
     cocoGt = COCO(ANN_FILE)
+    cocoGt = add_area_iscrowd(cocoGt)
     cocoDt = cocoGt.loadRes(coco_results)
     coco_eval = COCOeval(cocoGt, cocoDt, iouType="bbox")
     coco_eval.evaluate()
@@ -341,20 +355,22 @@ def eval_performance_yolo_style():
 
 def get_COCOANN_FILE(train_or_val:str):
     if train_or_val == "train":
-        ANN_FILE = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco",f"{train_or_val}","_annotations.coco_error_buquan.json")
+        ANN_FILE = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco",f"{train_or_val}","_annotations.coco_error.json")
     elif train_or_val == "val":
-        ANN_FILE = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco",f"{train_or_val}","_annotations.coco_buquan.json")
+        ANN_FILE = os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco",f"{train_or_val}","_annotations.coco.json")
     else:
         raise Exception("get anno coco 错误")
     return ANN_FILE
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
+    dataset_name = "VOC2012" # VOC2012|KITTI|VisDrone
     model_name = "YOLOv7"
     train_or_val = "val"
     gpu_id = 0
     ANN_FILE = get_COCOANN_FILE(train_or_val)
+    cocoGt = COCO(ANN_FILE)
+    print()
     # buquan_anno_file()
-    eval_perform_coco_style()
+    # eval_perform_coco_style()
 

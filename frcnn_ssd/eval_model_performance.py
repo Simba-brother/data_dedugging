@@ -16,6 +16,8 @@ from torchvision.models.detection.ssd import SSDClassificationHead
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 from engine import evaluate
+from base_data_manager import (get_correct_ann_file_path,get_error_train_model_weight_file_path,
+                               get_imgs_dir,exp_data_root_dir)
 
 def get_transform():
     return ToTensor()
@@ -28,6 +30,7 @@ def build_ssd_model(num_classes):
         num_classes
     )
     return model
+
 def build_frcnn_model(num_classes):
     model =torchvision.models.detection.fasterrcnn_resnet50_fpn(weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT)
     # Number of input features for the classifier head
@@ -39,10 +42,9 @@ def build_frcnn_model(num_classes):
     return model
 
 
-def model_load_weight(model,epoch):
+def model_load_weight(model,model_weights_path):
     # 加载模型
-    w_path = os.path.join(model_pth_dir,f"epoch_{epoch}.pth")
-    state_dict = torch.load(w_path,map_location="cpu")
+    state_dict = torch.load(model_weights_path,map_location="cpu")
     model.load_state_dict(state_dict)
     return model
 
@@ -103,15 +105,15 @@ def offset_category_id(cocoGt):
 
 def eval_performance():
     # 加载数据
-    train_dataset = CocoDetectionDataset(
-        image_dir=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/{train_or_val}", 
+    dataset = CocoDetectionDataset(
+        image_dir=get_imgs_dir(dataset_name,train_or_val,style="coco"),
         annotation_path=ANN_FILE,
         transforms=get_transform()
     )
-    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=False, collate_fn=lambda x: tuple(zip(*x)))
+    train_loader = DataLoader(dataset, batch_size=16, shuffle=False, collate_fn=lambda x: tuple(zip(*x)))
 
     # 加载模型
-    num_classes = len(train_dataset.coco.getCatIds()) + 1
+    num_classes = len(dataset.coco.getCatIds()) + 1
     if model_name == "SSD":
         model = build_ssd_model(num_classes)
     elif model_name == "FRCNN":
@@ -121,7 +123,7 @@ def eval_performance():
     
     device = torch.device(f"cuda:{gpu_id}")
     model.to(device)
-    model = model_load_weight(model,epoch=49)
+    model = model_load_weight(model,model_weights_path)
     # model = set_nms(model, model_name, conf_threshold=0.25,iou_threshold=0.5)
     
     model.eval()
@@ -129,9 +131,7 @@ def eval_performance():
     '''
     # 开始评估
     coco_results = get_coco_results(model, train_loader, device, score_thresh=0.0)
-
     # 加载ground truth data
-    
     cocoGt = COCO(ANN_FILE)
     cocoGt = offset_category_id(cocoGt)
     cocoDt = cocoGt.loadRes(coco_results)
@@ -141,23 +141,13 @@ def eval_performance():
     coco_eval.summarize()
     return coco_eval
     '''
-    
 
-def get_COCOANN_FILE(train_or_val:str):
-    if train_or_val == "train":
-        ANN_FILE = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco",f"{train_or_val}","_annotations.coco_error_xiufu.json")
-    elif train_or_val == "val":
-        ANN_FILE = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco",f"{train_or_val}","_annotations.coco_xiufu.json")
-    else:
-        raise Exception("get anno coco 错误")
-    return ANN_FILE
 
 if __name__ == "__main__":
-    exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012|KITTI|VisDrone
+    dataset_name = "VOC2012" # VOC2012|KITTI|VisDrone
     model_name = "FRCNN" # FRCNN, SSD
     gpu_id = 0
     train_or_val = "val" # train|val
-    ANN_FILE = get_COCOANN_FILE(train_or_val)
-    model_pth_dir = os.path.join(exp_data_root_dir,"models",f"{dataset_name.lower()}_error", model_name, "v2")
+    ANN_FILE = get_correct_ann_file_path(dataset_name,train_or_val)
+    model_weights_path = get_error_train_model_weight_file_path(dataset_name,model_name,epoch=49)
     eval_performance()
