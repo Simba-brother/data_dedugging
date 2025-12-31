@@ -1,7 +1,6 @@
 '''
 分析DataDetective的rank
 '''
-
 import os
 import json
 import joblib
@@ -9,6 +8,31 @@ from pycocotools.coco import COCO
 import scienceplots
 import matplotlib
 import matplotlib.pyplot as plt
+from ours.base_data_manager import get_datactive_rank_res_path,get_error_ann_file_path,get_annotations_with_miss_json_path
+
+def compute_apfd(fault_set:set, rankded_list):
+    """
+    fault_set: set/list, 真实错误idd(box_id/anno_id|img_name)
+    rankded_list: list, 按可疑度排序的图像路径
+    """
+    # n: 排序总量
+    n = len(rankded_list)
+    
+    TF_positions = []
+
+    # 遍历 rankded_list 找到真实错误的位置
+    for idx, ID in enumerate(rankded_list, start=1):  # 从1开始计数
+        if ID in fault_set:
+            TF_positions.append(idx)
+
+    # m:错误总量
+    m = len(fault_set)
+    if m == 0:
+        return 0.0  # 防止除零
+
+    apfd = 1 - sum(TF_positions) / (n * m) + 1 / (2 * n)
+    apfd = round(apfd,4)
+    return apfd
 
 
 def get_imgId_to_imgName(annotations_with_miss_json):
@@ -84,6 +108,9 @@ def main():
     
     union_fault_set = error_ann_id_set | missed_img_name_set
 
+    apfd = compute_apfd(union_fault_set,needed_rank_list)
+    print(f"APFD:{apfd}")
+
     rank_error_flag = []
     for idd in needed_rank_list:
         if idd in union_fault_set:
@@ -97,12 +124,15 @@ def main():
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012|KITTI|VisDrone
-    ranked_list = joblib.load(os.path.join(exp_root_dir,"DataDetective",dataset_name,"ranked_result","ranked_list.joblib"))
-    anno_coco_error_json_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train","_annotations.coco_error.json")
-    annotations_with_miss_json_path =os.path.join(exp_root_dir,"error_anno",dataset_name,"annotations_with_miss.json")
+    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
+    # datactive 排序的idd
+    ranked_list = joblib.load(get_datactive_rank_res_path(dataset_name))
+    print(f"rank_res长度:{len(ranked_list)}")
+    
+    anno_coco_error_json_path = get_error_ann_file_path(dataset_name)
+    annotations_with_miss_json_path =get_annotations_with_miss_json_path(dataset_name)
 
-    hot_pic_save_path = os.path.join(exp_root_dir,"imgs","hot_ranking",f"{dataset_name}_baseline_1_boxLevel.png")
+    hot_pic_save_path = os.path.join(exp_root_dir,"imgs","hot_ranking","datactive", f"{dataset_name}.png")
 
     coco = COCO(anno_coco_error_json_path)
     catIds = coco.getCatIds()

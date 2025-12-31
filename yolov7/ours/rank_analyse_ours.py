@@ -7,6 +7,8 @@ import json
 import scienceplots
 import matplotlib
 import matplotlib.pyplot as plt
+from ours.base_data_manager import (get_ours_rank_res_path,get_collected_gt_box_json_path,
+                                    get_annotations_with_miss_json_path)
 
 
 def get_imgId_to_imgName(annotations_with_miss_json):
@@ -15,8 +17,6 @@ def get_imgId_to_imgName(annotations_with_miss_json):
     for image in images:
         imgId_to_imgName[image["id"]] = image["file_name"]
     return imgId_to_imgName
-
-
 
 def get_err_set(gt_box_json,annotations_with_miss_json):
     err_set = set()
@@ -37,18 +37,20 @@ def get_err_set(gt_box_json,annotations_with_miss_json):
 
 def compute_apfd(fault_set:set, rankded_list):
     """
-    list_A: set/list, 真实错误图像路径
-    list_B: list, 按可疑度排序的图像路径
+    fault_set: set/list, 真实错误idd(box_id/anno_id|img_name)
+    rankded_list: list, 按可疑度排序的图像路径
     """
+    # n: 排序总量
     n = len(rankded_list)
     
     TF_positions = []
 
-    # 遍历 list_B 找到真实错误的位置
+    # 遍历 rankded_list 找到真实错误的位置
     for idx, ID in enumerate(rankded_list, start=1):  # 从1开始计数
         if ID in fault_set:
             TF_positions.append(idx)
 
+    # m:错误总量
     m = len(fault_set)
     if m == 0:
         return 0.0  # 防止除零
@@ -101,17 +103,19 @@ def main():
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012, KITTI, VisDrone
-    model_name = "FRCNN" # YOLOv7, FRCNN, SSD
-    rank_res = joblib.load(os.path.join(exp_data_root,"Ours",dataset_name,model_name,"rank_res","rank.joblib"))
-    gt_box_json_path = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,"YOLOv7","gt_bboxs.json")
-    annotations_with_miss_json_path = os.path.join(exp_data_root,"error_anno",dataset_name,"annotations_with_miss.json")
-
+    model_name = "YOLOv7" # YOLOv7, FRCNN, SSD
+    # 得到我们方法的排序结果，idd (box)是collected_gt_box中的id(box_id)
+    rank_res = joblib.load(get_ours_rank_res_path(dataset_name,model_name))
+    print(f"rank_res长度:{len(rank_res)}")
+    gt_box_json_path = get_collected_gt_box_json_path(dataset_name)
+    # 得到coco-format的带有miss的annos
+    annotations_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     with open(gt_box_json_path,'r') as f:
         gt_box_json = json.load(f)
-
     with open(annotations_with_miss_json_path,'r') as f:
         annotations_with_miss_json = json.load(f)
     
-    hot_pic_save_path = os.path.join(exp_data_root,"imgs","hot_ranking",f"{dataset_name}_{model_name}_boxLevel.png")
+    # 排序热图
+    hot_pic_save_path = os.path.join(exp_data_root,"imgs","hot_ranking","ours","box_level", f"{dataset_name}_{model_name}_boxLevel.png")
 
     main()

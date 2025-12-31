@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import pandas as pd
 import os
+from base_data_manager import get_correct_ann_file_path,get_imgs_dir
 
 # conf_threshold = 0.8
 # Transform PIL image --> PyTorch tensor
@@ -23,15 +24,15 @@ def get_transform():
 def get_train_and_val_dataset():
     # Load training dataset
     train_dataset = CocoDetectionDataset(
-        image_dir=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/train", 
+        image_dir=train_imgs_dir,
         annotation_path=train_annotation_path,
         transforms=get_transform()
     )
 
     # Load validation dataset
     val_dataset = CocoDetectionDataset(
-        image_dir=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/val",
-        annotation_path=f"{exp_data_root_dir}/datasets/{dataset_name}-coco/val/_annotations.coco.json",
+        image_dir=val_imgs_dir,
+        annotation_path=val_annotation_path,
         transforms=get_transform()
     )
     return train_dataset, val_dataset
@@ -97,7 +98,6 @@ def test():
     # plt.show()
     plt.savefig("test.png")
 
-
 def build_model(model_name,nc):
     if model_name == "FRCNN":
         model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights="DEFAULT")
@@ -155,8 +155,6 @@ def save_epoch(model,epoch):
     save_path = os.path.join(epoch_save_dir,save_file_name)
     torch.save(model.state_dict(), save_path)
     return save_path
-
-
 
 def train():
     # 加载FRCNN模型（预训练）
@@ -342,14 +340,16 @@ def collection_FRCNN_indicator(model,device,dataloader,epoch):
 if __name__ == "__main__":
 
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|KITTI|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
     model_name = "FRCNN" # FRCNN|SSD
-    gpu_id = 0
+    gpu_id = 1
     init_lr = 5e-4  # FRCNN:5e-4,SSD:1e-3
     num_epochs = 50
-    epoch_save_dir = os.path.join(exp_data_root_dir,"models",dataset_name,model_name, "our_repair","v2")
+    epoch_save_dir = os.path.join(exp_data_root_dir,"models",dataset_name.lower(),model_name.lower(), "clean")
     os.makedirs(epoch_save_dir,exist_ok=True)
-    train_annotation_path=os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco","train",
-                                       "_annotations.coco_repair.json")
+    train_imgs_dir = get_imgs_dir(dataset_name,"train",style="coco")
+    val_imgs_dir = get_imgs_dir(dataset_name,"val",style="coco")
+    train_annotation_path = get_correct_ann_file_path(dataset_name,"train")
+    val_annotation_path = get_correct_ann_file_path(dataset_name,"val")
     train()
     # test()

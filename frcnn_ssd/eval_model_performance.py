@@ -144,7 +144,7 @@ def eval_performance():
 
 
 if __name__ == "__main__":
-    dataset_name = "VOC2012" # VOC2012|KITTI|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
     model_name = "FRCNN" # FRCNN, SSD
     gpu_id = 0
     train_or_val = "val" # train|val
