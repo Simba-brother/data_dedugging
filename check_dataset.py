@@ -49,7 +49,7 @@ def main():
 
 if __name__ == "__main__":
     exp_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
 
     
     train_anno_correct_json_path = get_correct_ann_file_path(dataset_name,"train")

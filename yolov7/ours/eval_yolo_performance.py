@@ -17,13 +17,21 @@ from utils.metrics import ap_per_class,ConfusionMatrix
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 import json
+from ours.base_data_manager import (get_correct_ann_file_path,get_error_ann_file_path,
+                                    get_clean_train_model_weight_file_path,
+                                    get_error_train_model_weight_file_path, 
+                                    get_repair_train_model_weight_file_path)
 
-def get_model(epoch,model,device):
+def get_model(model,device):
     # 加载模型权重
-    weights_path = os.path.join(exp_data_root,"models",f"{dataset_name.lower()}_error","yolov7",f"epoch_{epoch}.pt")
-    state_dict = torch.load(weights_path, map_location=device)  # load checkpoint
-    # 注入权重
-    model.load_state_dict(state_dict, strict=True)
+    
+    if weights_path.endswith("last.pt"):
+        state_dict = torch.load(weights_path, map_location=device, weights_only=False)
+        state_dict = state_dict['model'].float().state_dict()
+        model.load_state_dict(state_dict, strict=True)
+    else:
+        state_dict = torch.load(weights_path, map_location=device, weights_only=True)
+        model.load_state_dict(state_dict, strict=True)
     return model
 
 def buquan_anno_file():
@@ -136,8 +144,7 @@ def eval_perform_coco_style():
     device = select_device(f'{gpu_id}')
     # 获得模型
     model = Model("cfg/training/yolov7.yaml", ch=3, nc=nc, anchors=3).to(device)
-    used_epoch = 49
-    model = get_model(used_epoch,model,device)
+    model = get_model(model,device)
     model.eval()
     name2id,id2name = get_name_id_map(ANN_FILE)
     # 获得数据集加载器
@@ -364,13 +371,18 @@ def get_COCOANN_FILE(train_or_val:str):
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|KITTI|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
+    model_state = "repair_datactive" # clean|error|repair_ours|repair_datactive
     train_or_val = "val"
-    gpu_id = 0
-    ANN_FILE = get_COCOANN_FILE(train_or_val)
+    gpu_id = 1
+    ANN_FILE = get_correct_ann_file_path(dataset_name,train_or_val)
     cocoGt = COCO(ANN_FILE)
-    print()
+
+    # weights_path = get_clean_train_model_weight_file_path(dataset_name,model_name)
+    # weights_path = get_error_train_model_weight_file_path(dataset_name,model_name,epoch=49)
+    # weights_path = get_repair_train_model_weight_file_path(dataset_name,model_name,method_name="ours")
+    weights_path = get_repair_train_model_weight_file_path(dataset_name,model_name,method_name="datactive")
     # buquan_anno_file()
-    # eval_perform_coco_style()
+    eval_perform_coco_style()
 

@@ -477,7 +477,7 @@ def train(hyp, opt, device, tb_writer=None):
                 # Save last, best and delete
                 torch.save(ckpt, last)
                 # 每个epoch的model.state_dict被保存下来
-                # torch.save(ckpt['model'].float().state_dict(), wdir /f'epoch_{epoch}.pt')
+                torch.save(ckpt['model'].float().state_dict(), wdir /f'epoch_{epoch}.pt')
                 if best_fitness == fi:
                     torch.save(ckpt, best)
                 '''
