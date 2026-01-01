@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import pandas as pd
 import os
-from base_data_manager import get_correct_ann_file_path,get_imgs_dir
+from base_data_manager import get_correct_ann_file_path,get_error_ann_file_path, get_imgs_dir
 import time
 # conf_threshold = 0.8
 # Transform PIL image --> PyTorch tensor
@@ -352,16 +352,21 @@ def collection_FRCNN_indicator(model,device,dataloader,epoch):
 if __name__ == "__main__":
 
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012|KITTI|VisDrone
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     model_name = "FRCNN" # FRCNN|SSD
-    gpu_id = 0
+    trainset_status = "error" # clean|error|repair_datactive|repair_ours
+    gpu_id = 1
     init_lr = 5e-3  # FRCNN:5e-4,SSD:1e-3
     num_epochs = 50
-    epoch_save_dir = os.path.join(exp_data_root_dir,"models",dataset_name.lower(),model_name.lower(), "clean")
+    epoch_save_dir = os.path.join(exp_data_root_dir,"models",dataset_name.lower(),
+                                  model_name.lower(), trainset_status)
     os.makedirs(epoch_save_dir,exist_ok=True)
     train_imgs_dir = get_imgs_dir(dataset_name,"train",style="coco")
     val_imgs_dir = get_imgs_dir(dataset_name,"val",style="coco")
-    train_annotation_path = get_correct_ann_file_path(dataset_name,"train")
+
+    # train_annotation_path = get_correct_ann_file_path(dataset_name,"train")
+    train_annotation_path = get_error_ann_file_path(dataset_name)
+
     val_annotation_path = get_correct_ann_file_path(dataset_name,"val")
     train()
     # test()

@@ -29,12 +29,7 @@ def test3():
     random.shuffle(my_list) # replace
     print(my_list)
 
-def test4():
-    my_list = [1, 2, 3, 4, 5]
-    my_set = set(my_list)
-    
-    print(1 in my_set)
 
 
 if __name__ == "__main__":
-    test4()
+    pass

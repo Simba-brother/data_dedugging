@@ -89,7 +89,8 @@ def gen_loc_fault(object_id_list,anno_list):
     return anno_list
 
 def gen_redundancy_fault(object_id_list, anno_list):
-    new_id = total_object_num
+    new_id = anno_list[-1]["id"]+1
+    new_obj_list = []
     for object_id in object_id_list:
         for anno in anno_list:
             if anno["id"] == object_id:
@@ -115,8 +116,7 @@ def gen_redundancy_fault(object_id_list, anno_list):
                     "bbox":new_bbox,
                     "fault_type":fault_type["redundancy_fault"]
                 }
-                
-                anno_list.append(new_obj)
+                new_obj_list.append(new_obj)
                 fault_info = {
                     "obj_id":new_id,
                     "img_id":anno["image_id"],
@@ -125,6 +125,7 @@ def gen_redundancy_fault(object_id_list, anno_list):
                 }
                 fault_recorder.append(fault_info)
                 new_id += 1
+    anno_list.extend(new_obj_list)
     return anno_list
 
 
@@ -145,11 +146,12 @@ if __name__ == "__main__":
 
     random.seed(42)
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012, VisDrone, KITTI
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     fault_rate = 0.1 # 每种错误比例为10%
     
     anno_json_path = os.path.join(exp_data_root,"datasets", f"{dataset_name}-coco","train","_annotations.coco_correct.json")
     coco = COCO(anno_json_path)
+
     # 数据集中anno的ids
     ann_ids = coco.getAnnIds()
     # 根据 annoIds 载入所有 annotation
@@ -162,7 +164,7 @@ if __name__ == "__main__":
             'redundancy_fault': 3,
             'missing_fault': 4,
     }
-    fault_recorder = []
+    fault_recorder = []  # 不是必须的
     # 准备注入错误
     total_object_num = len(ann_ids)
     sample_num = int(total_object_num*fault_rate)
@@ -182,14 +184,15 @@ if __name__ == "__main__":
     # redundancy fault id 采样
     candi_id_set = set(ann_ids) - set(missing_fault_obj_id_list) - set(cls_fault_obj_id_list) - set(loc_fault_obj_id_list)
     redundancy_fault_obj_id_list = random.sample(list(candi_id_set),sample_num)
+
     annotations = add_fault_type_attr(annotations)
-    print("1:miss错误注入...")
+    print("miss(4)错误注入...")
     annotations = gen_missing_fault(missing_fault_obj_id_list,annotations)
-    print("2:cls错误注入...")
+    print("cls(1)错误注入...")
     annotations = gen_class_fault(cls_fault_obj_id_list,annotations)
-    print("3:loc错误注入...")
+    print("loc(2)错误注入...")
     annotations = gen_loc_fault(loc_fault_obj_id_list,annotations)
-    print("4:redundancy错误注入...")
+    print("redundancy(3)错误注入...")
     annotations = gen_redundancy_fault(redundancy_fault_obj_id_list,annotations)
     
     print(f"数据集: {dataset_name} 注错完成")
@@ -209,7 +212,7 @@ if __name__ == "__main__":
         "annotations":annotations
     }
     # 保存为annotation json文件
-    save_dir = os.path.join(exp_data_root,"error_anno",dataset_name)
+    save_dir = os.path.join(exp_data_root,"error_anno",dataset_name,"coco_format")
     os.makedirs(save_dir,exist_ok=True)
     anno_save_path = os.path.join(save_dir,"annotations_with_miss.json")
     with open(anno_save_path, "w", encoding="utf-8") as f:
@@ -222,7 +225,7 @@ if __name__ == "__main__":
         "annotations":annotations_no_miss
     }
     # 保存为annotation json文件
-    save_dir = os.path.join(exp_data_root,"error_anno",dataset_name)
+    save_dir = os.path.join(exp_data_root,"error_anno",dataset_name,"coco_format")
     os.makedirs(save_dir,exist_ok=True)
     anno_save_path = os.path.join(save_dir,"annotations_no_miss.json")
     with open(anno_save_path, "w", encoding="utf-8") as f:

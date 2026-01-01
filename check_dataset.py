@@ -25,26 +25,42 @@ def get_no_anno_img_num(anno_json_path):
     no_ann_img_id_set = set(img_ids) - with_ann_img_id_set
     print(f"没有标注的图像数量为:{len(no_ann_img_id_set)}")
 
+    all_image_ids = list(coco.imgs.keys())
+
+    no_count = 0
+    no_ann_img_id_set_2 = set()
+    for img_id in all_image_ids:
+        ann_ids = coco.getAnnIds(imgIds=img_id)
+        if len(ann_ids) == 0:
+            no_count += 1
+            no_ann_img_id_set_2.add(img_id)
+            continue
+    assert no_count == len(no_ann_img_id_set), "err"
+    return len(no_ann_img_id_set)
+
 def main():
     train_img_num, train_obj_num, train_cat_num = get_dataset_size_and_obj_size_and_cls_size(train_anno_correct_json_path)
     val_img_num, val_obj_num, val_cat_num = get_dataset_size_and_obj_size_and_cls_size(val_anno_correct_json_path)
     error_train_img_num, error_train_obj_num, error_train_cat_num = get_dataset_size_and_obj_size_and_cls_size(train_anno_error_json_path)
-    print(f"Train set: #Img:{train_img_num}, #Class:{train_cat_num}, #Obj:{train_obj_num}, #Obj/#Img:{round(train_obj_num/train_img_num,1)}")
-    print(f"Val set: #Img:{val_img_num}, #Class:{val_cat_num}, #Obj:{val_obj_num}, #Obj/#Img:{round(val_obj_num/val_img_num,1)}")
-    print(f"Error_Train set: #Img:{error_train_img_num}, #Class:{error_train_cat_num}, #Obj:{error_train_obj_num}, #Obj/#Img:{round(train_obj_num/train_img_num,1)}")
-
-
+    print(f"Train set: #Img:{train_img_num}, #Class:{train_cat_num}, #Obj:{train_obj_num}, #Img+#Obj:{train_img_num+train_obj_num}, #Obj/#Img:{round(train_obj_num/train_img_num,1)}")
+    print(f"Val set: #Img:{val_img_num}, #Class:{val_cat_num}, #Obj:{val_obj_num}, #Img+#Obj:{val_img_num+val_obj_num}, #Obj/#Img:{round(val_obj_num/val_img_num,1)}")
+    print(f"Error_Train set: #Img:{error_train_img_num}, #Class:{error_train_cat_num}, #Obj:{error_train_obj_num}, #Img+#Obj:{error_train_img_num+error_train_obj_num}, #Obj/#Img:{round(error_train_obj_num/error_train_img_num,1)}")
 
 
 if __name__ == "__main__":
     exp_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
 
     
     train_anno_correct_json_path = get_correct_ann_file_path(dataset_name,"train")
     train_anno_error_json_path = get_error_ann_file_path(dataset_name)
     val_anno_correct_json_path = get_correct_ann_file_path(dataset_name,"val")
-    train_anno_error_json_path = get_error_ann_file_path(dataset_name)
-    
+
     main()
-    get_no_anno_img_num(train_anno_error_json_path)
+    train_correct_ann_no_anno_img_num = get_no_anno_img_num(train_anno_correct_json_path)
+    train_error_ann_no_anno_img_num = get_no_anno_img_num(train_anno_error_json_path)
+    val_ann_no_anno_img_num = get_no_anno_img_num(val_anno_correct_json_path)
+
+    print("train correct noAnno imgs num:",train_correct_ann_no_anno_img_num)
+    print("train error noAnno imgs num:",train_error_ann_no_anno_img_num)
+    print("val noAnno imgs num:",val_ann_no_anno_img_num)

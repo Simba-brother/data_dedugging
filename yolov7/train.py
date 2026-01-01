@@ -545,10 +545,12 @@ def train(hyp, opt, device, tb_writer=None):
 if __name__ == '__main__':
 
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
     gpu_id = 0
-    model_save_dir = os.path.join(exp_data_root,"models",dataset_name.lower(),model_name.lower(),"clean")
+    trainset_stat = "error" # clean|error|repair_datactive|repair_ours
+    model_save_dir = os.path.join(exp_data_root,
+                                  "models",dataset_name.lower(),model_name.lower(),trainset_stat)
     os.makedirs(model_save_dir,exist_ok=True)
 
 
