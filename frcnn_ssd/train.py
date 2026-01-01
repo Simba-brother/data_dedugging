@@ -15,7 +15,7 @@ from PIL import Image
 import pandas as pd
 import os
 from base_data_manager import get_correct_ann_file_path,get_imgs_dir
-
+import time
 # conf_threshold = 0.8
 # Transform PIL image --> PyTorch tensor
 def get_transform():
@@ -157,6 +157,7 @@ def save_epoch(model,epoch):
     return save_path
 
 def train():
+    start_time = time.time()  # 记录开始时间
     # 加载FRCNN模型（预训练）
     # Load a pre-trained Faster R-CNN model with ResNet50 backbone and FPN, , you change this 
     # weights=FasterRCNN_ResNet50_FPN_Weights.COCO_V1,
@@ -181,38 +182,49 @@ def train():
     model.to(device)
 
     # 训练参数
+    '''
+    # 锁住Backbone params
     for param in model.backbone.parameters():
         param.requires_grad = False
+    '''
     params = [p for p in model.parameters() if p.requires_grad]
     
     # 参数优化器
-    optimizer = torch.optim.SGD(params,lr=init_lr,momentum=0.9,weight_decay=0.0005)
+
     # optimizer = torch.optim.Adam(params, lr=1e-4)
-    # optimizer = torch.optim.SGD(params, lr=0.005,momentum=0.9, weight_decay=0.0005)
+    optimizer = torch.optim.SGD(params,lr=init_lr,momentum=0.9,weight_decay=0.0005)
+
     # lr 调度器
+    '''
     lr_scheduler = torch.optim.lr_scheduler.StepLR(
         optimizer,
         step_size=10,
         gamma=0.1
     )
+    '''
     # train loop
     for epoch in range(num_epochs):
         print(f"\nEpoch {epoch}/{num_epochs}")
         # Train the model for one epoch, printing status every 25 iterations
         train_one_epoch(model, optimizer, train_loader, device, epoch, print_freq=25)  # Using train_loader for training
-        lr_scheduler.step()
+        # lr_scheduler.step()
         # custom_train_one_epoch(model,train_loader,epoch,num_epochs,device,optimizer)
         # Evaluate the model only on the validation dataset, not training
         evaluate(model, val_loader, device=device)  # Using val_loader for evaluation
         epoch_save_path = save_epoch(model,epoch)
         print(f"model pth is saved in: {epoch_save_path}")
-
         '''
         if model_name == "FRCNN":
             collection_FRCNN_indicator(model,device,train_t_loader,epoch)
         elif model_name == "SSD":
             collection_SSD_indicator(model,device,train_t_loader,epoch)
         '''
+    end_time = time.time()  # 记录结束时间
+    elapsed_time = end_time - start_time  # 计算运行时间（秒）
+    hours = int(elapsed_time // 3600)  # 计算小时数
+    minutes = int((elapsed_time % 3600) // 60)  # 计算分钟数
+    seconds = elapsed_time % 60  # 计算剩余的秒数
+    print(f"运行时间：{hours:02d}:{minutes:02d}:{seconds:02.0f}")
 
 def collection_SSD_indicator(model,device,dataloader,epoch):
     item_list = []
@@ -340,10 +352,10 @@ def collection_FRCNN_indicator(model,device,dataloader,epoch):
 if __name__ == "__main__":
 
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
+    dataset_name = "KITTI" # VOC2012|KITTI|VisDrone
     model_name = "FRCNN" # FRCNN|SSD
-    gpu_id = 1
-    init_lr = 5e-4  # FRCNN:5e-4,SSD:1e-3
+    gpu_id = 0
+    init_lr = 5e-3  # FRCNN:5e-4,SSD:1e-3
     num_epochs = 50
     epoch_save_dir = os.path.join(exp_data_root_dir,"models",dataset_name.lower(),model_name.lower(), "clean")
     os.makedirs(epoch_save_dir,exist_ok=True)

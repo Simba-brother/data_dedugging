@@ -7,12 +7,12 @@ import shutil
 random.seed(42)
 
 # 原始目录（当前所有数据都在这里）
-img_dir = '/data/mml/data_debugging_data/datasets/KITTI-yolo/train/images'
-label_dir = '/data/mml/data_debugging_data/datasets/KITTI-yolo/train/labels'
+img_dir = '/data/mml/data_debugging_data/datasets/no_needed_datasets/KITTI/dataset/images'
+label_dir = '/data/mml/data_debugging_data/datasets/no_needed_datasets/KITTI/dataset/labels'
 
 # 新建验证集目录
-val_img_dir = '/data/mml/data_debugging_data/datasets/KITTI-yolo/val/images'
-val_label_dir = '/data/mml/data_debugging_data/datasets/KITTI-yolo/val/labels'
+val_img_dir = '/data/mml/data_debugging_data/datasets/no_needed_datasets/KITTI/val/images'
+val_label_dir = '/data/mml/data_debugging_data/datasets/no_needed_datasets/KITTI/val/labels'
 os.makedirs(val_img_dir, exist_ok=True)
 os.makedirs(val_label_dir, exist_ok=True)
 

@@ -78,8 +78,11 @@ def get_annotations_with_miss_json_path(dataset_name):
     return os.path.join(exp_data_root_dir,"error_anno",dataset_name,"coco_format","annotations_with_miss.json")
 
 
+def get_ours_gt_box_metric_path(dataset_name,model_name):
+    return os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "collection_metric", "collection_metrics_v2.json")
 
-
+def get_ours_match_path(dataset_name,model_name):
+    return os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "gp_box_match", "match_v2.json")
 
 if __name__ == "__main__":
     pass

@@ -6,6 +6,7 @@ from labelformat.formats import (YOLOv7ObjectDetectionInput, COCOObjectDetection
                                  )
 # coco -> yolov7
 
+'''
 exp_data_root = "/data/mml/data_debugging_data"
 dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
 # coco_input_path = Path(f"{exp_data_root}/error_anno/{dataset_name}/annotations_no_miss.json")
@@ -21,17 +22,26 @@ yolo_output = YOLOv7ObjectDetectionOutput(
 )
 yolo_output.save(label_input=coco_input)
 print("Conversion from COCO to YOLOv7 completed successfully!")
-
-
 '''
+
+
+
 # Load KITTI labels
-label_input = KittiObjectDetectionInput(
-    input_folder=Path("/data/mml/data_debugging_data/datasets/KITTI-yolo/train/labels"),
-    category_names="Car,Van,Truck,Pedestrian,Person_sitting,Cyclist,Tram,Misc,DontCare",
-    images_rel_path="/data/mml/data_debugging_data/datasets/KITTI-yolo/train/images"
+split = "train"
+kitti_input = KittiObjectDetectionInput(
+    input_folder=Path(f"/data/mml/data_debugging_data/datasets/no_needed_datasets/KITTI/dataset_kitti_format/{split}/labels"),
+    category_names="Car,Van,Truck,Pedestrian,Person_sitting,Cyclist,Tram,Misc,DontCare", # 9 个 categories
+    images_rel_path=f"/data/mml/data_debugging_data/datasets/no_needed_datasets/KITTI/dataset_kitti_format/{split}/images"
 )
 
-# Convert to YOLOv8 and save
+coco_output = COCOObjectDetectionOutput(output_file = 
+            Path(f"/data/mml/data_debugging_data/datasets/no_needed_datasets/KITTI/dataset_coco_format/{split}/_annotations.coco.json")
+            )
+coco_output.save(label_input=kitti_input)
+print(f"Conversion from KITTI to COCO completed successfully! split:{split}.")
+
+'''
+# Convert to YOLOv7 and save
 YOLOv7ObjectDetectionOutput(
     output_file=Path("/data/mml/data_debugging_data/datasets/KITTI-yolo/yolo_format/data.yaml"),
     output_split="train"

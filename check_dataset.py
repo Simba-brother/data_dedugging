@@ -3,8 +3,7 @@
 '''
 from pycocotools.coco import COCO
 import os
-
-
+from base_data_manager import get_error_ann_file_path,get_correct_ann_file_path
 def get_dataset_size_and_obj_size_and_cls_size(anno_json_path):
     coco = COCO(anno_json_path)
     img_ids = coco.getImgIds()
@@ -29,16 +28,23 @@ def get_no_anno_img_num(anno_json_path):
 def main():
     train_img_num, train_obj_num, train_cat_num = get_dataset_size_and_obj_size_and_cls_size(train_anno_correct_json_path)
     val_img_num, val_obj_num, val_cat_num = get_dataset_size_and_obj_size_and_cls_size(val_anno_correct_json_path)
+    error_train_img_num, error_train_obj_num, error_train_cat_num = get_dataset_size_and_obj_size_and_cls_size(train_anno_error_json_path)
     print(f"Train set: #Img:{train_img_num}, #Class:{train_cat_num}, #Obj:{train_obj_num}, #Obj/#Img:{round(train_obj_num/train_img_num,1)}")
     print(f"Val set: #Img:{val_img_num}, #Class:{val_cat_num}, #Obj:{val_obj_num}, #Obj/#Img:{round(val_obj_num/val_img_num,1)}")
+    print(f"Error_Train set: #Img:{error_train_img_num}, #Class:{error_train_cat_num}, #Obj:{error_train_obj_num}, #Obj/#Img:{round(train_obj_num/train_img_num,1)}")
+
 
 
 
 if __name__ == "__main__":
     exp_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
-    train_anno_correct_json_path = os.path.join(exp_dir,"datasets", f"{dataset_name}-coco","train","_annotations.coco_correct.json")
-    train_anno_error_json_path = os.path.join(exp_dir,"datasets", f"{dataset_name}-coco","train","_annotations.coco_error.json")
-    val_anno_correct_json_path = os.path.join(exp_dir,"datasets", f"{dataset_name}-coco","val","_annotations.coco.json")
-    # main()
-    get_no_anno_img_num(train_anno_correct_json_path)
+
+    
+    train_anno_correct_json_path = get_correct_ann_file_path(dataset_name,"train")
+    train_anno_error_json_path = get_error_ann_file_path(dataset_name)
+    val_anno_correct_json_path = get_correct_ann_file_path(dataset_name,"val")
+    train_anno_error_json_path = get_error_ann_file_path(dataset_name)
+    
+    main()
+    get_no_anno_img_num(train_anno_error_json_path)

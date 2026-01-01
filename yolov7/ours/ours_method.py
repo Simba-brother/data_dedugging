@@ -12,6 +12,7 @@ import time
 import matplotlib.pyplot as plt
 import pandas as pd
 import topsispy as tp
+from ours.base_data_manager import get_ours_gt_box_metric_path,get_ours_match_path,get_annotations_with_miss_json_path
 
 def calu_iou(gt_bbox,predicted_bbox):
     x1_min, y1_min, x1_max, y1_max = gt_bbox
@@ -544,9 +545,46 @@ def caclu_cluster_score(cluster,last_epoch):
     score=0.30*conf+0.20*stab+0.20*cls_consis+0.30*e_freq
     return score
 
+def get_cluster_feaure(cluster,last_epoch):
+    conf = conf_score(cluster) # [0,1] 
+    stab = stability_pairwise_mean_iou(cluster) # [0,1]
+    cls_consis = cls_consis_score(cluster) # [0,1]
+    e_freq = epoch_freq(cluster,last_epoch) # [0,1]
+    sign = [1,1,1,1]
+    feature = [conf,stab,cls_consis,e_freq]
+    
+    return feature, sign
 
+def get_img_to_topsis_score(img_to_clusters,last_epoch):
+    clusters_feature = []
+    feature_sign = []
+    img_name_to_c_ids = defaultdict(list)
+    c_id = 0
+    for img_name,clusters in img_to_clusters.items():
+        for cluster in clusters:
+            feature,sign = get_cluster_feaure(cluster,last_epoch)
+            clusters_feature.append(feature)
+            feature_sign = sign
+            img_name_to_c_ids[img_name].append(c_id)
 
-def sort_cluster(img_to_clusters,last_epoch):
+    
+    data_array = np.array(clusters_feature)
+    n_features = data_array.shape[1]
+    assert data_array.shape[1] == len(feature_sign), "数据有误"
+    weights = np.ones(n_features) / n_features
+    best_id, score_array = tp.topsis(data_array, weights, feature_sign)
+    # 从大到小排序并返回索引
+    # sorted_cluster_id = np.argsort(score_array)[::-1]
+    img_name_to_max_score = {}
+    for img_name,c_ids in img_name_to_c_ids.items():
+        max_score = 0
+        for c_id in c_ids:
+            if score_array[c_id] > max_score:
+                max_score = score_array[c_id]
+        img_name_to_max_score[img_name] = max_score
+    return img_name_to_max_score
+
+def sort_cluster_by_weight_score(img_to_clusters,last_epoch):
     cluster_list = []
     for img_name,clusters in img_to_clusters.items():
         for cluster in clusters:
@@ -609,10 +647,17 @@ def get_fault_imgs_by_type(fault_type_list):
     '''
     fault_type:0(no)|1(cls)|2(loc)|3(red)|4(mis)
     '''
-    fault_df = pd.read_csv(os.path.join(exp_root_dir,"error_anno",dataset_name,"fault_records.csv")) 
-    mis_df = fault_df[fault_df['fault_type'].isin(fault_type_list)]
-    fault_img_set = set(mis_df["img_name"])
-    return fault_img_set
+    img_id_to_img_name = {}
+    for image in annos_with_miss_json["images"]:
+        img_id_to_img_name[image["id"]] = image["file_name"]
+
+    annos = annos_with_miss_json['annotations']
+    fault_img_name_set = set()
+    for anno in annos:
+        if anno["fault_type"] in fault_type_list:
+            img_name = img_id_to_img_name[anno["image_id"]]
+            fault_img_name_set.add(img_name)
+    return fault_img_name_set
 
 
 def get_all_img_name():
@@ -624,10 +669,32 @@ def get_all_img_name():
             img_name_list.append(filename)
     return img_name_list
 
+
+def misimg_detect_by_topsis(match_json_path, last_epoch=5):
+    all_img_name_list = get_all_img_name()
+    # 读取所有gt_box的匹配信息
     
+    with open(match_json_path,mode="r") as f:
+        gt_match_dict = json.load(f)
+    epoch_to_matched_p_boxs = get_epoch_to_matched_p_boxs(gt_match_dict)
+
+    # 获得每张图像在后面几个epoch中没被g_box匹配的高置信度p_box
+    # {img__name:{epoch:[] # no_matched_p_boxs }}
+    img_name_to_no_match_p = get_img_epoch_to_unmatched_p_boxs(epoch_to_matched_p_boxs,last_epoch,conf_threshold=0.6)
+
+    # 把每个epoch未匹配到的p_box拉平
+    # {img__name:[] # no_matched_p_boxs}
+    img_to_p_box_list  = get_img_to_p_box_list(img_name_to_no_match_p)
+
+    # 采用并查集算法将该img这些高置信度未匹配p_box进行分簇，一个簇其实就是一个统一的p_box
+    img_to_clusters = get_img_to_clusters(img_to_p_box_list,iou_thre=0.6)
+    
+    
+    img_name_to_topsis_score = get_img_to_topsis_score(img_to_clusters,last_epoch)
+    return img_name_to_topsis_score
 
 
-def misimg_detect(match_json_path, last_epoch=5):
+def misimg_detect_by_weight_score(match_json_path, last_epoch=5):
     all_img_name_list = get_all_img_name()
     # 读取所有gt_box的匹配信息
     
@@ -647,7 +714,8 @@ def misimg_detect(match_json_path, last_epoch=5):
     img_to_clusters = get_img_to_clusters(img_to_p_box_list,iou_thre=0.6)
     # 对簇进行打分且排序
     # [{"cluster":c,"img_name":img_name,"score":s},..,]
-    sorted_clusters = sort_cluster(img_to_clusters,last_epoch)
+    get_img_to_topsis_score(img_to_clusters,last_epoch)
+    sorted_clusters = sort_cluster_by_weight_score(img_to_clusters,last_epoch)
     sorted_img_name_list = sort_img(sorted_clusters)
     detected_mis_img_name_list = filter_imgs(sorted_img_name_list,threshold_score=-1)
 
@@ -807,10 +875,27 @@ def rank_gid(g_id_to_features,feature_name_to_sign):
     sorted_gt_id = np.argsort(score_array)[::-1]
 
     ranked_gid_list = [int(g_id) for g_id in sorted_gt_id]
-    return ranked_gid_list
+    topsis_score_list = []
+    for gid in ranked_gid_list:
+        topsis_score_list.append(score_array[gid])
+    return ranked_gid_list, topsis_score_list
 
 
-def total_rank(ranked_gid_list,ranked_img_list):
+def total_rank_by_topsis_score(ranked_gid_list,topsis_score_list,img_name_to_topsis_score):
+    
+    _map = {}
+    for gid,score in zip(ranked_gid_list,topsis_score_list):
+        _map[gid] = score
+    for img_name,score in img_name_to_topsis_score.items():
+        _map[img_name] = score
+
+    sorted_map = dict(sorted(_map.items(), key=lambda item: float(item[1]), reverse=True))
+    rank_res = list(sorted_map.keys())
+    return rank_res
+
+
+
+def total_rank_by_loc(ranked_gid_list,ranked_img_list):
     gid_num = len(ranked_gid_list)
     img_num = len(ranked_img_list)
     all_img_name_list = get_all_img_name()
@@ -861,26 +946,36 @@ def eval_apfd(rank_res):
             fault_type = g_box["fault_type"]
             if fault_type != 0:
                 fault_g_id_set.add(g_id)
-    fault_csv_path = os.path.join(exp_root_dir,"error_anno",dataset_name,"fault_records.csv")
-    fault_df = pd.read_csv(fault_csv_path)
-    mis_fault_df = fault_df[fault_df["fault_type"] == 4]
-    mis_fault_img_name_set = set(mis_fault_df["img_name"].tolist())
+    img_id_to_img_name = {}
+    for image in annos_with_miss_json["images"]:
+        img_id_to_img_name[image["id"]] = image["file_name"]
 
-    fault_set = fault_g_id_set.union(mis_fault_img_name_set)
+    annos = annos_with_miss_json['annotations']
+    mis_img_name_set = set()
+    for anno in annos:
+        if anno["fault_type"] == 4:
+            img_name = img_id_to_img_name[anno["image_id"]]
+            mis_img_name_set.add(img_name)
+    fault_set = fault_g_id_set.union(mis_img_name_set)
     apfd = compute_apfd(fault_set, rank_res)
     print(f"apfd:{apfd}")
 
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI" # VOC2012, KITTI, VisDrone
+    dataset_name = "VisDrone" # VOC2012, KITTI, VisDrone
     model_name = "FRCNN" # YOLOv7, FRCNN, SSD
     epochs = 50
 
     gt_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,"YOLOv7","gt_bboxs.json")
     predicted_bboxs_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box","v2")
+    annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
 
-    '''1:match'''
+    with open(annos_with_miss_json_path, 'r') as f:
+        annos_with_miss_json = json.load(f)
+
+    '''
+    # 1:match
     match_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "gp_box_match")
     os.makedirs(match_save_dir,exist_ok=True)
     match_json_save_path = os.path.join(match_save_dir,"match_v2.json")
@@ -890,30 +985,42 @@ if __name__ == "__main__":
         offset = True
     match(match_json_save_path,offset=offset)
 
-    '''2:metirc'''
+    # 2:metirc
     collection_metric_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "collection_metric")
     os.makedirs(collection_metric_save_dir,exist_ok=True)
     metric_save_path = os.path.join(collection_metric_save_dir,"collection_metrics_v2.json")
     gt_box_metric_collection(match_json_save_path,metric_save_path)
     
-    '''3: 绘制metric line'''
+    # 3: 绘制metric line
     correct_vs_fault(metric_save_path)
+    '''
 
-    '''4: 保存排序结果'''
+    # 4: 得到并保存排序结果
+    metric_save_path = get_ours_gt_box_metric_path(dataset_name,model_name)
+    match_json_save_path = get_ours_match_path(dataset_name,model_name)
     # gid排序
     g_id_to_features,feature_name_to_sign = gt_box_features_build(metric_save_path)
-    ranked_gid_list = rank_gid(g_id_to_features,feature_name_to_sign)
+    ranked_gid_list, topsis_score_list = rank_gid(g_id_to_features,feature_name_to_sign)
+
+    '''
     # img排序
-    ranked_img_list,detected_mis_img_name_list = misimg_detect(match_json_save_path)
-    rank_res = total_rank(ranked_gid_list,ranked_img_list)
-    rank_res_save_dir = os.path.join(exp_root_dir, "Ours", dataset_name, model_name, "rank_res")
+    ranked_img_list,detected_mis_img_name_list = misimg_detect_by_weight_score(match_json_save_path)
+    # gid与img name两个序列合并成一个序列
+    rank_res = total_rank_by_loc(ranked_gid_list,ranked_img_list)
+    '''
+    
+    # img name to topsis score
+    img_name_to_topsis_score = misimg_detect_by_topsis(match_json_save_path)
+    # gid与img name topsis score合并
+    rank_res = total_rank_by_topsis_score(ranked_gid_list,topsis_score_list,img_name_to_topsis_score)
+
+    rank_res_save_dir = os.path.join(exp_root_dir, "final_res", "ours", dataset_name, model_name, "rank_res")
     os.makedirs(rank_res_save_dir,exist_ok=True)
-    rank_res_save_file_name = "rank.joblib"
+    rank_res_save_file_name = "rank_topsis.joblib"
     rank_res_save_path = os.path.join(rank_res_save_dir, rank_res_save_file_name)
     joblib.dump(rank_res, rank_res_save_path)
     print(f"rank res is saved in {rank_res_save_path}")
     eval_apfd(rank_res) 
-    
-    
+
 
 
