@@ -69,7 +69,7 @@ def set_nms(model, model_name, conf_threshold=0.25,iou_threshold=0.65):
 
 def model_load_weight(model,epoch):
     # 加载模型
-    w_path = os.path.join(model_pth_dir,f"epoch_{epoch}.pth")
+    w_path = os.path.join(error_model_pth_dir,f"epoch_{epoch}.pth")
     state_dict = torch.load(w_path,map_location="cpu")
     model.load_state_dict(state_dict)
     return model
@@ -152,11 +152,11 @@ def collect_predicted_box():
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
     model_name = "FRCNN" # FRCNN|SSD
     gpu_id = 0
     num_epochs = 50
-    model_pth_dir = os.path.join(exp_data_root_dir,"models",f"{dataset_name.lower()}_error", model_name, "v2")
+    error_model_pth_dir = os.path.join(exp_data_root_dir,"models",dataset_name.lower(),model_name.lower(),"error")
     collect_save_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box", "v2")
     os.makedirs(collect_save_dir,exist_ok=True)
     collect_predicted_box()

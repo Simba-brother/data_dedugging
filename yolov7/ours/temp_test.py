@@ -80,11 +80,13 @@ def test_8():
         if len(idxs) > 1:
             print(f"重复行号 {idxs}: {k}")
 
-
+def test_9():
+    for i in range(1,10):
+        print(i)
 
 if __name__ == "__main__":
     # test_2()
-    test_8()
+    test_9()
     # bbox = [0.499,0.4866666666666667,0.106,0.14666666666666667]
     # W = 500
     # H = 375

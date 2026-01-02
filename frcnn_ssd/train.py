@@ -14,7 +14,8 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import pandas as pd
 import os
-from base_data_manager import get_correct_ann_file_path,get_error_ann_file_path, get_imgs_dir
+from base_data_manager import (get_correct_ann_file_path,get_error_ann_file_path, get_imgs_dir, 
+                               get_error_train_model_weight_file_path, get_repair_ann_file_path)
 import time
 # conf_threshold = 0.8
 # Transform PIL image --> PyTorch tensor
@@ -156,7 +157,13 @@ def save_epoch(model,epoch):
     torch.save(model.state_dict(), save_path)
     return save_path
 
-def train():
+def model_load_weight(model,model_weight_path):
+    # 加载模型
+    state_dict = torch.load(model_weight_path,map_location="cpu")
+    model.load_state_dict(state_dict)
+    return model
+
+def train(model_weight_path=None):
     start_time = time.time()  # 记录开始时间
     # 加载FRCNN模型（预训练）
     # Load a pre-trained Faster R-CNN model with ResNet50 backbone and FPN, , you change this 
@@ -180,7 +187,8 @@ def train():
     # 设备
     device = torch.device(f"cuda:{gpu_id}")
     model.to(device)
-
+    if model_weight_path is not None:
+        model_load_weight(model,model_weight_path)
     # 训练参数
     '''
     # 锁住Backbone params
@@ -355,18 +363,31 @@ if __name__ == "__main__":
     dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
     model_name = "FRCNN" # FRCNN|SSD
     trainset_status = "error" # clean|error|repair_datactive|repair_ours
-    gpu_id = 1
-    init_lr = 5e-3  # FRCNN:5e-4,SSD:1e-3
-    num_epochs = 50
+
+    if trainset_status in ["repair_ours", "repair_datactive"]:
+        model_weight_path = get_error_train_model_weight_file_path(dataset_name,model_name,epoch=49)
+        num_epochs = 25
+    else:
+        model_weight_path = None
+        num_epochs = 50
+    gpu_id = 0
+    init_lr = 5e-3  # SSD:1e-3
     epoch_save_dir = os.path.join(exp_data_root_dir,"models",dataset_name.lower(),
                                   model_name.lower(), trainset_status)
     os.makedirs(epoch_save_dir,exist_ok=True)
     train_imgs_dir = get_imgs_dir(dataset_name,"train",style="coco")
     val_imgs_dir = get_imgs_dir(dataset_name,"val",style="coco")
 
-    # train_annotation_path = get_correct_ann_file_path(dataset_name,"train")
-    train_annotation_path = get_error_ann_file_path(dataset_name)
+    if trainset_status == "clean":
+        train_annotation_path = get_correct_ann_file_path(dataset_name,"train")
+    elif trainset_status == "error":
+        train_annotation_path = get_error_ann_file_path(dataset_name)
+    elif trainset_status == "repair_ours":
+        train_annotation_path = get_repair_ann_file_path(dataset_name,"ours",model_name)
+    elif trainset_status == "repair_datactive":
+        train_annotation_path = get_repair_ann_file_path(dataset_name,"datactive",model_name)
 
     val_annotation_path = get_correct_ann_file_path(dataset_name,"val")
-    train()
+
+    train(model_weight_path)
     # test()

@@ -477,7 +477,8 @@ def train(hyp, opt, device, tb_writer=None):
                 # Save last, best and delete
                 torch.save(ckpt, last)
                 # 每个epoch的model.state_dict被保存下来
-                torch.save(ckpt['model'].float().state_dict(), wdir /f'epoch_{epoch}.pt')
+                if save_each_epoch:
+                    torch.save(ckpt['model'].float().state_dict(), wdir /f'epoch_{epoch}.pt')
                 if best_fitness == fi:
                     torch.save(ckpt, best)
                 '''
@@ -548,12 +549,7 @@ if __name__ == '__main__':
     dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
     gpu_id = 0
-    trainset_stat = "error" # clean|error|repair_datactive|repair_ours
-    model_save_dir = os.path.join(exp_data_root,
-                                  "models",dataset_name.lower(),model_name.lower(),trainset_stat)
-    os.makedirs(model_save_dir,exist_ok=True)
-
-
+    
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', type=str, default='yolov7.pt', help='initial weights path')
     parser.add_argument('--cfg', type=str, default='cfg/training/yolov7.yaml', help='model.yaml path')
@@ -592,6 +588,17 @@ if __name__ == '__main__':
     parser.add_argument('--freeze', nargs='+', type=int, default=[0], help='Freeze layers: backbone of yolov7=50, first3=0 1 2')
     parser.add_argument('--v5-metric', action='store_true', help='assume maximum recall as 1.0 in AP calculation')
     opt = parser.parse_args()
+
+    trainset_stat = "repair_ours" # clean|error|repair_datactive|repair_ours
+    model_save_dir = os.path.join(exp_data_root,
+                                  "models",dataset_name.lower(),model_name.lower(),trainset_stat)
+    os.makedirs(model_save_dir,exist_ok=True)
+    if trainset_stat == ["repair_ours", "repair_datactive"]:
+        save_each_epoch = False
+        opt.weights = os.path.join(exp_data_root, "models", dataset_name.lower(), "yolov7", "error", "weight", "last.pt")
+        opt.epochs = 25
+    else:
+        save_each_epoch = True
 
     # Set DDP variables
     opt.world_size = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1

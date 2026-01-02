@@ -14,9 +14,11 @@ from pathlib import Path
 from collections import defaultdict
 from PIL import Image
 import pandas as pd
+from ours.base_data_manager import get_error_train_model_weight_file_path,get_error_ann_file_path
+from ours.small_utils import get_nc
 
 
-def collect_one_epoch(model,dataloader,epoch):
+def collect_one_epoch(model,dataloader,epoch, conf_thres=0.25,iou_thres=0.65):
     predicted_box_dict = {}
     predicted_box_id = 0
     for batch_i, (img, targets, paths, shapes) in enumerate(dataloader):
@@ -36,7 +38,7 @@ def collect_one_epoch(model,dataloader,epoch):
             out, train_out = model(img, augment=False)
             lb = []  # for autolabelling
             # out:list, len(out):batch_size, out[i]:shape:(obj_num,6):第i个img的box_num和xyxy,conf,cls
-            out = non_max_suppression(out, conf_thres=0.25, iou_thres=0.65, labels=lb, multi_label=True)  # inference and training outputs
+            out = non_max_suppression(out, conf_thres, iou_thres, labels=lb, multi_label=True)  # inference and training outputs
             # Statistics per image
             for si, pred in enumerate(out):
                 if len(pred) == 0:
@@ -77,14 +79,15 @@ def collect_one_epoch(model,dataloader,epoch):
                     item["predicted_cls"] = int(cls)
                 '''
 
-    save_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,"YOLOv7","collected_predicted_box")
+    save_dir = collect_p_box_dir
     os.makedirs(save_dir,exist_ok=True)
     save_json_file_name = f"epoch_{epoch}_predicted_bboxs.json"
     save_json_path = os.path.join(save_dir,save_json_file_name)
     with open(save_json_path, "w", encoding="utf-8") as f:
         json.dump(predicted_box_dict, f, indent=4)
+    print(f"数据保存在:{predicted_box_dict}")
 
-def collect_predicted_box():
+def collect_predicted_box(conf_thres=0.25,iou_thres=0.65):
     # 拿到数据yaml文件
     data = f"data/{dataset_name}.yaml"
     with open(data) as f:
@@ -103,46 +106,26 @@ def collect_predicted_box():
 
     for epoch in range(epochs):
         # 轮次权重
-        weights_path = os.path.join(exp_data_root,"models",f"{dataset_name.lower()}_error","yolov7",f"epoch_{epoch}.pt")
+        # weights_path = os.path.join(exp_data_root,"models",f"{dataset_name.lower()}_error","yolov7",f"epoch_{epoch}.pt")
+        weights_path = get_error_train_model_weight_file_path(dataset_name,model_name,epoch)
         state_dict = torch.load(weights_path, map_location=device)  # load checkpoint
         # 注入权重
         model.load_state_dict(state_dict, strict=True)
         # 模型评估
         model.eval()
-        collect_one_epoch(model,dataloader,epoch)
-
-
-def get_all_files(directory):
-    files = []
-    for filename in os.listdir(directory):
-        filepath = os.path.join(directory, filename)
-        if os.path.isfile(filepath):
-            files.append(filepath)
-    return files
-
-
-def search_annotations_by_img_id(img_id,annotations_no_miss):
-    annos_of_img = []
-    annotations = annotations_no_miss["annotations"]
-    # 按照顺序变量annos
-    for anno in annotations:
-        if anno["image_id"] == img_id:
-            annos_of_img.append(anno)
-    # 这张图像顺序的anns
-    return annos_of_img
+        collect_one_epoch(model,dataloader,epoch,conf_thres,iou_thres)
 
 def collect_gt_box():
-    annotations_no_miss_path = os.path.join(exp_data_root,"error_anno",dataset_name,"annotations_no_miss.json")
-    with open(annotations_no_miss_path, 'r') as f:
-        annotations_no_miss = json.load(f)
-    images_list = annotations_no_miss["images"]
+    with open(error_annotations_path, 'r') as f:
+        error_annotations = json.load(f)
+    images_list = error_annotations["images"]
     gt_box_dict  = defaultdict(list)
     box_id = 0
     no_anno_count = 0
     for image in images_list:
         img_id = image["id"]
         # 这张图像顺序的annos,与line是对齐的
-        annos_of_img = search_annotations_by_img_id(img_id,annotations_no_miss)
+        annos_of_img = search_annotations_by_img_id(img_id,error_annotations)
         img_name = image["file_name"]
         imge_name_no_ext = img_name.split(".")[0]
         # 这张图像的yolo anno txt
@@ -170,115 +153,42 @@ def collect_gt_box():
             }
             box_id += 1
             gt_box_dict[img_name].append(box)
-    save_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,"YOLOv7")
+    save_dir = collect_gt_box_dir
     save_json_file_name = "gt_bboxs.json"
     save_json_path = os.path.join(save_dir,save_json_file_name)
     with open(save_json_path, "w", encoding="utf-8") as f:
         json.dump(gt_box_dict, f, indent=4)
-    print(f"collect_gt_box完成，并保存在:{save_json_path}")
+    print(f"collect_gt_box完成, 保存在:{save_json_path}")
 
-def merge_gt_predicted_box():
-    # 加载gt box
-    gt_bboxs_json_path = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,model_name,"gt_bboxs.json")
-    with open(gt_bboxs_json_path,"r") as file:
-        gt_bboxs_dict = json.load(file)
-    all_dict = {}
-    for img_name in gt_bboxs_dict.keys():
-        # 读取图像
-        image_path = os.path.join(exp_data_root,"datasets",f"{dataset_name}-yolo","train","images",img_name)
-        image = Image.open(image_path)
-        width, height = image.size
-        # 得到该张图像下所有gt boxs
-        gt_bboxs = gt_bboxs_dict[img_name]
-        # 遍历该张图像所有轮次
-        predicted_bboxs_over_epoch = []
-        for epoch in range(epochs):
-            epoch_json_path = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,model_name,f"epoch_{epoch}_predicted_bboxs.json")
-            with open(epoch_json_path,"r") as file:
-                epoch_dict = json.load(file)
-            value = epoch_dict.get(img_name)
-            if value is not None:
-                epoch_predicted_bboxs = epoch_dict[img_name]["predicted_bboxs"]
-                predicted_bboxs_over_epoch.append(epoch_predicted_bboxs)
-            else:
-                predicted_bboxs_over_epoch.append(None)
-
-        all_dict[img_name] = {
-            "gt_bboxs":gt_bboxs,
-            "predicted_bboxs_over_epoch":predicted_bboxs_over_epoch,
-            "size":(width,height)
-        }
-        print(f"{img_name}合并完毕")
-    save_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,model_name)
-    save_file_name = "all_gt_predicted.json"
-    save_file_path = os.path.join(save_dir,save_file_name)
-    with open(save_file_path, "w", encoding="utf-8") as f:
-        json.dump(all_dict, f, indent=4)
-
-def record_no_anno_imgs():
-
-    annotations_no_miss_path = os.path.join(exp_data_root,"error_anno",dataset_name,"annotations_no_miss.json")
-    with open(annotations_no_miss_path, 'r') as f:
-        annotations_no_miss = json.load(f)
-    images_list = annotations_no_miss["images"]
-    
-    no_anno_img_name_list = []
-    for image in images_list:
-        img_id = image["id"]
-        annos_of_img = search_annotations_by_img_id(img_id,annotations_no_miss)
-        img_name = image["file_name"]
-        imge_name_no_ext = img_name.split(".")[0]
-        txt_path = os.path.join(exp_data_root,"datasets",f"{dataset_name}-yolo","train","labels",f"{imge_name_no_ext}.txt")
-        with open(txt_path, 'r') as f:
-            lines = f.readlines()
-            if len(lines) == 0:
-                no_anno_img_name_list.append(img_name)
-    
-
-
-    print(len(no_anno_img_name_list))
-    
-                
-
-    # 拿到数据yaml文件
-    data = f"data/{dataset_name}.yaml"
-    with open(data) as f:
-        data = yaml.load(f, Loader=yaml.SafeLoader)
-    gs = max(int(model.stride.max()), 32)  # grid size (max stride)
-    parser = argparse.ArgumentParser()
-    opt = parser.parse_args()
-    opt.single_cls = False
-    dataloader = create_dataloader(data["train"], 640, 32, gs, opt, pad=0.5, rect=True,
-                                prefix=colorstr(f'train: '))[0]
-    loaded_img_size = 0
-    for batch_i, (img, targets, paths, shapes) in enumerate(dataloader):
-        loaded_img_size += len(paths)
-    print(loaded_img_size)
-    
-def get_nc(dataset_name):
-    if dataset_name == "VOC2012":
-        nc = 20
-    elif dataset_name == "KITTI":
-        nc = 9
-    elif dataset_name == "VisDrone":
-        nc = 10
-    else:
-        raise Exception("数据集参数错误")
-    return nc
-
-
+def search_annotations_by_img_id(img_id,annotations_no_miss):
+    annos_of_img = []
+    annotations = annotations_no_miss["annotations"]
+    # 按照顺序变量annos
+    for anno in annotations:
+        if anno["image_id"] == img_id:
+            annos_of_img.append(anno)
+    # 这张图像顺序的anns
+    return annos_of_img
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012, KITTI, VisDrone
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     nc = get_nc(dataset_name)
     model_name = "YOLOv7"
     # 脚本设备
-    device = select_device('0')
+    device = select_device('1')
     # create model 结构
     model = Model("cfg/training/yolov7.yaml", ch=3, nc=nc, anchors=3).to(device)
     epochs = 50
-    # collect_predicted_box()
-    # collect_gt_box()
-    # merge_gt_predicted_box()
-    # record_no_anno_imgs()
+
+    # 收集预测框的存放目录
+    collect_p_box_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box","v2")
+    '''
+    os.makedirs(collect_p_box_dir,exist_ok=True)
+    collect_predicted_box(conf_thres=0.25,iou_thres=0.65)
+    '''
+    
+    error_annotations_path = get_error_ann_file_path(dataset_name)
+    collect_gt_box_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,model_name)
+    collect_gt_box()
+    

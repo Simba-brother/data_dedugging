@@ -12,7 +12,10 @@ import time
 import matplotlib.pyplot as plt
 import pandas as pd
 import topsispy as tp
-from ours.base_data_manager import get_ours_gt_box_metric_path,get_ours_match_path,get_annotations_with_miss_json_path
+from ours.base_data_manager import (get_ours_gt_box_metric_path,
+                                    get_ours_match_path,get_annotations_with_miss_json_path,
+                                    get_collected_gt_box_json_path
+                                    )
 
 def calu_iou(gt_bbox,predicted_bbox):
     x1_min, y1_min, x1_max, y1_max = gt_bbox
@@ -958,23 +961,24 @@ def eval_apfd(rank_res):
             mis_img_name_set.add(img_name)
     fault_set = fault_g_id_set.union(mis_img_name_set)
     apfd = compute_apfd(fault_set, rank_res)
-    print(f"apfd:{apfd}")
+    print(f"APFD:{apfd}")
 
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012, KITTI, VisDrone
-    model_name = "FRCNN" # YOLOv7, FRCNN, SSD
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    model_name = "FRCNN" # YOLOv7|FRCNN|SSD
     epochs = 50
 
-    gt_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,"YOLOv7","gt_bboxs.json")
+    gt_json_path = get_collected_gt_box_json_path(dataset_name)
+    
     predicted_bboxs_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box","v2")
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
 
     with open(annos_with_miss_json_path, 'r') as f:
         annos_with_miss_json = json.load(f)
 
-    '''
+    
     # 1:match
     match_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "gp_box_match")
     os.makedirs(match_save_dir,exist_ok=True)
@@ -993,7 +997,7 @@ if __name__ == "__main__":
     
     # 3: 绘制metric line
     correct_vs_fault(metric_save_path)
-    '''
+    
 
     # 4: 得到并保存排序结果
     metric_save_path = get_ours_gt_box_metric_path(dataset_name,model_name)

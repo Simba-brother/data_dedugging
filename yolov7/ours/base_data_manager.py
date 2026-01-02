@@ -36,7 +36,7 @@ def get_repair_ann_file_path(dataset_name,
 def get_error_train_model_weight_file_path(dataset_name,model_name,epoch):
     model_weight_file_path = ""
     if model_name == "YOLOv7":
-        model_weight_file_path = os.path.join(exp_data_root_dir,"models",f"{dataset_name.lower()}", model_name.lower(), "error", f"epoch_{epoch}.pt")
+        model_weight_file_path = os.path.join(exp_data_root_dir,"models",f"{dataset_name.lower()}", model_name.lower(), "error", "weights", f"epoch_{epoch}.pt")
     elif model_name == "FRCNN":
         model_weight_file_path = os.path.join(exp_data_root_dir,"models",f"{dataset_name.lower()}", model_name.lower(), "error", f"epoch_{epoch}.pth")
     return model_weight_file_path
@@ -65,7 +65,9 @@ def get_imgs_dir(dataset_name,train_or_val,style):
         imgs_dir = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-yolo",train_or_val,"images")
     return imgs_dir
     
-def get_ours_rank_res_path(dataset_name,model_name):
+def get_ours_rank_res_path(dataset_name,model_name,istopsis:bool):
+    if istopsis:
+        return os.path.join(exp_data_root_dir,"final_res","ours",dataset_name,model_name,"rank_res","rank_topsis.joblib")
     return os.path.join(exp_data_root_dir,"final_res","ours",dataset_name,model_name,"rank_res","rank.joblib")
 
 def get_datactive_rank_res_path(dataset_name):

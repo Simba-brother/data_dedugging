@@ -3,6 +3,8 @@ import os
 import joblib
 import json
 from collections import defaultdict
+from ours.base_data_manager import (get_ours_rank_res_path,get_collected_gt_box_json_path,
+                                    get_error_ann_file_path,get_correct_ann_file_path)
 
 def get_gid_to_img_and_line():
     res = {}
@@ -23,11 +25,11 @@ def get_img_name_to_ann_ids():
 
     res = defaultdict(list)
 
-    with open(anno_no_miss_path, 'r') as f:
-        anno_no_miss = json.load(f)
-    annos = anno_no_miss["annotations"]
+    with open(anno_error_path, 'r') as f:
+        anno_error = json.load(f)
+    annos = anno_error["annotations"]
 
-    images = anno_no_miss["images"]
+    images = anno_error["images"]
     img_id_to_img_name = {}
     for image in images:
         img_id = image["id"]
@@ -165,31 +167,24 @@ def repair_anno_json(cur_anno_json,recify_info):
     return cur_anno_json
 
 
-
-
-
-
 def main():
-    gid_to_anno_id = get_gid_to_anno_id()
     # 得到修复信息
     repair_info = get_repair_info()
     # 修复anno
-    with open(anno_no_miss_path,"r") as f:
-        anno_no_miss_json = json.load(f)
-    new_annos = repair_anno_json(anno_no_miss_json,repair_info)
-    with open(new_anno_save_path,"w") as f:
+    with open(anno_error_path,"r") as f:
+        anno_error_json = json.load(f)
+    new_annos = repair_anno_json(anno_error_json,repair_info)
+    with open(repair_anno_save_path,"w") as f:
         json.dump(new_annos,f)
-    print(f"修复的anno json保存在:{new_anno_save_path}")
-
-
+    print(f"修复的anno json保存在:{repair_anno_save_path}")
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012, KITTI, VisDrone
-    model_name = "FRCNN" # YOLOv7, FRCNN, SSD
-    rank_res = joblib.load(os.path.join(exp_root_dir,"Ours",dataset_name,model_name,"rank_res","rank.joblib"))
-    gt_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,"YOLOv7","gt_bboxs.json")
-    anno_no_miss_path = os.path.join(exp_root_dir,"error_anno",dataset_name,"annotations_no_miss.json")
-    anno_correct_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train","_annotations.coco_correct.json")
-    new_anno_save_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train",f"_annotations.coco_repair_{model_name}.json")
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
+    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
+    rank_res = joblib.load(get_ours_rank_res_path(dataset_name,model_name,istopsis=True))
+    gt_json_path = get_collected_gt_box_json_path(dataset_name)
+    anno_error_path = get_error_ann_file_path(dataset_name)
+    anno_correct_path = get_correct_ann_file_path(dataset_name,"train")
+    repair_anno_save_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train",f"_annotations.coco_repair_ours_{model_name}.json")
     main()
