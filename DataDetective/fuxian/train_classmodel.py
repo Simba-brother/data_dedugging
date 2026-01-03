@@ -145,7 +145,7 @@ def train():
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|VisDrone|KITTI
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     img_root_dir = f"{exp_data_root}/datasets/{dataset_name}-coco/train"
     annotation_path = f"{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json"
     mask_type = "other_objects" # crop | other_objects
@@ -155,11 +155,13 @@ if __name__ == "__main__":
         class_num = 11 # 10 + 1
     elif dataset_name == "KITTI":
         class_num = 10 # 9 + 1
+    elif dataset_name == "KITTI_8":
+        class_num = 9 # 8 + 1
     else:
         raise Exception("数据集名称错误")
     epoches = 13
-    device = torch.device("cuda:0")
-    model_save_dir = f"{exp_data_root}/DataDetective/{dataset_name}/saved_models/{mask_type}"
+    device = torch.device("cuda:1")
+    model_save_dir = f"{exp_data_root}/final_res/datactive/{dataset_name}/saved_models/{mask_type}"
     os.makedirs(model_save_dir,exist_ok=True)
     train()
 

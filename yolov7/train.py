@@ -548,7 +548,7 @@ if __name__ == '__main__':
     exp_data_root = "/data/mml/data_debugging_data"
     dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
-    gpu_id = 0
+    gpu_id = 1
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', type=str, default='yolov7.pt', help='initial weights path')
@@ -593,10 +593,10 @@ if __name__ == '__main__':
     model_save_dir = os.path.join(exp_data_root,
                                   "models",dataset_name.lower(),model_name.lower(),trainset_stat)
     os.makedirs(model_save_dir,exist_ok=True)
-    if trainset_stat == ["repair_ours", "repair_datactive"]:
-        save_each_epoch = False
-        opt.weights = os.path.join(exp_data_root, "models", dataset_name.lower(), "yolov7", "error", "weight", "last.pt")
+    if trainset_stat in ["repair_ours", "repair_datactive"]:
+        opt.weights = os.path.join(exp_data_root, "models", dataset_name.lower(), "yolov7", "error", "weights", "last.pt")
         opt.epochs = 25
+        save_each_epoch = False
     else:
         save_each_epoch = True
 

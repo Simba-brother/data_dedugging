@@ -360,9 +360,9 @@ def collection_FRCNN_indicator(model,device,dataloader,epoch):
 if __name__ == "__main__":
 
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "FRCNN" # FRCNN|SSD
-    trainset_status = "error" # clean|error|repair_datactive|repair_ours
+    trainset_status = "repair_ours" # clean|error|repair_datactive|repair_ours
 
     if trainset_status in ["repair_ours", "repair_datactive"]:
         model_weight_path = get_error_train_model_weight_file_path(dataset_name,model_name,epoch=49)

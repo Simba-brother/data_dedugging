@@ -180,8 +180,8 @@ def main():
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    model_name = "FRCNN" # YOLOv7|FRCNN|SSD
     rank_res = joblib.load(get_ours_rank_res_path(dataset_name,model_name,istopsis=True))
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     anno_error_path = get_error_ann_file_path(dataset_name)

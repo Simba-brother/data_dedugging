@@ -158,14 +158,14 @@ def main():
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
-    ranked_list = joblib.load(os.path.join(exp_root_dir,"DataDetective",dataset_name,"ranked_result","ranked_list.joblib"))
-    anno_no_miss_path = os.path.join(exp_root_dir,"error_anno",dataset_name,"annotations_no_miss.json")
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    ranked_list = joblib.load(os.path.join(exp_root_dir,"final_res","datactive",dataset_name,"ranked_result","ranked_list.joblib"))
+    anno_no_miss_path = os.path.join(exp_root_dir,"error_anno",dataset_name,"coco_format","annotations_no_miss.json")
     coco = COCO(anno_no_miss_path)
     catIds = coco.getCatIds()
     bg_id = catIds[-1]+1
     anno_correct_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train",
                                      "_annotations.coco_correct.json")
     new_anno_save_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train",
-                                      "_annotations.coco_repair_baseline_1.json")
+                                      "_annotations.coco_repair_datactive.json")
     main()

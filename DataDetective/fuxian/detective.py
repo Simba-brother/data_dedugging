@@ -59,11 +59,18 @@ def main():
     results = sorted(crop_list, key=lambda x: x['loss'], reverse=True)
 
     # 得到ground truth  miss img names
-    fault_records_df = pd.read_csv(fault_records_csv_path)
+    with open(annotation_with_miss_path,"r") as f:
+        annotation_with_miss = json.load(f)
+    images = annotation_with_miss["images"]
+    image_id_to_image_name = {}
+    for image in images:
+        image_id_to_image_name[image["id"]] = image["file_name"]
+
+    annos = annotation_with_miss["annotations"]
     miss_img_name_list = []
-    for row_i, row in fault_records_df.iterrows():
-        if row["fault_type"] == fault_type["missing_fault"]:
-            miss_img_name_list.append(row["img_name"])
+    for anno in annos:
+        if anno["fault_type"] == fault_type["missing_fault"]:
+            miss_img_name_list.append(image_id_to_image_name[anno["image_id"]])
     
     for i in range(len(results)):
         if int(results[i]["gt_category_id"]) == bg_clss_id:
@@ -127,18 +134,21 @@ if __name__ == "__main__":
             'missing_fault': 4,
     }
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
-    crop_infer_results_path=f'{exp_data_root}/DataDetective/{dataset_name}/infer_results/crop.json'
-    others_infer_results_path=f'{exp_data_root}/DataDetective/{dataset_name}/infer_results/other_objects.json'
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    
+    crop_infer_results_path=f'{exp_data_root}/final_res/datactive/{dataset_name}/infer_results/crop.json'
+    others_infer_results_path=f'{exp_data_root}/final_res/datactive/{dataset_name}/infer_results/other_objects.json'
+
     annotation_path=f'{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json'
-    fault_records_csv_path = os.path.join(exp_data_root,"error_anno",dataset_name,"fault_records.csv")
-    rank_result_save_path = f"{exp_data_root}/DataDetective/{dataset_name}/ranked_result/ranked_list.joblib"
-    rank_res = joblib.load(rank_result_save_path)
+    annotation_with_miss_path = os.path.join(exp_data_root,"error_anno",dataset_name,"coco_format", "annotations_with_miss.json")
+    rank_result_save_path = os.path.join(exp_data_root,"final_res","datactive",dataset_name, "ranked_result", "ranked_list.joblib")
     if dataset_name == "VOC2012":
         bg_clss_id = 20
-    elif dataset_name == "KITTI":
+    elif dataset_name == "KITTI": # 9 个 clss
         bg_clss_id = 9
-    elif dataset_name == "VisDrone":
+    elif dataset_name == "KITTI_8": # 8 个 clss
+        bg_clss_id = 8
+    elif dataset_name == "VisDrone": # 10 个 clss
         bg_clss_id = 10
 
     apfd = main()
