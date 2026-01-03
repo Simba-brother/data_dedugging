@@ -694,6 +694,19 @@ def misimg_detect_by_topsis(match_json_path, last_epoch=5):
     
     
     img_name_to_topsis_score = get_img_to_topsis_score(img_to_clusters,last_epoch)
+    
+    no_clusters_image_name_set = set(all_img_name_list) - set(img_name_to_topsis_score.keys())
+    for img_name in no_clusters_image_name_set:
+        img_name_to_topsis_score[img_name] = 0
+    '''
+    ranked_img_list = []
+    for detected_img_name in detected_mis_img_name_list:
+        ranked_img_list.append(detected_img_name)
+
+    for img_name in all_img_name_list:
+        if img_name not in ranked_img_list:
+            ranked_img_list.append(img_name)
+    '''
     return img_name_to_topsis_score
 
 
@@ -970,6 +983,7 @@ if __name__ == "__main__":
     model_name = "FRCNN" # YOLOv7|FRCNN|SSD
     epochs = 50
 
+
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     
     predicted_bboxs_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box","v2")
@@ -978,7 +992,7 @@ if __name__ == "__main__":
     with open(annos_with_miss_json_path, 'r') as f:
         annos_with_miss_json = json.load(f)
 
-    
+    '''
     # 1:match
     match_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "gp_box_match")
     os.makedirs(match_save_dir,exist_ok=True)
@@ -997,7 +1011,7 @@ if __name__ == "__main__":
     
     # 3: 绘制metric line
     correct_vs_fault(metric_save_path)
-    
+    '''
 
     # 4: 得到并保存排序结果
     metric_save_path = get_ours_gt_box_metric_path(dataset_name,model_name)
@@ -1017,14 +1031,15 @@ if __name__ == "__main__":
     img_name_to_topsis_score = misimg_detect_by_topsis(match_json_save_path)
     # gid与img name topsis score合并
     rank_res = total_rank_by_topsis_score(ranked_gid_list,topsis_score_list,img_name_to_topsis_score)
-
+    print(f"rank_res的长度:{len(rank_res)}") 
+    eval_apfd(rank_res)
     rank_res_save_dir = os.path.join(exp_root_dir, "final_res", "ours", dataset_name, model_name, "rank_res")
     os.makedirs(rank_res_save_dir,exist_ok=True)
     rank_res_save_file_name = "rank_topsis.joblib"
     rank_res_save_path = os.path.join(rank_res_save_dir, rank_res_save_file_name)
     joblib.dump(rank_res, rank_res_save_path)
     print(f"rank res is saved in {rank_res_save_path}")
-    eval_apfd(rank_res) 
+    
 
 
 

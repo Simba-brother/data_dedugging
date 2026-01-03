@@ -124,7 +124,7 @@ def main():
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     # datactive 排序的idd
     ranked_list = joblib.load(get_datactive_rank_res_path(dataset_name))
     print(f"rank_res长度:{len(ranked_list)}")

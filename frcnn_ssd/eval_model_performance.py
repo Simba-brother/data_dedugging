@@ -17,7 +17,8 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 from engine import evaluate
 from base_data_manager import (get_correct_ann_file_path,get_error_train_model_weight_file_path,
-                               get_imgs_dir,exp_data_root_dir)
+                               get_imgs_dir,exp_data_root_dir,get_clean_train_model_weight_file_path,
+                               get_repair_train_model_weight_file_path,)
 
 def get_transform():
     return ToTensor()
@@ -144,10 +145,18 @@ def eval_performance():
 
 
 if __name__ == "__main__":
-    dataset_name = "VisDrone" # VOC2012|KITTI|VisDrone
+    dataset_name = "VOC2012" # VOC2012|KITTI|VisDrone
     model_name = "FRCNN" # FRCNN, SSD
-    gpu_id = 0
+    model_state = "clean" # clean|error|repair_ours|repair_datactive
+    gpu_id = 1
     train_or_val = "val" # train|val
     ANN_FILE = get_correct_ann_file_path(dataset_name,train_or_val)
-    model_weights_path = get_error_train_model_weight_file_path(dataset_name,model_name,epoch=49)
+    if model_state == "clean":
+        model_weights_path = get_clean_train_model_weight_file_path(dataset_name,model_name)
+    elif model_state == "error":
+        model_weights_path = get_error_train_model_weight_file_path(dataset_name,model_name,epoch=49)
+    elif model_state == "repair_ours":
+        model_weights_path = get_repair_train_model_weight_file_path(dataset_name,model_name,method_name="ours")
+    elif model_state == "repair_datactive":
+        model_weights_path = get_repair_train_model_weight_file_path(dataset_name,model_name,method_name="datactive")
     eval_performance()

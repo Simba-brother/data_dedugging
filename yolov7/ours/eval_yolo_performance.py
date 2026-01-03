@@ -373,16 +373,19 @@ if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
-    model_state = "repair_datactive" # clean|error|repair_ours|repair_datactive
+    model_state = "error" # clean|error|repair_ours|repair_datactive
     train_or_val = "val"
     gpu_id = 1
     ANN_FILE = get_correct_ann_file_path(dataset_name,train_or_val)
     cocoGt = COCO(ANN_FILE)
-
-    # weights_path = get_clean_train_model_weight_file_path(dataset_name,model_name)
-    # weights_path = get_error_train_model_weight_file_path(dataset_name,model_name,epoch=49)
-    # weights_path = get_repair_train_model_weight_file_path(dataset_name,model_name,method_name="ours")
-    weights_path = get_repair_train_model_weight_file_path(dataset_name,model_name,method_name="datactive")
+    if model_state == "clean":
+        weights_path = get_clean_train_model_weight_file_path(dataset_name,model_name)
+    elif model_state == "error":
+        weights_path = get_error_train_model_weight_file_path(dataset_name,model_name,epoch=49)
+    elif model_state == "repair_ours":
+        weights_path = get_repair_train_model_weight_file_path(dataset_name,model_name,method_name="ours")
+    elif model_state == "repair_datactive":
+        weights_path = get_repair_train_model_weight_file_path(dataset_name,model_name,method_name="datactive")
     # buquan_anno_file()
     eval_perform_coco_style()
 

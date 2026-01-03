@@ -36,9 +36,9 @@ def get_repair_ann_file_path(dataset_name,
 def get_error_train_model_weight_file_path(dataset_name,model_name,epoch):
     model_weight_file_path = ""
     if model_name == "YOLOv7":
-        model_weight_file_path = os.path.join(exp_data_root_dir,"models",f"{dataset_name.lower()}", model_name.lower(), "error", f"epoch_{epoch}.pt")
+        model_weight_file_path = os.path.join(exp_data_root_dir,"models",dataset_name.lower(), model_name.lower(), "error", f"epoch_{epoch}.pt")
     elif model_name == "FRCNN":
-        model_weight_file_path = os.path.join(exp_data_root_dir,"models",f"{dataset_name.lower()}", model_name.lower(), "error", f"epoch_{epoch}.pth")
+        model_weight_file_path = os.path.join(exp_data_root_dir,"models",dataset_name.lower(), model_name.lower(), "error", f"epoch_{epoch}.pth")
     return model_weight_file_path
 
 def get_repair_train_model_weight_file_path(dataset_name,model_name, method_name):
