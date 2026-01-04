@@ -546,9 +546,9 @@ def train(hyp, opt, device, tb_writer=None):
 if __name__ == '__main__':
 
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
-    gpu_id = 1
+    gpu_id = 0
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', type=str, default='yolov7.pt', help='initial weights path')
@@ -589,7 +589,7 @@ if __name__ == '__main__':
     parser.add_argument('--v5-metric', action='store_true', help='assume maximum recall as 1.0 in AP calculation')
     opt = parser.parse_args()
 
-    trainset_stat = "repair_ours" # clean|error|repair_datactive|repair_ours
+    trainset_stat = "repair_datactive" # clean|error|repair_ours|repair_datactive
     model_save_dir = os.path.join(exp_data_root,
                                   "models",dataset_name.lower(),model_name.lower(),trainset_stat)
     os.makedirs(model_save_dir,exist_ok=True)

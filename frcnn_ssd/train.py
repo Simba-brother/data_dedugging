@@ -124,8 +124,6 @@ def build_model(model_name,nc):
         # # 用新的头部替换预先训练好的头部
         model.head.classification_head=SSDClassificationHead(in_channels=c_in_features,num_anchors=num_anchors,num_classes=nc)
 
-        
-
     else:
         raise Exception("模型名称传入错误")
     return model
@@ -360,9 +358,9 @@ def collection_FRCNN_indicator(model,device,dataloader,epoch):
 if __name__ == "__main__":
 
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
     model_name = "FRCNN" # FRCNN|SSD
-    trainset_status = "repair_ours" # clean|error|repair_datactive|repair_ours
+    trainset_status = "repair_datactive" # clean|error|repair_datactive|repair_ours
 
     if trainset_status in ["repair_ours", "repair_datactive"]:
         model_weight_path = get_error_train_model_weight_file_path(dataset_name,model_name,epoch=49)
@@ -370,7 +368,7 @@ if __name__ == "__main__":
     else:
         model_weight_path = None
         num_epochs = 50
-    gpu_id = 0
+    gpu_id = 1
     init_lr = 5e-3  # SSD:1e-3
     epoch_save_dir = os.path.join(exp_data_root_dir,"models",dataset_name.lower(),
                                   model_name.lower(), trainset_status)
