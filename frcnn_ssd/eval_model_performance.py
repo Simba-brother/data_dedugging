@@ -19,7 +19,7 @@ from engine import evaluate
 from base_data_manager import (get_correct_ann_file_path,get_error_train_model_weight_file_path,
                                get_imgs_dir,exp_data_root_dir,get_clean_train_model_weight_file_path,
                                get_repair_train_model_weight_file_path,)
-
+from customROI import RoIHeadsCustom
 def get_transform():
     return ToTensor()
 
@@ -40,7 +40,41 @@ def build_frcnn_model(num_classes):
     Number of classes must be equal to your label number
     """
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+
+
+    # 替换成我们的 RoIHeads
+
+    # 获取原 roi_heads 参数（很关键）
+    rh = model.roi_heads
+
+    model.roi_heads = RoIHeadsCustom(
+        rh.box_roi_pool,
+        rh.box_head,
+        rh.box_predictor,
+
+        # ---- Training ----
+        rh.proposal_matcher.high_threshold,
+        rh.proposal_matcher.low_threshold,
+        rh.fg_bg_sampler.batch_size_per_image,
+        rh.fg_bg_sampler.positive_fraction,
+        rh.box_coder.weights,
+
+        # ---- Inference ----
+        rh.score_thresh,
+        rh.nms_thresh,
+        rh.detections_per_img,
+
+        # ---- Mask / Keypoints（保持原样） ----
+        rh.mask_roi_pool,
+        rh.mask_head,
+        rh.mask_predictor,
+        rh.keypoint_roi_pool,
+        rh.keypoint_head,
+        rh.keypoint_predictor,
+    )
+    
     return model
+
 
 
 def model_load_weight(model,model_weights_path):
@@ -128,7 +162,17 @@ def eval_performance():
     # model = set_nms(model, model_name, conf_threshold=0.25,iou_threshold=0.5)
     
     model.eval()
+    for images, targets in train_loader:
+        all_labels = torch.cat([t["labels"] for t in targets])
+        # print("num_classes in model:", model.roi_heads.box_predictor.cls_score.out_features)
+        # print("max label in batch:", int(all_labels.max()))
+        # print("min label in batch:", int(all_labels.min()))
+        images = list(img.to(device) for img in images)
+        outputs = model(images)
+        print()
+
     evaluate(model, train_loader, device=device)  # Using val_loader for evaluation
+
     '''
     # 开始评估
     coco_results = get_coco_results(model, train_loader, device, score_thresh=0.0)
@@ -148,7 +192,7 @@ if __name__ == "__main__":
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "FRCNN" # FRCNN, SSD
     model_state = "error" # clean|error|repair_ours|repair_datactive
-    gpu_id = 1
+    gpu_id = 0
     train_or_val = "val" # train|val
     ANN_FILE = get_correct_ann_file_path(dataset_name,train_or_val)
     if model_state == "clean":

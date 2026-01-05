@@ -358,7 +358,7 @@ def collection_FRCNN_indicator(model,device,dataloader,epoch):
 if __name__ == "__main__":
 
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "FRCNN" # FRCNN|SSD
     trainset_status = "repair_datactive" # clean|error|repair_datactive|repair_ours
 

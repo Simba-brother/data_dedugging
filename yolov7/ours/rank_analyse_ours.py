@@ -102,8 +102,8 @@ def main():
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "FRCNN" # YOLOv7, FRCNN, SSD
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    model_name = "FRCNN" # YOLOv7|FRCNN|SSD
     # 得到我们方法的排序结果，idd (box)是collected_gt_box中的id(box_id)
     rank_res = joblib.load(get_ours_rank_res_path(dataset_name,model_name,istopsis=True))
     print(f"rank_res长度:{len(rank_res)}")

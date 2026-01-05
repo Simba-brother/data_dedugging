@@ -206,7 +206,7 @@ def match(match_save_path, offset):
             # 获得当前图像g_boxs与当前epoch的p_boxs的匹配关系
             if offset:
                 cur_epoch_p_boxs = offset_p_label(cur_epoch_p_boxs)
-            matches = search_match(g_boxs,cur_epoch_p_boxs,iou_thre=0.5)
+            matches = search_match(g_boxs,cur_epoch_p_boxs,iou_thre=0.3)
             for match in matches:
                 matched_g_box = match[0]
                 p_box = match[1]
@@ -843,7 +843,7 @@ def gt_box_features_build(metric_json_path):
                 "conf_mean":0,
                 "iou_mean":0,
                 "D_conf":1,
-                "D_iou":1,
+                "D_iou":1, 
             }
     return g_id_to_features,feature_name_to_sign
 
@@ -980,7 +980,7 @@ def eval_apfd(rank_res):
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "FRCNN" # YOLOv7|FRCNN|SSD
+    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
     epochs = 50
 
 
@@ -992,11 +992,11 @@ if __name__ == "__main__":
     with open(annos_with_miss_json_path, 'r') as f:
         annos_with_miss_json = json.load(f)
 
-    '''
+    
     # 1:match
     match_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "gp_box_match")
     os.makedirs(match_save_dir,exist_ok=True)
-    match_json_save_path = os.path.join(match_save_dir,"match_v2.json")
+    match_json_save_path = os.path.join(match_save_dir,"match_v2_0.3.json")
     if model_name == "YOLOv7":
         offset = False
     else:
@@ -1006,16 +1006,16 @@ if __name__ == "__main__":
     # 2:metirc
     collection_metric_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "collection_metric")
     os.makedirs(collection_metric_save_dir,exist_ok=True)
-    metric_save_path = os.path.join(collection_metric_save_dir,"collection_metrics_v2.json")
+    metric_save_path = os.path.join(collection_metric_save_dir,"collection_metrics_v2_0.3.json")
     gt_box_metric_collection(match_json_save_path,metric_save_path)
     
     # 3: 绘制metric line
     correct_vs_fault(metric_save_path)
-    '''
+    
 
     # 4: 得到并保存排序结果
-    metric_save_path = get_ours_gt_box_metric_path(dataset_name,model_name)
-    match_json_save_path = get_ours_match_path(dataset_name,model_name)
+    # metric_save_path = get_ours_gt_box_metric_path(dataset_name,model_name)
+    # match_json_save_path = get_ours_match_path(dataset_name,model_name)
     # gid排序
     g_id_to_features,feature_name_to_sign = gt_box_features_build(metric_save_path)
     ranked_gid_list, topsis_score_list = rank_gid(g_id_to_features,feature_name_to_sign)
@@ -1027,6 +1027,7 @@ if __name__ == "__main__":
     rank_res = total_rank_by_loc(ranked_gid_list,ranked_img_list)
     '''
     
+    
     # img name to topsis score
     img_name_to_topsis_score = misimg_detect_by_topsis(match_json_save_path)
     # gid与img name topsis score合并
@@ -1035,7 +1036,7 @@ if __name__ == "__main__":
     eval_apfd(rank_res)
     rank_res_save_dir = os.path.join(exp_root_dir, "final_res", "ours", dataset_name, model_name, "rank_res")
     os.makedirs(rank_res_save_dir,exist_ok=True)
-    rank_res_save_file_name = "rank_topsis.joblib"
+    rank_res_save_file_name = "rank_topsis_0.3.joblib"
     rank_res_save_path = os.path.join(rank_res_save_dir, rank_res_save_file_name)
     joblib.dump(rank_res, rank_res_save_path)
     print(f"rank res is saved in {rank_res_save_path}")

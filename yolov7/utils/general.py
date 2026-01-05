@@ -605,6 +605,102 @@ def box_diou(box1, box2, eps: float = 1e-7):
     return iou - (centers_distance_squared / diagonal_distance_squared)
 
 
+
+def non_max_suppression_with_probs(
+    prediction, conf_thres=0.25, iou_thres=0.45, classes=None,
+    agnostic=False, multi_label=False, labels=()
+):
+    nc = prediction.shape[2] - 5
+    xc = prediction[..., 4] > conf_thres
+
+    min_wh, max_wh = 2, 4096
+    max_det = 300
+    max_nms = 30000
+    time_limit = 10.0
+    redundant = True
+    multi_label &= nc > 1
+    merge = False
+
+    t = time.time()
+    output = [None] * prediction.shape[0]   # ← 注意：每个 image 返回 tuple
+
+    for xi, x in enumerate(prediction):
+        x = x[xc[xi]]
+
+        if labels and len(labels[xi]):
+            l = labels[xi]
+            v = torch.zeros((len(l), nc + 5), device=x.device)
+            v[:, :4] = l[:, 1:5]
+            v[:, 4] = 1.0
+            v[range(len(l)), l[:, 0].long() + 5] = 1.0
+            x = torch.cat((x, v), 0)
+
+        if not x.shape[0]:
+            output[xi] = (torch.zeros((0, 6), device=x.device),
+                          torch.zeros((0, nc), device=x.device))
+            continue
+
+        # ---------- 全类别概率（softmax 后） ----------
+        if nc == 1:
+            x[:, 5:] = x[:, 4:5]
+        else:
+            x[:, 5:] *= x[:, 4:5]
+
+        full_probs = x[:, 5:].clone()    # ← 保存 full probs（关键）
+
+        box = xywh2xyxy(x[:, :4])
+
+        if multi_label:
+            i, j = (x[:, 5:] > conf_thres).nonzero(as_tuple=False).T
+            dets = torch.cat((box[i], x[i, j + 5, None], j[:, None].float()), 1)
+            probs = full_probs[i]
+        else:
+            conf, j = x[:, 5:].max(1, keepdim=True)
+            mask = conf.view(-1) > conf_thres
+
+            dets = torch.cat((box, conf, j.float()), 1)[mask]
+            probs = full_probs[mask]     # ← 同步过滤 full probs
+
+        if classes is not None:
+            cls_mask = (dets[:, 5:6] == torch.tensor(classes, device=x.device)).any(1)
+            dets = dets[cls_mask]
+            probs = probs[cls_mask]
+
+        n = dets.shape[0]
+        if not n:
+            output[xi] = (torch.zeros((0, 6), device=x.device),
+                          torch.zeros((0, nc), device=x.device))
+            continue
+        elif n > max_nms:
+            order = dets[:, 4].argsort(descending=True)[:max_nms]
+            dets = dets[order]
+            probs = probs[order]
+
+        c = dets[:, 5:6] * (0 if agnostic else max_wh)
+        boxes, scores = dets[:, :4] + c, dets[:, 4]
+
+        i = torchvision.ops.nms(boxes, scores, iou_thres)
+
+        if i.shape[0] > max_det:
+            i = i[:max_det]
+
+        if merge and (1 < n < 3E3):
+            iou = box_iou(boxes[i], boxes) > iou_thres
+            weights = iou * scores[None]
+            dets[i, :4] = torch.mm(weights, dets[:, :4]).float() / weights.sum(1, keepdim=True)
+            i = i[iou.sum(1) > 1] if redundant else i
+
+        # ---------- NMS 之后同步过滤 ----------
+        dets = dets[i]
+        probs = probs[i]
+
+        output[xi] = (dets, probs)
+
+        if (time.time() - t) > time_limit:
+            break
+
+    return output
+
 def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic=False, multi_label=False,
                         labels=()):
     """Runs Non-Maximum Suppression (NMS) on inference results

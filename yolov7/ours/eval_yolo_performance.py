@@ -8,7 +8,7 @@ from pathlib import Path
 import argparse
 import torch
 from utils.datasets import create_dataloader
-from utils.general import colorstr,non_max_suppression,scale_coords,xyxy2xywh,xywh2xyxy,box_iou
+from utils.general import colorstr,non_max_suppression, non_max_suppression_with_probs,scale_coords,xyxy2xywh,xywh2xyxy,box_iou
 from models.yolo import Model
 from utils.torch_utils import select_device,time_synchronized
 from tqdm import tqdm
@@ -88,7 +88,6 @@ def get_batch_res(imgs,outs,paths,shapes,name2id):
         img_name = path.name
         img_id = name2id[img_name]
         scale_coords(imgs[si].shape[1:], predn[:, :4], shapes[si][0], shapes[si][1])  # native-space pred
-
         for *xyxy, conf, cls in predn.tolist():
             xywh = xyxy2xywh(xyxy)
             batch_res.append({
@@ -114,7 +113,9 @@ def get_coco_results(dataloader,device,model,name2id):
             # lb = [targets[targets[:, 0] == i, 1:] for i in range(nb)]
             lb = []
             # [shape:(boxs_num,6),]
-            outs = non_max_suppression(outs, conf_thres=0.001, iou_thres=0.65, labels=lb, multi_label=True)
+            outs = non_max_suppression_with_probs(outs, conf_thres=0.001, iou_thres=0.65, labels=lb, multi_label=True)
+            for dets, probs in outs:
+                print(dets.shape, probs.shape)
             batch_res = get_batch_res(imgs,outs,paths,shapes,name2id)
             coco_res.extend(batch_res)
     return coco_res
@@ -371,9 +372,9 @@ def get_COCOANN_FILE(train_or_val:str):
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
-    model_state = "error" # clean|error|repair_ours|repair_datactive
+    model_state = "clean" # clean|error|repair_ours|repair_datactive
     train_or_val = "val"
     gpu_id = 1
     ANN_FILE = get_correct_ann_file_path(dataset_name,train_or_val)
