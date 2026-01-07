@@ -38,7 +38,7 @@ def calu_iou(gt_bbox,predicted_bbox):
         return 0.0
     return inter_area / union_area
 
-def get_iou_matrix(gt_box_list, p_box_list):
+def get_iou_matrix_PG(p_box_list,gt_box_list):
     P = len(p_box_list)
     G = len(gt_box_list)
     iou_matrix = np.zeros((P,G))
@@ -51,9 +51,67 @@ def get_iou_matrix(gt_box_list, p_box_list):
     return iou_matrix
 
 
+def get_iou_matrix_GP(gt_box_list, p_box_list):
+    
+    G = len(gt_box_list)
+    P = len(p_box_list)
+    iou_matrix = np.zeros((G,P))
+    for i,g_box in enumerate(gt_box_list):
+        for j,p_box in enumerate(p_box_list):
+            p_bbox = p_box["bbox"]
+            g_bbox = g_box["gt_bbox"]
+            iou = calu_iou(g_bbox,p_bbox)
+            iou_matrix[i][j] = iou
+    return iou_matrix
+
+def search_match_for_gt(gt_box_list, predicted_box_list, iou_thre=0.5):
+
+    # 仍然按 conf 排序，但不再在 pred 维度贪心
+    predicted_box_list = sorted(predicted_box_list, key=lambda x: x["conf"], reverse=True)
+
+    matches = []
+
+    cls_set = set(gt["cls"] for gt in gt_box_list)
+
+    for cls in cls_set:
+
+        cur_gt = [g for g in gt_box_list if g["cls"] == cls]
+        cur_pred = [p for p in predicted_box_list if p["predicted_cls"] == cls]
+
+        if not cur_gt or not cur_pred:
+            continue
+
+        iou_matrix = get_iou_matrix_GP(cur_gt, cur_pred)
+
+        # 行: gt，列: pred
+        assert iou_matrix.shape == (len(cur_gt), len(cur_pred)), "形状不对"
+
+        used_pred = set()
+
+        for g_idx in range(len(cur_gt)):
+
+            # 当前 GT 找最佳预测框
+            best_pred_idx = iou_matrix[g_idx].argmax().item()
+            best_iou = float(iou_matrix[g_idx, best_pred_idx])
+
+            if best_iou < iou_thre:
+                continue
+
+            if best_pred_idx in used_pred:
+                continue
+
+            used_pred.add(best_pred_idx)
+            matches.append((cur_gt[g_idx], cur_pred[best_pred_idx], best_iou))
+
+    return matches
+
 def search_match(gt_box_list, predicted_box_list, iou_thre=0.5):
     '''
-    一张图像的gt boxs与predicted boxs匹配函数
+    一张图像的gt boxs与predicted boxs匹配函数.
+    args:
+        gt_box_list: 该图像的所有g_boxes
+        predicted_box_list: 该图像在某个轮次的p_boxes
+        iou_thre: pbox与gbox的iou只有大于这个阈值才算match
     '''
     # 将预测框按照conf从大到小进行排序
     predicted_box_list.sort(key=lambda x: x["conf"], reverse=True)
@@ -76,25 +134,26 @@ def search_match(gt_box_list, predicted_box_list, iou_thre=0.5):
         if len(cur_cls_gt_box_list) == 0 or len(cur_cls_p_box_list) == 0:
             continue
         # 获得p_boxs与g_boxs的iou矩阵，shape:(len(p_boxs),len(g_boxs))
-        iou_matrix = get_iou_matrix(cur_cls_gt_box_list,cur_cls_p_box_list)
+        iou_matrix = get_iou_matrix_PG(cur_cls_gt_box_list,cur_cls_p_box_list)
+        assert iou_matrix.shape == (len(cur_cls_p_box_list), len(cur_cls_gt_box_list))
         # 每个p_box(行)匹配最好的g_box
         best_gt_box_id_list = iou_matrix.argmax(axis=1)
         # 每个p_box(行)匹配最好的g_box对应的iou值
         best_iou_list = iou_matrix.max(axis=1)
-        for i,iou_val in enumerate(best_iou_list):
+        for r_i,iou_val in enumerate(best_iou_list):
             iou_val = iou_val.item()
             if iou_val < iou_thre:
                 # 说明这个p_box与所有的g_box的iou都没达到阈值以上
                 continue
             # 这个p_box匹配上了一个g_box
-            best_gt_id = best_gt_box_id_list[i]
+            best_gt_id = best_gt_box_id_list[r_i]
             # 这个g_box被p_box[i]匹配上了
             matched_gt_box = cur_cls_gt_box_list[best_gt_id]
             if matched_gt_box["box_id"] in used_gt:
-                # p_box看中的g_box已经被conf 更大的p_box占有了，就不管你（当前p_box[i]）了!!
+                # p_box看中的g_box已经被conf 更大的p_box占有了，就不管你（当前p_box[r_i]）了!!
                 continue
             used_gt.add(matched_gt_box["box_id"])
-            p_box = cur_cls_p_box_list[i]
+            p_box = cur_cls_p_box_list[r_i]
             matches.append((matched_gt_box,p_box,iou_val))
     return matches
 
@@ -169,24 +228,18 @@ def match(match_save_path, offset):
     # 收集每个g_box在所有轮次中的匹配信息
     # {g_id:[{"epoch":epoch,"g_box":g_box,"p_box":p_box}]}
     gt_box_match = defaultdict(list)
-    # 遍历所有的图像和其g_boxs
-
-    epoch_to_predicts = get_all_epoch(predicted_bboxs_dir)
-    '''
-    p_cls_set = set()
-    for img_name in epoch_to_predicts[49].keys():
-        p_box_list = epoch_to_predicts[49][img_name]["predicted_bboxs"]
-        for p_box in p_box_list:
-            p_cls_set.add(p_box['predicted_cls'])
-    '''
     
-    count = 0
+    # 获得epoh -> predicts
+    epoch_to_predicts = get_all_epoch(predicted_bboxs_dir)
+    # 至少含有一个g_box的img数量
+    with_gtboxed_img_count = 0
+    # 遍历所有的img name和该图像的g_boxes
     for img_name,g_boxs in gt_json.items():
-        count += 1
-        pretty_print(img_name,count)
-        # 当前图像的g_boxs
+        with_gtboxed_img_count += 1
+        pretty_print(img_name,with_gtboxed_img_count,col_nums=10)
+        # 图像路径
         image_path = get_img_path_by_img_name(img_name,"yolo")
-        # 当前图像的width,height
+        # 图像的width,height
         image = Image.open(image_path)
         width, height = image.size
         # 当前图像的g_boxs的bbox格式进行转换
@@ -194,6 +247,7 @@ def match(match_save_path, offset):
             g_box["gt_bbox"] = xcycwh_to_x1y1x2y2(g_box["gt_bbox"],width,height)
         # 在该图像下，遍历所有的epoch预测结果
         for epoch in range(epochs):
+            # 当前epoch下的图像->predicted_boxes
             epoch_predicted_bboxs_dict = epoch_to_predicts[epoch]
             if img_name not in epoch_predicted_bboxs_dict:
                 # 图像在当前epoch下没有预测结果,则直接跳过当前epoch
@@ -206,7 +260,8 @@ def match(match_save_path, offset):
             # 获得当前图像g_boxs与当前epoch的p_boxs的匹配关系
             if offset:
                 cur_epoch_p_boxs = offset_p_label(cur_epoch_p_boxs)
-            matches = search_match(g_boxs,cur_epoch_p_boxs,iou_thre=0.3)
+            # matches = search_match(g_boxs,cur_epoch_p_boxs,iou_thre=0.5)
+            matches = search_match_for_gt(g_boxs,cur_epoch_p_boxs,iou_thre=0.5)
             for match in matches:
                 matched_g_box = match[0]
                 p_box = match[1]
@@ -319,12 +374,35 @@ def get_formatted_time():
     now = datetime.now()
     return now.strftime("%Y-%m-%d_%H:%M:%S")
 
-def draw_line(fault_to_metric_list,metric_name):
+
+def draw_scatter(data_correct,data_cls_fault,data_loc_fault,data_redun_fault,metric_name:str):
+    plt.figure(figsize=(8, 5))
+    _,epoch_num = data_correct.shape
+    epoch_list = range(1, 51)
+    for i in range(epoch_num):
+        plt.scatter(epoch_list, data_correct[i], s=8, alpha=0.5,c="green")
+        # plt.scatter(epoch_list, data_cls_fault[i], s=8, alpha=0.5,c="red")
+        # plt.scatter(epoch_list, data_loc_fault[i], s=8, alpha=0.5,c="blue")
+        # plt.scatter(epoch_list, data_redun_fault[i], s=8, alpha=0.5,c="black")
+
+    plt.xlabel("Epoch")
+    plt.ylabel(metric_name)
+    plt.title(f"{metric_name} across epochs")
+    plt.grid(True)
+    plt.tight_layout()
+    save_dir = os.path.join(exp_root_dir,"imgs","correct_vs_error_box",f"{metric_name}_scatter")
+    os.makedirs(save_dir,exist_ok=True)
+    suffix = get_formatted_time()
+    save_path = os.path.join(save_dir,f"{dataset_name}_{model_name}_{suffix}.png")
+    plt.savefig(save_path)
+    print("correct_vs_error is saved in",save_path)
+
+def draw_line(fault_to_metric_list,metric_name,stat_name):
      # 准备 x 轴 epoch
-    no_fault_list = fault_to_metric_list[0][f"{metric_name}_avg"]
-    cls_fault_list = fault_to_metric_list[1][f"{metric_name}_avg"]
-    loc_fault_list = fault_to_metric_list[2][f"{metric_name}_avg"]
-    redundancy_fault_list = fault_to_metric_list[3][f"{metric_name}_avg"]
+    no_fault_list = fault_to_metric_list[0][f"{metric_name}_{stat_name}"]
+    cls_fault_list = fault_to_metric_list[1][f"{metric_name}_{stat_name}"]
+    loc_fault_list = fault_to_metric_list[2][f"{metric_name}_{stat_name}"]
+    redundancy_fault_list = fault_to_metric_list[3][f"{metric_name}_{stat_name}"]
 
     epoch_list = range(1, 51)
     plt.figure(figsize=(8, 5))
@@ -334,12 +412,12 @@ def draw_line(fault_to_metric_list,metric_name):
     plt.plot(epoch_list, redundancy_fault_list, label="redundancy fault", marker='o', color = "black")
 
     plt.xlabel("Epoch")
-    plt.ylabel(f"Mean {metric_name.upper()}")
-    plt.title(f"Mean {metric_name.upper()} Over 50 Epochs")
+    plt.ylabel(f"{stat_name} {metric_name.upper()}")
+    plt.title(f"{stat_name} {metric_name.upper()} Over 50 Epochs")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    save_dir = os.path.join(exp_root_dir,"imgs","correct_vs_error_box",f"{metric_name}_avg")
+    save_dir = os.path.join(exp_root_dir,"imgs","correct_vs_error_box",f"{metric_name}_{stat_name}")
     os.makedirs(save_dir,exist_ok=True)
     suffix = get_formatted_time()
     save_path = os.path.join(save_dir,f"{dataset_name}_{model_name}_{suffix}.png")
@@ -359,6 +437,12 @@ def correct_vs_fault(metric_json_path):
             g_box_id_to_info[g_box_id] = g_box
 
     # gt_box按照fault_type分组
+    '''
+    {
+        0:[item,]
+        1:[item,...]
+    }
+    '''
     group_dict = defaultdict(list)
     for g_id in g_box_id_to_info.keys():
         if g_id in g_box_id_to_metric:
@@ -390,25 +474,48 @@ def correct_vs_fault(metric_json_path):
             }
         group_dict[fault_type].append(item)
 
-    fault_to_metric_list = {}
+    fault_to_metric = {}
     for fault_type in group_dict.keys():
+        # 该错误下的g_box收集的confi_list和iou_list
         item_list = group_dict[fault_type]
         conf_list_list = []
         iou_list_list = []
         for item in item_list:
             conf_list_list.append(item["conf_list"])
             iou_list_list.append(item["iou_list"])
+            
         conf_2darray = np.array(conf_list_list)
         iou_2darray = np.array(iou_list_list)
+
+
         conf_avg = np.mean(conf_2darray,axis = 0)
         iou_avg = np.mean(iou_2darray,axis = 0)
-        fault_to_metric_list[fault_type] = {
+        conf_mid = np.median(conf_2darray,axis = 0)
+        iou_mid = np.median(iou_2darray,axis = 0)
+        fault_to_metric[fault_type] = {
             "conf_avg":conf_avg.tolist(),
             "iou_avg":iou_avg.tolist(),
+            "conf_mid":conf_mid.tolist(),
+            "iou_mid":iou_mid.tolist(),
+            "conf_2d_array": conf_2darray,
+            "iou_2d_array": iou_2darray
         }
-    draw_line(fault_to_metric_list,metric_name="conf")
-    draw_line(fault_to_metric_list,metric_name="iou")
-   
+    draw_line(fault_to_metric,metric_name="conf", stat_name="avg")
+    draw_line(fault_to_metric,metric_name="iou", stat_name="avg")
+    
+
+    data_correct = fault_to_metric[0]["conf_2d_array"]
+    data_cls_fault = fault_to_metric[1]["conf_2d_array"]
+    data_loc_fault = fault_to_metric[2]["conf_2d_array"]
+    data_redun_fault = fault_to_metric[3]["conf_2d_array"]
+    draw_scatter(data_correct,data_cls_fault,data_loc_fault,data_redun_fault,metric_name="Conf")
+
+    data_correct = fault_to_metric[0]["iou_2d_array"]
+    data_cls_fault = fault_to_metric[1]["iou_2d_array"]
+    data_loc_fault = fault_to_metric[2]["iou_2d_array"]
+    data_redun_fault = fault_to_metric[3]["iou_2d_array"]
+    draw_scatter(data_correct,data_cls_fault,data_loc_fault,data_redun_fault,metric_name="IOU")
+
 
 
 def add_path_value(d, keys, value):
@@ -569,6 +676,7 @@ def get_img_to_topsis_score(img_to_clusters,last_epoch):
             clusters_feature.append(feature)
             feature_sign = sign
             img_name_to_c_ids[img_name].append(c_id)
+            c_id += 1
 
     
     data_array = np.array(clusters_feature)
@@ -691,22 +799,11 @@ def misimg_detect_by_topsis(match_json_path, last_epoch=5):
 
     # 采用并查集算法将该img这些高置信度未匹配p_box进行分簇，一个簇其实就是一个统一的p_box
     img_to_clusters = get_img_to_clusters(img_to_p_box_list,iou_thre=0.6)
-    
-    
     img_name_to_topsis_score = get_img_to_topsis_score(img_to_clusters,last_epoch)
     
     no_clusters_image_name_set = set(all_img_name_list) - set(img_name_to_topsis_score.keys())
     for img_name in no_clusters_image_name_set:
         img_name_to_topsis_score[img_name] = 0
-    '''
-    ranked_img_list = []
-    for detected_img_name in detected_mis_img_name_list:
-        ranked_img_list.append(detected_img_name)
-
-    for img_name in all_img_name_list:
-        if img_name not in ranked_img_list:
-            ranked_img_list.append(img_name)
-    '''
     return img_name_to_topsis_score
 
 
@@ -897,13 +994,13 @@ def rank_gid(g_id_to_features,feature_name_to_sign):
     return ranked_gid_list, topsis_score_list
 
 
-def total_rank_by_topsis_score(ranked_gid_list,topsis_score_list,img_name_to_topsis_score):
+def total_rank_by_topsis_score(ranked_gid_list,topsis_score_list,img_name_to_topsis_score,alpha:float):
     
     _map = {}
     for gid,score in zip(ranked_gid_list,topsis_score_list):
         _map[gid] = score
     for img_name,score in img_name_to_topsis_score.items():
-        _map[img_name] = score
+        _map[img_name] = alpha*score
 
     sorted_map = dict(sorted(_map.items(), key=lambda item: float(item[1]), reverse=True))
     rank_res = list(sorted_map.keys())
@@ -980,7 +1077,7 @@ def eval_apfd(rank_res):
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
+    model_name = "FRCNN" # YOLOv7|FRCNN|SSD
     epochs = 50
 
 
@@ -992,55 +1089,50 @@ if __name__ == "__main__":
     with open(annos_with_miss_json_path, 'r') as f:
         annos_with_miss_json = json.load(f)
 
-    
     # 1:match
     match_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "gp_box_match")
     os.makedirs(match_save_dir,exist_ok=True)
-    match_json_save_path = os.path.join(match_save_dir,"match_v2_0.3.json")
-    if model_name == "YOLOv7":
-        offset = False
-    else:
-        offset = True
-    match(match_json_save_path,offset=offset)
+    match_json_save_path = os.path.join(match_save_dir,"match_v2.json")
+    # if model_name == "YOLOv7":
+    #     offset = False
+    # else:
+    #     offset = True
+    # match(match_json_save_path,offset=offset)
 
     # 2:metirc
     collection_metric_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "collection_metric")
     os.makedirs(collection_metric_save_dir,exist_ok=True)
-    metric_save_path = os.path.join(collection_metric_save_dir,"collection_metrics_v2_0.3.json")
-    gt_box_metric_collection(match_json_save_path,metric_save_path)
+    metric_save_path = os.path.join(collection_metric_save_dir,"collection_metrics_v2.json")
+    # gt_box_metric_collection(match_json_save_path,metric_save_path)
     
     # 3: 绘制metric line
-    correct_vs_fault(metric_save_path)
+    # correct_vs_fault(metric_save_path)
     
 
     # 4: 得到并保存排序结果
-    # metric_save_path = get_ours_gt_box_metric_path(dataset_name,model_name)
-    # match_json_save_path = get_ours_match_path(dataset_name,model_name)
     # gid排序
     g_id_to_features,feature_name_to_sign = gt_box_features_build(metric_save_path)
     ranked_gid_list, topsis_score_list = rank_gid(g_id_to_features,feature_name_to_sign)
 
+    # img name to topsis score
+    img_name_to_topsis_score = misimg_detect_by_topsis(match_json_save_path)
+    # gid与img name topsis score合并
+    alpha = 1.5
+    rank_res = total_rank_by_topsis_score(ranked_gid_list,topsis_score_list,img_name_to_topsis_score,alpha)
     '''
     # img排序
     ranked_img_list,detected_mis_img_name_list = misimg_detect_by_weight_score(match_json_save_path)
     # gid与img name两个序列合并成一个序列
     rank_res = total_rank_by_loc(ranked_gid_list,ranked_img_list)
     '''
-    
-    
-    # img name to topsis score
-    img_name_to_topsis_score = misimg_detect_by_topsis(match_json_save_path)
-    # gid与img name topsis score合并
-    rank_res = total_rank_by_topsis_score(ranked_gid_list,topsis_score_list,img_name_to_topsis_score)
     print(f"rank_res的长度:{len(rank_res)}") 
     eval_apfd(rank_res)
-    rank_res_save_dir = os.path.join(exp_root_dir, "final_res", "ours", dataset_name, model_name, "rank_res")
+
+    # 保存排序结果
+    rank_res_save_dir = os.path.join(exp_root_dir, "final_res", "ours", dataset_name, model_name, "rank_res", f"alpha={alpha}")
     os.makedirs(rank_res_save_dir,exist_ok=True)
-    rank_res_save_file_name = "rank_topsis_0.3.joblib"
+    rank_res_save_file_name = "rank_topsis.joblib"
     rank_res_save_path = os.path.join(rank_res_save_dir, rank_res_save_file_name)
     joblib.dump(rank_res, rank_res_save_path)
     print(f"rank res is saved in {rank_res_save_path}")
     
-
-
-

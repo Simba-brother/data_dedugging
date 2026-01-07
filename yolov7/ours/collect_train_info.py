@@ -172,7 +172,7 @@ def search_annotations_by_img_id(img_id,annotations_no_miss):
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     nc = get_nc(dataset_name)
     model_name = "YOLOv7"
     # 脚本设备
@@ -182,13 +182,13 @@ if __name__ == "__main__":
     epochs = 50
 
     # 收集预测框的存放目录
-    collect_p_box_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box","v2")
-    '''
+    collect_p_box_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box","v4")
     os.makedirs(collect_p_box_dir,exist_ok=True)
-    collect_predicted_box(conf_thres=0.25,iou_thres=0.65)
-    '''
+    collect_predicted_box(conf_thres=0.25,iou_thres=0.8)
     
+    '''
     error_annotations_path = get_error_ann_file_path(dataset_name)
     collect_gt_box_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,model_name)
     collect_gt_box()
+    '''
     

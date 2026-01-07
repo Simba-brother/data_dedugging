@@ -360,7 +360,7 @@ if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "FRCNN" # FRCNN|SSD
-    trainset_status = "repair_datactive" # clean|error|repair_datactive|repair_ours
+    trainset_status = "repair_ours" # clean|error|repair_ours|repair_datactive
 
     if trainset_status in ["repair_ours", "repair_datactive"]:
         model_weight_path = get_error_train_model_weight_file_path(dataset_name,model_name,epoch=49)
@@ -368,7 +368,7 @@ if __name__ == "__main__":
     else:
         model_weight_path = None
         num_epochs = 50
-    gpu_id = 0
+    gpu_id = 1
     init_lr = 5e-3  # SSD:1e-3
     epoch_save_dir = os.path.join(exp_data_root_dir,"models",dataset_name.lower(),
                                   model_name.lower(), trainset_status)
@@ -381,7 +381,10 @@ if __name__ == "__main__":
     elif trainset_status == "error":
         train_annotation_path = get_error_ann_file_path(dataset_name)
     elif trainset_status == "repair_ours":
-        train_annotation_path = get_repair_ann_file_path(dataset_name,"ours",model_name)
+        # train_annotation_path = get_repair_ann_file_path(dataset_name,"ours",model_name)
+        train_annotation_path = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco",
+                                             "train",
+                                             f"_annotations.coco_repair_ours_{model_name}_alpha=1.5.json")
     elif trainset_status == "repair_datactive":
         train_annotation_path = get_repair_ann_file_path(dataset_name,"datactive",model_name)
 

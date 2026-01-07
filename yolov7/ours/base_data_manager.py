@@ -86,6 +86,15 @@ def get_ours_gt_box_metric_path(dataset_name,model_name):
 def get_ours_match_path(dataset_name,model_name):
     return os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "gp_box_match", "match_v2.json")
 
+def get_nc_by_datasetname(dataset_name) -> int:
+    if dataset_name == "VOC2012":
+        return 20
+    elif dataset_name == "KITTI_8":
+        return 8
+    elif dataset_name == "VisDrone":
+        return 10
+
+
 if __name__ == "__main__":
     pass
 

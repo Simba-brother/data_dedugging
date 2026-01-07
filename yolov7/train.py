@@ -589,9 +589,9 @@ if __name__ == '__main__':
     parser.add_argument('--v5-metric', action='store_true', help='assume maximum recall as 1.0 in AP calculation')
     opt = parser.parse_args()
 
-    trainset_stat = "repair_datactive" # clean|error|repair_ours|repair_datactive
+    trainset_stat = "repair_ours" # clean|error|repair_ours|repair_datactive
     model_save_dir = os.path.join(exp_data_root,
-                                  "models",dataset_name.lower(),model_name.lower(),trainset_stat)
+                                  "models",dataset_name.lower(),model_name.lower(),trainset_stat,"alpha=1.5")
     os.makedirs(model_save_dir,exist_ok=True)
     if trainset_stat in ["repair_ours", "repair_datactive"]:
         opt.weights = os.path.join(exp_data_root, "models", dataset_name.lower(), "yolov7", "error", "weights", "last.pt")
