@@ -563,7 +563,7 @@ def rank_img_name(all_img_name_list:list[str], gt_match_json:dict, last_epoch=5,
         ranked_score_list.append(score)
     return ranked_image_name_list, ranked_score_list
 
-def build_feature(all_gids:list[int],g_box_id_to_metric:dict, K:float=0.2) -> tuple:
+def build_feature_beta(all_gids:list[int],g_box_id_to_metric:dict, K:float=0.2) -> tuple:
     """
     根据每个 ground truth box 的跨 epoch 过程度量（conf_list 与 iou_list），
     为其构建特征向量。
@@ -734,7 +734,85 @@ def build_feature(all_gids:list[int],g_box_id_to_metric:dict, K:float=0.2) -> tu
     }
     return (g_id_to_features,feature_name_to_sign)
 
-def rank_gid_new(g_id_to_features, feature_name_to_sign: dict):
+def build_feature_orignal(all_gids:list[int],g_box_id_to_metric:dict, K:float=0.2) -> tuple:
+
+    g_id_to_features = {}
+    for g_id in g_box_id_to_metric.keys():
+        conf_list = g_box_id_to_metric[g_id]["conf_list"]
+        iou_list = g_box_id_to_metric[g_id]["iou_list"]
+        epochs = len(conf_list)
+        W_e = int(K*epochs)
+        W_l = int(K*epochs)
+        # 早期置信度均值，越小越可疑
+        early_conf_mean = np.mean(conf_list[0:W_e])
+        # 后期置信度均值，越小越可疑
+        lastly_conf_mean = np.mean(conf_list[-W_l:])
+        # 早期iou均值，越小越可疑
+        early_iou_mean = np.mean(iou_list[0:W_e])
+        # 后期iou均值，越小越可疑
+        lastly_iou_mean = np.mean(iou_list[-W_l:])
+
+        # 全局均值，越小越可疑
+        conf_mean = np.mean(conf_list)
+        iou_mean = np.mean(iou_list)
+
+        conf_threshold = 0.5*lastly_conf_mean
+        iou_threshold = 0.5*lastly_iou_mean
+
+        min_e_conf = 0
+        min_e_iou = 0
+        for e in range(epochs):
+            if conf_list[e] > conf_threshold:
+                min_e_conf = e
+                break
+        for e in range(epochs):
+            if iou_list[e] > iou_threshold:
+                min_e_iou = e
+                break
+        # 起量延迟（显式刻画“涨得晚”）
+        # 越大越可疑
+        D_conf = min_e_conf / epochs
+        D_iou = min_e_iou / epochs
+
+        g_id_to_features[g_id] = {
+            "early_conf_mean":early_conf_mean,
+            "early_iou_mean":early_iou_mean,
+            "lastly_conf_mean":lastly_conf_mean,
+            "lastly_iou_mean":lastly_iou_mean,
+            "conf_mean":conf_mean,
+            "iou_mean":iou_mean,
+            "D_conf":D_conf,
+            "D_iou":D_iou,
+        }
+    feature_name_to_sign = {
+        "early_conf_mean":-1, # 越小越可疑
+        "early_iou_mean":-1,
+        "lastly_conf_mean":-1,
+        "lastly_iou_mean":-1,
+        "conf_mean":-1,
+        "iou_mean":-1,
+        "D_conf":1,
+        "D_iou":1
+    }
+
+    print(f"all gbox数量:{len(all_gids)}")
+    print(f"matched gbox数量:{len(g_id_to_features)}")
+    
+    for g_id in all_gids:
+        if g_id not in g_id_to_features:
+            g_id_to_features[g_id] = {
+                "early_conf_mean":0,
+                "early_iou_mean":0,
+                "lastly_conf_mean":0,
+                "lastly_iou_mean":0,
+                "conf_mean":0,
+                "iou_mean":0,
+                "D_conf":1,
+                "D_iou":1, 
+            }
+    return (g_id_to_features,feature_name_to_sign)
+
+def rank_gid_beta(g_id_to_features, feature_name_to_sign: dict):
     """
     g_id_to_features: {g_id: {attr: (value, flag),},}
     """
@@ -777,7 +855,7 @@ def rank_gid_new(g_id_to_features, feature_name_to_sign: dict):
 
     return ranked_gid_list, ranked_score_list
 
-def rank_gid(g_id_to_features,feature_name_to_sign:dict):
+def rank_gid_original(g_id_to_features,feature_name_to_sign:dict):
     '''
     g_id_to_features:{g_id:{attr:(value,flag),},}
     '''
@@ -951,16 +1029,19 @@ def get_gid_level_rank(gt_json:dict,g_box_metrics_json_path:str):
     g_box_id_to_metric = get_g_id_to_metric(g_box_metrics_json_path)
     direct_erro_gid_set = set(all_gids) - set(g_box_id_to_metric.keys())
     # look_metirc(g_box_id_to_metric, all_gids, gt_json)
-    g_id_to_features,feature_name_to_sign = build_feature(all_gids,g_box_id_to_metric)
-    ranked_gid_list, ranked_gid_score_list = rank_gid_new(g_id_to_features,feature_name_to_sign)
-    new_ranked_gid_list = []
+    g_id_to_features,feature_name_to_sign = build_feature_orignal(all_gids,g_box_id_to_metric)
+    ranked_gid_list, ranked_gid_score_list = rank_gid_original(g_id_to_features,feature_name_to_sign)
+    # g_id_to_features,feature_name_to_sign = build_feature_beta(all_gids,g_box_id_to_metric)
+    # ranked_gid_list, ranked_gid_score_list = rank_gid_beta(g_id_to_features,feature_name_to_sign)
+    '''new_ranked_gid_list = []
     new_ranked_gid_score_list = []
     for gid in direct_erro_gid_set:
         new_ranked_gid_list.append(gid)
         new_ranked_gid_score_list.append(1)
     new_ranked_gid_list.extend(ranked_gid_list)
     new_ranked_gid_score_list.extend(ranked_gid_score_list)
-    return new_ranked_gid_list, new_ranked_gid_score_list
+    '''
+    return ranked_gid_list, ranked_gid_score_list
 
 def get_img_level_rank(imgs_dir:str,match_json_path:str):
     # 得到img的排序
@@ -1109,11 +1190,14 @@ def main():
     look_gid_rank(ranked_gid_list, all_errored_g_box_id_set)
     look_img_rank(ranked_image_name_list,all_miss_error_img_name_set)
     # 合并
-    alpha = 1.5
+    alpha = 1.3
     total_rank = merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,ranked_img_score_list,alpha)
     look_total_rank(total_rank,all_errored_g_box_id_set,all_miss_error_img_name_set)
     # 计算FPR和FNR
-
+    save_dir = "/data/mml/data_debugging_data/temp/new_1.3alpha"
+    save_file_path = os.path.join(save_dir, "ranked_topsis_new_alpha=1.3.joblib")
+    joblib.dump(total_rank, save_file_path)
+    print(f"rank res is saved in {save_file_path}")
 
 
 
@@ -1123,10 +1207,10 @@ if __name__ == "__main__":
     epochs = 50
     # 需要的数据文件路径
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
-    # match_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gp_box_match","match_v2.json")
-    # g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collection_metric","collection_metrics_v2.json")
-    match_json_path = "/data/mml/data_debugging_data/temp/match/iou=0.4_PG/match.json"
-    g_box_metrics_json_path = "/data/mml/data_debugging_data/temp/match/iou=0.4_PG/metrics.json"
+    match_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gp_box_match","match_v3.json")
+    g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collection_metric","collection_metrics_v3.json")
+    # match_json_path = "/data/mml/data_debugging_data/temp/match/iou=0.4_PG/match.json"
+    # g_box_metrics_json_path = "/data/mml/data_debugging_data/temp/match/iou=0.4_PG/metrics.json"
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box","v2")
     imgs_dir = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-yolo","train","images")

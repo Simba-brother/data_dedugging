@@ -176,16 +176,17 @@ if __name__ == "__main__":
     nc = get_nc(dataset_name)
     model_name = "YOLOv7"
     # 脚本设备
-    device = select_device('1')
+    device = select_device('0')
     # create model 结构
     model = Model("cfg/training/yolov7.yaml", ch=3, nc=nc, anchors=3).to(device)
     epochs = 50
 
     # 收集预测框的存放目录
-    collect_p_box_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box","v4")
+    collect_p_box_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box","v3" \
+    "")
     os.makedirs(collect_p_box_dir,exist_ok=True)
-    collect_predicted_box(conf_thres=0.25,iou_thres=0.8)
-    
+    collect_predicted_box(conf_thres=0.25,iou_thres=0.65)
+
     '''
     error_annotations_path = get_error_ann_file_path(dataset_name)
     collect_gt_box_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,model_name)

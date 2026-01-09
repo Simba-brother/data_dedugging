@@ -113,7 +113,7 @@ class DisassembledDataSet(Dataset):
             img_need = None
 
             '''
-            出了instance其他都模糊掉：
+            除了instance其他都模糊掉：
             注意instance 内部 obj的模糊
             '''
             if label != self.background_id: # 非背景obj,裁出
@@ -147,6 +147,7 @@ class DisassembledDataSet(Dataset):
             label = instance["category_id"]
             # Crop out the boxes part of the image
             img = img.crop(cur_instance_bbox)
+
         img = img.resize((224, 224))
         if self.transforms is not None:
             img = self.transforms(img)

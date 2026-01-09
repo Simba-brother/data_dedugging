@@ -181,11 +181,12 @@ def main():
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "FRCNN" # YOLOv7|FRCNN|SSD
-    alpha = 1.5
-    rank_res = joblib.load(os.path.join(exp_root_dir,"final_res","ours",dataset_name,model_name,"rank_res",f"alpha={alpha}","rank_topsis.joblib"))
+    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
+    rank_res = joblib.load(os.path.join(exp_root_dir,"final_res","ours",dataset_name,model_name,
+                                        "rank_res","rank_topsis_new_alpha=1.3.joblib"))
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     anno_error_path = get_error_ann_file_path(dataset_name)
     anno_correct_path = get_correct_ann_file_path(dataset_name,"train")
-    repair_anno_save_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train",f"_annotations.coco_repair_ours_{model_name}_alpha={alpha}.json")
+    repair_anno_save_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train",
+                                         f"_annotations.coco_repair_ours_{model_name}_new_alpha=1.3.json")
     main()

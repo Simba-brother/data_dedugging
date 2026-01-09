@@ -1,25 +1,19 @@
-import joblib
-import math
-from datetime import datetime
+
 import os
 import json
-from PIL import Image
-import numpy as np
-from collections import defaultdict
 import time
-import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap, BoundaryNorm
-import pandas as pd
-import topsispy as tp
-import scienceplots
-import matplotlib
 from datetime import datetime
-from ours.base_data_manager import (exp_data_root_dir,
-                                    get_ours_gt_box_metric_path,
-                                    get_ours_match_path,get_annotations_with_miss_json_path,
-                                    get_collected_gt_box_json_path
-                                    )
+from collections import defaultdict
+
+import numpy as np
 from tqdm import tqdm
+from PIL import Image
+
+from ours.base_data_manager import (
+    exp_data_root_dir,
+    get_collected_gt_box_json_path
+    )
+
 
 
 def get_json(json_path:str) -> dict:
@@ -285,9 +279,8 @@ def match(gt_json:dict, epoch_to_p_boxs:dict, offset:bool, save_path):
             # 获得当前图像g_boxs与当前epoch的p_boxs的匹配关系
             if offset:
                 cur_epoch_p_boxs = offset_p_label(cur_epoch_p_boxs)
-            matches = gt_best_match(cur_epoch_p_boxs,g_boxs)
-            # matches = search_match_PG_noClass(cur_epoch_p_boxs, g_boxs,iou_thre=0.5)
-            # matches = search_match_PG(cur_epoch_p_boxs,g_boxs,iou_thre=0.5)
+            # matches = gt_best_match(cur_epoch_p_boxs,g_boxs)
+            matches = search_match_PG(cur_epoch_p_boxs,g_boxs,iou_thre=0.5)
             # matches = search_match_GP(g_boxs,cur_epoch_p_boxs,iou_thre=0.5)
             for match in matches:
                 matched_g_box = match[0]
@@ -378,19 +371,16 @@ def main():
     offset = False
     if model_name != "YOLOv7":
         offset = True
-    
     # PG match
-    
-    save_path = os.path.join(exp_data_root_dir,"temp","match","nms0.8_bestmatch","match.json")
+    save_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gp_box_match","match_v3.json")
     matched_gbox = match(gt_json, epoch_to_p_boxs, offset, save_path)
     
     # collect metrics
     # with open("/data/mml/data_debugging_data/temp/match/iou=0.4_PG/match.json", "r") as f:
     #      matched_gbox = json.load(f)
-    save_path = os.path.join(exp_data_root_dir,"temp","match","nms0.8_bestmatch","metrics.json")
+    save_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collection_metric","collection_metrics_v3.json")
     collect_metrics_for_gboxs(matched_gbox, save_path)
     
-
 
 if __name__ == "__main__":
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
@@ -398,7 +388,8 @@ if __name__ == "__main__":
     epochs = 50
     # 需要的数据文件路径
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
-    predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,
+    predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
+                                       dataset_name,model_name,
                                        "collected_predicted_box",
-                                       "nms0.8")
+                                       "v3")
     main()
