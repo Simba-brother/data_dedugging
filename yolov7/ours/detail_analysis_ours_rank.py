@@ -616,9 +616,32 @@ def build_feature(all_gids:list[int],g_box_id_to_metric:dict, K:float=0.2) -> tu
     """
     g_id_to_features = {}
 
-    def help(conf_list, iou_list):
+    def tong_ji(conf_list, iou_list):
         conf_mean = np.mean(conf_list)
         iou_mean = np.mean(iou_list)
+        match_count = len(iou_list) - iou_list.count(0)
+        match_rate = match_count / len(iou_list)
+        return conf_mean, iou_mean, match_rate
+    
+    def tong_ji_remove_0(conf_list, iou_list):
+        new_conf_list = []
+        for conf in conf_list:
+            if conf != 0:
+                new_conf_list.append(conf)
+
+        new_iou_list = []
+        for iou in iou_list:
+            if iou != 0:
+                new_iou_list.append(iou)
+        if new_conf_list != []:
+            conf_mean = np.mean(new_conf_list)
+        else:
+            conf_mean = 0
+        if new_iou_list != []:
+            iou_mean = np.mean(new_iou_list)
+        else:
+            iou_mean = 0
+
         match_count = len(iou_list) - iou_list.count(0)
         match_rate = match_count / len(iou_list)
         return conf_mean, iou_mean, match_rate
@@ -637,13 +660,17 @@ def build_feature(all_gids:list[int],g_box_id_to_metric:dict, K:float=0.2) -> tu
         lastly_iou_list = iou_list[-W_l:]
 
         # 总体：
-        conf_mean, iou_mean, match_rate = help(conf_list,iou_list)
+        conf_mean, iou_mean, match_rate = tong_ji_remove_0(conf_list,iou_list)
+        
         # 前期
-        early_conf_mean, early_iou_mean, early_match_rate = help(early_conf_list,early_iou_list)
-        # 后期
-        lastly_conf_mean, lastly_iou_mean, lastly_match_rate = help(lastly_conf_list,lastly_iou_list)
+        early_conf_mean, early_iou_mean, early_match_rate = tong_ji_remove_0(early_conf_list,early_iou_list)
+        # early_conf_mean, early_iou_mean, early_match_rate = help(early_conf_list,early_iou_list)
 
-        # 提升
+        # 后期
+        lastly_conf_mean, lastly_iou_mean, lastly_match_rate = tong_ji_remove_0(lastly_conf_list,lastly_iou_list)
+        # lastly_conf_mean, lastly_iou_mean, lastly_match_rate = help(lastly_conf_list,lastly_iou_list)
+
+        # # 提升
         improve_conf_mean = lastly_conf_mean - early_conf_mean
         improve_iou_mean = lastly_iou_mean - early_iou_mean
  
@@ -671,6 +698,13 @@ def build_feature(all_gids:list[int],g_box_id_to_metric:dict, K:float=0.2) -> tu
         g_id_to_features[g_id] = {
             "conf_mean":conf_mean,
             "iou_mean":iou_mean,
+            "match_rate":match_rate,
+            "early_conf_mean":early_conf_mean,
+            "early_iou_mean":early_iou_mean,
+            "early_match_rate":early_match_rate,
+            "lastly_conf_mean":lastly_conf_mean,
+            "lastly_iou_mean":lastly_iou_mean,
+            "lastly_match_rate":lastly_match_rate,
             "improve_conf_mean":improve_conf_mean,
             "improve_iou_mean":improve_iou_mean
         }
@@ -688,6 +722,13 @@ def build_feature(all_gids:list[int],g_box_id_to_metric:dict, K:float=0.2) -> tu
     feature_name_to_sign = {
         "conf_mean":-1,
         "iou_mean":-1,
+        "match_rate":-1,
+        "early_conf_mean":-1,
+        "early_iou_mean":-1,
+        "early_match_rate":-1,
+        "lastly_conf_mean":-1,
+        "lastly_iou_mean":-1,
+        "lastly_match_rate":-1,
         "improve_conf_mean":-1,
         "improve_iou_mean":-1
     }
@@ -1030,6 +1071,27 @@ def compute_apfd(fault_set:set, rankded_list):
     apfd = round(apfd,4)
     return apfd
 
+def calc_fpr_fnr(rank_list,error_set):
+    cut_off = 0.4
+    cut_point = int(len(rank_list) * cut_off)
+    P_list = rank_list[:cut_point]
+    N_list = rank_list[cut_point:]
+    fp = 0
+    fn = 0
+    correct_set = set(rank_list) - error_set
+    for idd in P_list:
+        if idd not in error_set:
+            fp += 1
+    for idd in N_list:
+        if idd in error_set:
+            fn += 1
+    fpr = fp / len(correct_set)
+    fnr = fn / len(error_set)
+    fpr = round(fpr,4)
+    fnr = round(fnr,4)
+    return fpr,fnr
+        
+
 
 
 def main():
@@ -1050,7 +1112,8 @@ def main():
     alpha = 1.5
     total_rank = merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,ranked_img_score_list,alpha)
     look_total_rank(total_rank,all_errored_g_box_id_set,all_miss_error_img_name_set)
-        
+    # 计算FPR和FNR
+
 
 
 
@@ -1062,8 +1125,8 @@ if __name__ == "__main__":
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     # match_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gp_box_match","match_v2.json")
     # g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collection_metric","collection_metrics_v2.json")
-    match_json_path = "/data/mml/data_debugging_data/temp/match/iou_0.5_PG_nms0.8/match.json"
-    g_box_metrics_json_path = "/data/mml/data_debugging_data/temp/match/iou_0.5_PG_nms0.8/metrics.json"
+    match_json_path = "/data/mml/data_debugging_data/temp/match/iou=0.4_PG/match.json"
+    g_box_metrics_json_path = "/data/mml/data_debugging_data/temp/match/iou=0.4_PG/metrics.json"
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box","v2")
     imgs_dir = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-yolo","train","images")

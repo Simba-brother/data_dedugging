@@ -5,9 +5,9 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 from fuxian.disassemble_dataset import DisassembledDataSet
 from TruncatedLoss import TruncatedLoss
-
+import time
 from torchvision.models import ResNet50_Weights
-
+from datetime import datetime
 
 def build_dataset(mask_type,class_num):
     data_transform = transforms.Compose(
@@ -96,6 +96,7 @@ def val_one_epoch(model,val_dataloader,device):
     return acc
 
 def train():
+    start_time = time.time()
     train_disassembled_dataset = build_dataset(mask_type,class_num)
     train_dataloader = DataLoader(train_disassembled_dataset, batch_size=32, shuffle=True, num_workers=4)
     val_dataloader = DataLoader(train_disassembled_dataset, batch_size=32, shuffle=False, num_workers=4)
@@ -141,11 +142,20 @@ def train():
             "loss": loss_avg,
             "acc": val_acc
         }, os.path.join(model_save_dir,f"epoch_{epoch}.pt"))
+        end_time = time.time()
+        elapsed_time = end_time - start_time  # 计算运行时间（秒）
+        hours = int(elapsed_time // 3600)  # 计算小时数
+        minutes = int((elapsed_time % 3600) // 60)  # 计算分钟数
+        seconds = elapsed_time % 60  # 计算剩余的秒数
+        print(f"运行时间：{hours:02d}:{minutes:02d}:{seconds:02.0f}")
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"实验结束时刻: {now_str}")
+        
 
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     img_root_dir = f"{exp_data_root}/datasets/{dataset_name}-coco/train"
     annotation_path = f"{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json"
     mask_type = "other_objects" # crop | other_objects
@@ -160,8 +170,8 @@ if __name__ == "__main__":
     else:
         raise Exception("数据集名称错误")
     epoches = 13
-    device = torch.device("cuda:1")
-    model_save_dir = f"{exp_data_root}/final_res/datactive/{dataset_name}/saved_models/{mask_type}"
+    device = torch.device("cuda:0")
+    model_save_dir = f"{exp_data_root}/final_res/datactive/{dataset_name}/saved_models/new/{mask_type}"
     os.makedirs(model_save_dir,exist_ok=True)
     train()
 

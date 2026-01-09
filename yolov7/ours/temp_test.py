@@ -1,5 +1,6 @@
 
 import os
+import numpy as np
 def test_1():
     data = [3,4,2,1]
     b = data[[0,8]]
@@ -65,7 +66,7 @@ def test_7():
     img_name_list = get_all_img_name()
 
 def test_8():
-    import numpy as np
+    
     from collections import defaultdict
 
     path = "/data/mml/data_debugging_data/datasets/VisDrone-yolo/train/labels/9999987_00000_d_0000049.txt"
@@ -81,9 +82,8 @@ def test_8():
             print(f"重复行号 {idxs}: {k}")
 
 def test_9():
-    for i in range(1,10):
-        print(i)
-
+    a = np.mean([])
+    print()
 if __name__ == "__main__":
     # test_2()
     test_9()

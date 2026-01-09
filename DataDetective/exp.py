@@ -217,6 +217,7 @@ class FaultDetective:
         incert_index = 0
         len_orgclean = len(clean_data)
         len_orgmasklist = len(res)
+        # 对齐
         while incert_index < len(dirty_data):
             if dirty_data[incert_index]["fault_type"] == fault_type_dict["redundancy fault"]:
                 # incert dirty_data[incert_index] to clean_data after the index of incert_index
@@ -238,10 +239,11 @@ class FaultDetective:
             incert_index += 1
 
         assert len(dirty_data) == len(clean_data)
-
+        # 插入了miss fault的 res 的 排序
         sorted_index = np.argsort([i[loss_name] for i in res])[::-1]
-
+        # 代价之前的排序
         filter_index = sorted_index[: int(len_orgmasklist * 0.4)]
+        # 代价
         print("0.4 lenorg" + str(int(len_orgmasklist * 0.4)))
         print(len(filter_index))
 
@@ -311,7 +313,6 @@ class FaultDetective:
 
         for i in range(len(results)):
             fault_ = "no"
-
             if int(results[i]["detectiongt_category_id"]) == 0 and results[i]["image_name"] in self.missing_dict:
                 # 该实例是背景
                 results[i]["fault_type"] = fault_type_dict["missing fault"]
