@@ -774,7 +774,7 @@ def get_fault_imgs_by_type(fault_type_list):
 def get_all_img_name():
     img_dir = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-yolo","train","images")
     img_name_list = []
-    for filename in os.listdir(img_dir):
+    for filename in sorted(os.listdir(img_dir)):
         filepath = os.path.join(img_dir, filename)
         if os.path.isfile(filepath):
             img_name_list.append(filename)
@@ -802,7 +802,7 @@ def misimg_detect_by_topsis(match_json_path, last_epoch=5):
     img_name_to_topsis_score = get_img_to_topsis_score(img_to_clusters,last_epoch)
     
     no_clusters_image_name_set = set(all_img_name_list) - set(img_name_to_topsis_score.keys())
-    for img_name in no_clusters_image_name_set:
+    for img_name in sorted(no_clusters_image_name_set):
         img_name_to_topsis_score[img_name] = 0
     return img_name_to_topsis_score
 
@@ -970,9 +970,7 @@ def rank_gid(g_id_to_features,feature_name_to_sign):
 
     for g_id in g_id_list:
         feature_dict = g_id_to_features[g_id]
-        feature_list = []
-        for feature_name, value in feature_dict.items():
-            feature_list.append(value)
+        feature_list = [feature_dict[name] for name in feature_name_list]
         data.append(feature_list)
         id_to_gid[id]= g_id
         id += 1
@@ -985,7 +983,7 @@ def rank_gid(g_id_to_features,feature_name_to_sign):
     weights = np.ones(n_features) / n_features
     best_id, score_array = tp.topsis(data_array, weights, sign_list)
     # 从大到小排序并返回索引
-    sorted_gt_id = np.argsort(score_array)[::-1]
+    sorted_gt_id = np.argsort(score_array, kind="mergesort")[::-1]
 
     ranked_gid_list = [int(g_id) for g_id in sorted_gt_id]
     topsis_score_list = []
@@ -1002,8 +1000,11 @@ def total_rank_by_topsis_score(ranked_gid_list,topsis_score_list,img_name_to_top
     for img_name,score in img_name_to_topsis_score.items():
         _map[img_name] = alpha*score
 
-    sorted_map = dict(sorted(_map.items(), key=lambda item: float(item[1]), reverse=True))
-    rank_res = list(sorted_map.keys())
+    sorted_items = sorted(
+        _map.items(),
+        key=lambda kv: (-float(kv[1]), str(kv[0]))  # 先按分数降序，同分按ID字典序
+    )
+    rank_res = [k for k, _ in sorted_items]
     return rank_res
 
 
@@ -1071,28 +1072,30 @@ def eval_apfd(rank_res):
             mis_img_name_set.add(img_name)
     fault_set = fault_g_id_set.union(mis_img_name_set)
     apfd = compute_apfd(fault_set, rank_res)
+    apfd = round(apfd,4)
     print(f"APFD:{apfd}")
 
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
+    model_name = "FRCNN" # YOLOv7|FRCNN|SSD
     epochs = 50
-
 
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     
-    predicted_bboxs_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box","v2")
+    predicted_bboxs_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",
+                                       dataset_name,model_name,"collected_predicted_box","v2")
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
 
     with open(annos_with_miss_json_path, 'r') as f:
         annos_with_miss_json = json.load(f)
 
     # 1:match
-    match_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "gp_box_match")
+    match_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",
+                                  dataset_name,model_name, "gp_box_match")
     os.makedirs(match_save_dir,exist_ok=True)
-    match_json_save_path = os.path.join(match_save_dir,"match_v3.json")
+    match_json_save_path = os.path.join(match_save_dir,"match_v2.json")
     # if model_name == "YOLOv7":
     #     offset = False
     # else:
@@ -1100,9 +1103,10 @@ if __name__ == "__main__":
     # match(match_json_save_path,offset=offset)
 
     # 2:metirc
-    collection_metric_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",dataset_name,model_name, "collection_metric")
+    collection_metric_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",
+                                              dataset_name,model_name, "collection_metric")
     os.makedirs(collection_metric_save_dir,exist_ok=True)
-    metric_save_path = os.path.join(collection_metric_save_dir,"collection_metrics_v3.json")
+    metric_save_path = os.path.join(collection_metric_save_dir,"collection_metrics_v2.json")
     # gt_box_metric_collection(match_json_save_path,metric_save_path)
     
     # 3: 绘制metric line
@@ -1118,7 +1122,8 @@ if __name__ == "__main__":
     img_name_to_topsis_score = misimg_detect_by_topsis(match_json_save_path)
     # gid与img name topsis score合并
     alpha = 1
-    rank_res = total_rank_by_topsis_score(ranked_gid_list,topsis_score_list,img_name_to_topsis_score,alpha)
+    rank_res = total_rank_by_topsis_score(ranked_gid_list,topsis_score_list,
+                                          img_name_to_topsis_score,alpha)
     '''
     # img排序
     ranked_img_list,detected_mis_img_name_list = misimg_detect_by_weight_score(match_json_save_path)
@@ -1128,11 +1133,13 @@ if __name__ == "__main__":
     print(f"rank_res的长度:{len(rank_res)}") 
     eval_apfd(rank_res)
 
+    '''
     # 保存排序结果
-    rank_res_save_dir = os.path.join(exp_root_dir, "final_res", "ours", dataset_name, model_name, "rank_res")
+    rank_res_save_dir = os.path.join(exp_root_dir, "final_res", "ours",
+                                      dataset_name, model_name, "rank_res")
     os.makedirs(rank_res_save_dir,exist_ok=True)
     rank_res_save_file_name = "rank_topsis_new.joblib"
     rank_res_save_path = os.path.join(rank_res_save_dir, rank_res_save_file_name)
     joblib.dump(rank_res, rank_res_save_path)
     print(f"rank res is saved in {rank_res_save_path}")
-    
+    '''

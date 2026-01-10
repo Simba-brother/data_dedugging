@@ -1,26 +1,19 @@
 
-
-import joblib
-import math
-from datetime import datetime
 import os
 import json
-from PIL import Image
-import numpy as np
+import joblib
+from datetime import datetime
 from collections import defaultdict
-import time
-import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap, BoundaryNorm
-import pandas as pd
+import numpy as np
 import topsispy as tp
-import scienceplots
-import matplotlib
+import matplotlib.pyplot as plt
+from common import *
 from ours.base_data_manager import (exp_data_root_dir,
                                     get_ours_gt_box_metric_path,
                                     get_ours_match_path,get_annotations_with_miss_json_path,
                                     get_collected_gt_box_json_path
                                     )
-
+from ours.small_utils import read_json
 
 def draw_violin(data,save_path):
     # 假设 data 已经存在，形状为 (10000, 50)
@@ -402,6 +395,7 @@ def get_img_to_topsis_score(img_to_clusters:dict,last_epoch:int):
     weights = np.ones(n_features) / n_features
     # 基于topsis获得clusters的score
     best_cluster_id, score_array = tp.topsis(data_array, weights, features_signs)
+    score_array = np.nan_to_num(score_array, nan=0.0, posinf=1.0, neginf=0.0)
     # 从大到小排序并返回索引
     # sorted_cluster_id = np.argsort(score_array)[::-1]
     # 将img_name中得分最高的cluster的得分作为该img的score
@@ -457,7 +451,7 @@ def get_img_name_to_epoch_to_unmatched_p_boxs(epoch_to_matched_p_ids:dict,last_e
         with open(predicted_epoch_json_path,mode="r") as f:
             predicted_epoch_dict = json.load(f)
         # 统计所有图像中没被gt_box匹配到的高置信度预测box
-        for img_name in predicted_epoch_dict.keys():
+        for img_name in sorted(predicted_epoch_dict.keys()):
             # img_name在该epoch下的所有预测框
             p_box_list = predicted_epoch_dict[img_name]["predicted_bboxs"]
             # 遍历预测框
@@ -517,7 +511,7 @@ def get_fault_img_name_set(fault_type_list, annos_with_miss_json:dict) -> set[st
 
 def get_all_img_name(imgs_dir:str) -> list[str]:
     img_name_list = []
-    for filename in os.listdir(imgs_dir):
+    for filename in sorted(os.listdir(imgs_dir)):
         filepath = os.path.join(imgs_dir, filename)
         if os.path.isfile(filepath):
             img_name_list.append(filename)
@@ -551,11 +545,11 @@ def rank_img_name(all_img_name_list:list[str], gt_match_json:dict, last_epoch=5,
     # 采用并查集算法将该img这些高置信度未匹配p_box进行分簇，一个簇其实就是一个统一的p_box
     img_to_clusters = get_img_to_clusters(img_name_to_no_matched_p_boxs,iou_thre=0.6)
     img_name_to_topsis_score = get_img_to_topsis_score(img_to_clusters,last_epoch)
-    no_clusters_image_name_set = set(all_img_name_list) - set(img_name_to_topsis_score.keys())
+    no_clusters_image_name_set = sorted(set(all_img_name_list) - set(img_name_to_topsis_score.keys()))
     print(f"没有预测簇的图像数量:{len(no_clusters_image_name_set)}")
     for img_name in no_clusters_image_name_set:
-        img_name_to_topsis_score[img_name] = 0
-    sorted_items = sorted(img_name_to_topsis_score.items(), key=lambda x: x[1], reverse=True)
+        img_name_to_topsis_score[img_name] = 0.0
+    sorted_items = sorted(img_name_to_topsis_score.items(),key=lambda x: (-float(x[1]), x[0]))   # 同分按文件名稳定排序
     ranked_image_name_list = []
     ranked_score_list = []
     for image_name,score in sorted_items:
@@ -865,21 +859,20 @@ def rank_gid_original(g_id_to_features,feature_name_to_sign:dict):
     id_to_gid ={}
     id = 0
     sign_list = []
+    feature_name_list = []
     for feature_name,sign in feature_name_to_sign.items():
         sign_list.append(sign)
-
+        feature_name_list.append(feature_name)
     for g_id in g_id_list:
         feature_dict = g_id_to_features[g_id]
-        feature_list = []
-        for feature_name, value in feature_dict.items():
-            feature_list.append(value)
+        feature_list = [feature_dict[name] for name in feature_name_list]
         data.append(feature_list)
         id_to_gid[id]= g_id
         id += 1
-    '''
+    
     for id,gid in id_to_gid.items():
         assert id == gid, "数据有误"
-    '''
+    
     assert len(sign_list) > 0, "数据有误"
 
     data_array = np.array(data)
@@ -888,7 +881,7 @@ def rank_gid_original(g_id_to_features,feature_name_to_sign:dict):
     weights = np.ones(n_features) / n_features
     best_id, score_array = tp.topsis(data_array, weights, sign_list)
     # 从大到小排序并返回索引
-    sorted_gt_id = np.argsort(score_array)[::-1]
+    sorted_gt_id = np.argsort(score_array, kind="mergesort")[::-1]
 
     ranked_gid_list = [int(g_id) for g_id in sorted_gt_id]
     ranked_score_list = []
@@ -927,35 +920,6 @@ def get_all_miss_error_img_name_set(annos_with_miss_json_path:str) -> set[str]:
     print(f"miss error 图像数量:{len(all_miss_error_img_name_set)}")
     return all_miss_error_img_name_set
 
-
-def draw_rank_hot(isError_list,save_path):
-    # 话图看一下中毒样本在序中的分布
-    distribution = [1 if flag else 0 for flag in isError_list]
-    # 绘制热力图
-    # 创建图形时设置较小的高度
-    plt.style.use(['science','ieee'])
-    plt.rcParams.update({
-        'font.family': 'serif',
-        'font.serif': ['Times New Roman'],
-        'mathtext.fontset': 'stix',
-        'axes.titlesize': 10,
-        'axes.labelsize': 8,
-        'xtick.labelsize': 6,
-        'ytick.labelsize': 6,
-        'legend.fontsize': 6
-    })
-    plt.figure(figsize=(3, 0.5))  # 宽度为10，高度为2（可根据需要调整）
-    plt.imshow([distribution], aspect='auto', cmap='Reds', interpolation='nearest')
-    # plt.title('Heat map distribution of poisoned samples')
-    plt.xlabel('ranking',fontsize='3')
-    # 调整横轴刻度字号
-    plt.xticks(fontsize=3)  # 明确设置横轴刻度字号为6pt
-    # plt.colorbar()
-    plt.yticks([])
-    plt.savefig(save_path, bbox_inches='tight', dpi=800) # pad_inches=0.0
-    plt.close()
-
-
 def look_gid_rank(ranked_gid_list:list[int], all_errored_g_box_id_set:set[int]):
     pic_save_path = os.path.join(exp_data_root_dir,"temp", "gid_rank.png")
     error_flag_list = []
@@ -966,18 +930,6 @@ def look_gid_rank(ranked_gid_list:list[int], all_errored_g_box_id_set:set[int]):
             error_flag_list.append(0)
     draw_rank_hot(error_flag_list,pic_save_path)
     print(f"图片保存在：{pic_save_path}")
-
-def look_img_rank(ranked_img_name_list:list[str], all_miss_error_img_name_set:set[str]):
-    pic_save_path = os.path.join(exp_data_root_dir,"temp", "image_name_rank.png")
-    error_flag_list = []
-    for img_name in ranked_img_name_list:
-        if img_name in all_miss_error_img_name_set:
-            error_flag_list.append(1)
-        else:
-            error_flag_list.append(0)
-    draw_rank_hot(error_flag_list,pic_save_path)
-    print(f"图片保存在：{pic_save_path}")
-
 
 def look_metirc(g_box_id_to_metric, all_gids, gt_json:dict):
     for g_id in all_gids:
@@ -1059,120 +1011,10 @@ def merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,rank
     for img_name,score in zip(ranked_image_name_list,ranked_img_score_list):
         idd_to_score[img_name] = alpha*score
     
-    sorted_items = sorted(idd_to_score.items(), key=lambda x: x[1], reverse=True)
+    sorted_items = sorted(idd_to_score.items(),key=lambda x: (-float(x[1]), str(x[0])))  # 同分按ID稳定排序
     for idd,score in sorted_items:
         merged_rank.append(idd)
     return merged_rank
-
-
-def draw_total_rank(error_flag_list, save_path):
-    # error_flag_list: 包含 0/1/2 的列表
-
-    distribution = list(error_flag_list)
-    n = len(distribution)
-    split_idx = int(n * 0.4)  # 40% 位置对应的列索引
-
-    plt.style.use(['science', 'ieee'])
-    plt.rcParams.update({
-        'font.family': 'serif',
-        'font.serif': ['Times New Roman'],
-        'mathtext.fontset': 'stix',
-        'axes.titlesize': 10,
-        'axes.labelsize': 8,
-        'xtick.labelsize': 6,
-        'ytick.labelsize': 6,
-        'legend.fontsize': 6
-    })
-
-    # 自定义 colormap：0 -> 白色；1 -> 红色；2 -> 蓝色
-    cmap = ListedColormap(['white', 'red', 'blue'])
-    bounds = [-0.5, 0.5, 1.5, 2.5]
-    norm = BoundaryNorm(bounds, cmap.N)
-
-    plt.figure(figsize=(3, 0.5))
-    plt.imshow(
-        [distribution],
-        aspect='auto',
-        cmap=cmap,
-        norm=norm,
-        interpolation='nearest'
-    )
-
-    # 在 40% 处画一条黑色分割线（画在像素列 split_idx 的左边界）
-    ax = plt.gca()
-    ax.axvline(x=split_idx - 0.5, color='black', linewidth=0.5)
-
-    plt.xlabel('ranking', fontsize=3)
-    plt.xticks(fontsize=3)
-    plt.yticks([])
-
-    plt.savefig(save_path, bbox_inches='tight', dpi=800)
-    plt.close()
-
-
-def look_total_rank(total_rank,all_errored_g_box_id_set,all_miss_error_img_name_set):
-    pic_save_path = os.path.join(exp_data_root_dir,"temp","total_rank.png")
-    total_error_set = all_errored_g_box_id_set | all_miss_error_img_name_set
-    error_flags = []
-    for idd in total_rank:
-        if idd in total_error_set:
-            if type(idd) is int:
-                error_flags.append(1) # red, box id
-            else:
-                error_flags.append(2) # blue, img
-        else:
-            error_flags.append(0)
-    draw_total_rank(error_flags, pic_save_path)
-    APFD = compute_apfd(total_error_set, total_rank)
-    print("APFD:", APFD)
-    print(f"图片保存在：{pic_save_path}")
-
-
-def compute_apfd(fault_set:set, rankded_list):
-    """
-    fault_set: set/list, 真实错误idd(box_id/anno_id|img_name)
-    rankded_list: list, 按可疑度排序的图像路径
-    """
-    # n: 排序总量
-    n = len(rankded_list)
-    
-    TF_positions = []
-
-    # 遍历 rankded_list 找到真实错误的位置
-    for idx, ID in enumerate(rankded_list, start=1):  # 从1开始计数
-        if ID in fault_set:
-            TF_positions.append(idx)
-
-    # m:错误总量
-    m = len(fault_set)
-    if m == 0:
-        return 0.0  # 防止除零
-
-    apfd = 1 - sum(TF_positions) / (n * m) + 1 / (2 * n)
-    apfd = round(apfd,4)
-    return apfd
-
-def calc_fpr_fnr(rank_list,error_set):
-    cut_off = 0.4
-    cut_point = int(len(rank_list) * cut_off)
-    P_list = rank_list[:cut_point]
-    N_list = rank_list[cut_point:]
-    fp = 0
-    fn = 0
-    correct_set = set(rank_list) - error_set
-    for idd in P_list:
-        if idd not in error_set:
-            fp += 1
-    for idd in N_list:
-        if idd in error_set:
-            fn += 1
-    fpr = fp / len(correct_set)
-    fnr = fn / len(error_set)
-    fpr = round(fpr,4)
-    fnr = round(fnr,4)
-    return fpr,fnr
-        
-
 
 
 def main():
@@ -1190,15 +1032,25 @@ def main():
     look_gid_rank(ranked_gid_list, all_errored_g_box_id_set)
     look_img_rank(ranked_image_name_list,all_miss_error_img_name_set)
     # 合并
-    alpha = 1.3
+    alpha = 1
     total_rank = merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,ranked_img_score_list,alpha)
     look_total_rank(total_rank,all_errored_g_box_id_set,all_miss_error_img_name_set)
-    # 计算FPR和FNR
-    save_dir = "/data/mml/data_debugging_data/temp/new_1.3alpha"
-    save_file_path = os.path.join(save_dir, "ranked_topsis_new_alpha=1.3.joblib")
-    joblib.dump(total_rank, save_file_path)
-    print(f"rank res is saved in {save_file_path}")
+    # 计算APFD,FPR和FNR
+    error_set = all_errored_g_box_id_set | all_miss_error_img_name_set
+    APFD = compute_apfd(error_set, total_rank)
+    FPR,FNR =calc_fpr_fnr(total_rank, error_set)
+    print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR}")
 
+
+def strict_analyse_rank(g_boxes_json:dict, annos_with_miss_json_path:str, rank_res:list):
+    # 得到错误的gid_set
+    all_errored_g_box_id_set = get_all_errored_g_box_id_set(g_boxes_json)
+    # 得到missed_error_img_name_set
+    all_miss_error_img_name_set = get_all_miss_error_img_name_set(annos_with_miss_json_path)
+    error_set = error_set = all_errored_g_box_id_set | all_miss_error_img_name_set
+    APFD = compute_apfd(error_set, rank_res)
+    FPR,FNR =calc_fpr_fnr(rank_res, error_set)
+    print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR}")
 
 
 if __name__ == "__main__":
@@ -1207,11 +1059,17 @@ if __name__ == "__main__":
     epochs = 50
     # 需要的数据文件路径
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
-    match_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gp_box_match","match_v3.json")
-    g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collection_metric","collection_metrics_v3.json")
+    match_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,
+                                   "gp_box_match","match_v2.json")
+    g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collection_metric",
+                                           "collection_metrics_v2.json")
     # match_json_path = "/data/mml/data_debugging_data/temp/match/iou=0.4_PG/match.json"
     # g_box_metrics_json_path = "/data/mml/data_debugging_data/temp/match/iou=0.4_PG/metrics.json"
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box","v2")
     imgs_dir = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-yolo","train","images")
-    main()
+    # main()
+
+    g_boxes_json = read_json(gt_json_path)
+    rank_res = joblib.load("/data/mml/data_debugging_data/final_res/ours/VisDrone/YOLOv7/rank_res/rank_topsis_new.joblib")
+    strict_analyse_rank(g_boxes_json, annos_with_miss_json_path, rank_res)
