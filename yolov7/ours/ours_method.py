@@ -157,8 +157,6 @@ def search_match(gt_box_list, predicted_box_list, iou_thre=0.5):
             matches.append((matched_gt_box,p_box,iou_val))
     return matches
 
-
-
 def xcycwh_to_x1y1x2y2(bbox,W,H):
     xc = bbox[0]
     yc = bbox[1]
@@ -279,7 +277,6 @@ def match(match_save_path, offset):
     seconds = elapsed_time % 60  # 计算剩余的秒数
     print(f"运行时间：{hours:02d}:{minutes:02d}:{seconds:02.0f}")
 
-
 def gt_box_metric_collection(match_json_path, metric_save_path):
     '''
     收集所有gt_box在over epoch上的预测conf和iou
@@ -340,7 +337,6 @@ def gt_box_metric_collection(match_json_path, metric_save_path):
 
     print(f"运行时间：{hours:02d}:{minutes:02d}:{seconds:02.0f}")
 
-
 def get_all_gids():
     g_boxs_dict = get_gt_boxs()
     all_g_box_id_list = []
@@ -348,7 +344,6 @@ def get_all_gids():
         for g_box in g_box_list:
             all_g_box_id_list.append(g_box["box_id"])
     return all_g_box_id_list
-
 
 
 def get_g_id_to_metric(metric_json_path):
@@ -560,7 +555,6 @@ def clusing(box_list,thre):
     cluster_list = list(clusters.values())
     return cluster_list
 
-
 def get_epoch_to_matched_p_boxs(gt_match_dict):
     # 每个epoch中所有被匹配上的p_box
     epoch_to_match_info = {}
@@ -577,7 +571,6 @@ def get_epoch_to_matched_p_boxs(gt_match_dict):
             else:
                 epoch_to_match_info[epoch] = {p_box_id:p_box}
     return epoch_to_match_info
-
 
 def get_img_to_p_box_list(img_name_to_no_match_p):
     img_to_p_list = defaultdict(list)
@@ -599,7 +592,6 @@ def get_img_to_clusters(img_to_p_box_list,iou_thre=0.8):
                 cur_cluster_p_box_list.append(p_box)
             img_to_clusters[img_name].append(cur_cluster_p_box_list)
     return img_to_clusters
-
 
 def stability_pairwise_mean_iou(boxes):
     n = len(boxes)
@@ -640,9 +632,6 @@ def epoch_freq(boxes,last_epoch):
     for p_box in boxes:
         epoch_cover.add(p_box["epoch"])
     return len(epoch_cover) / last_epoch
-
-
-
 
 
 def caclu_cluster_score(cluster,last_epoch):
@@ -708,7 +697,6 @@ def sort_cluster_by_weight_score(img_to_clusters,last_epoch):
     sorted_cluster_list = sorted(cluster_list, key=lambda x: x['score'], reverse=True)
     return sorted_cluster_list
 
-
 def get_img_epoch_to_unmatched_p_boxs(epoch_to_matched_p_boxs,last_epoch,conf_threshold=0.6):
     '''
     epoch_to_matched_p_boxs:记录了每个epoch对应的被gt_box匹配到的p_box
@@ -770,7 +758,6 @@ def get_fault_imgs_by_type(fault_type_list):
             fault_img_name_set.add(img_name)
     return fault_img_name_set
 
-
 def get_all_img_name():
     img_dir = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-yolo","train","images")
     img_name_list = []
@@ -779,7 +766,6 @@ def get_all_img_name():
         if os.path.isfile(filepath):
             img_name_list.append(filename)
     return img_name_list
-
 
 def misimg_detect_by_topsis(match_json_path, last_epoch=5):
     all_img_name_list = get_all_img_name()
@@ -805,7 +791,6 @@ def misimg_detect_by_topsis(match_json_path, last_epoch=5):
     for img_name in sorted(no_clusters_image_name_set):
         img_name_to_topsis_score[img_name] = 0
     return img_name_to_topsis_score
-
 
 def misimg_detect_by_weight_score(match_json_path, last_epoch=5):
     all_img_name_list = get_all_img_name()
@@ -863,7 +848,6 @@ def misimg_detect_by_weight_score(match_json_path, last_epoch=5):
     # print("precision:",precision)
     # print("recall:",recall)
     # print("f1:",f1)
-
 
 def gt_box_features_build(metric_json_path):
     g_box_id_to_metric = get_g_id_to_metric(metric_json_path)
@@ -944,7 +928,6 @@ def gt_box_features_build(metric_json_path):
             }
     return g_id_to_features,feature_name_to_sign
 
-
 def rank_gid(g_id_to_features,feature_name_to_sign):
     '''
     g_id_to_features:{g_id:{attr:(value,flag),},}
@@ -991,7 +974,6 @@ def rank_gid(g_id_to_features,feature_name_to_sign):
         topsis_score_list.append(score_array[gid])
     return ranked_gid_list, topsis_score_list
 
-
 def total_rank_by_topsis_score(ranked_gid_list,topsis_score_list,img_name_to_topsis_score,alpha:float):
     
     _map = {}
@@ -1006,8 +988,6 @@ def total_rank_by_topsis_score(ranked_gid_list,topsis_score_list,img_name_to_top
     )
     rank_res = [k for k, _ in sorted_items]
     return rank_res
-
-
 
 def total_rank_by_loc(ranked_gid_list,ranked_img_list):
     gid_num = len(ranked_gid_list)
@@ -1076,6 +1056,8 @@ def eval_apfd(rank_res):
     print(f"APFD:{apfd}")
 
 
+
+
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
@@ -1096,10 +1078,7 @@ if __name__ == "__main__":
                                   dataset_name,model_name, "gp_box_match")
     os.makedirs(match_save_dir,exist_ok=True)
     match_json_save_path = os.path.join(match_save_dir,"match_v2.json")
-    # if model_name == "YOLOv7":
-    #     offset = False
-    # else:
-    #     offset = True
+    offset = (model_name != "YOLOv7") # model不是YOLOv7时，会对预测标签进行offset(-1)
     # match(match_json_save_path,offset=offset)
 
     # 2:metirc
@@ -1117,21 +1096,21 @@ if __name__ == "__main__":
     # gid排序
     g_id_to_features,feature_name_to_sign = gt_box_features_build(metric_save_path)
     ranked_gid_list, topsis_score_list = rank_gid(g_id_to_features,feature_name_to_sign)
-
     # img name to topsis score
     img_name_to_topsis_score = misimg_detect_by_topsis(match_json_save_path)
     # gid与img name topsis score合并
     alpha = 1
     rank_res = total_rank_by_topsis_score(ranked_gid_list,topsis_score_list,
                                           img_name_to_topsis_score,alpha)
+    print(f"rank_res的长度:{len(rank_res)}") 
+    eval_apfd(rank_res)
     '''
     # img排序
     ranked_img_list,detected_mis_img_name_list = misimg_detect_by_weight_score(match_json_save_path)
     # gid与img name两个序列合并成一个序列
     rank_res = total_rank_by_loc(ranked_gid_list,ranked_img_list)
     '''
-    print(f"rank_res的长度:{len(rank_res)}") 
-    eval_apfd(rank_res)
+
 
     '''
     # 保存排序结果

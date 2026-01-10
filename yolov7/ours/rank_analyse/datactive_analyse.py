@@ -5,11 +5,8 @@ import os
 import json
 import joblib
 from pycocotools.coco import COCO
-import scienceplots
-import matplotlib
-from matplotlib.colors import ListedColormap, BoundaryNorm
-import matplotlib.pyplot as plt
-from ours.base_data_manager import exp_data_root_dir, get_datactive_rank_res_path,get_error_ann_file_path,get_annotations_with_miss_json_path
+from ours.base_data_manager import (exp_data_root_dir, get_datactive_rank_res_path,
+                                    get_error_ann_file_path,get_annotations_with_miss_json_path)
 from common import *
 
 def get_image_id_to_image_name_for_coco(annos_with_miss_json:dict) -> dict:
@@ -59,9 +56,6 @@ def look_annid_rank(ranked_gid_list:list[int], all_errored_g_box_id_set:set[int]
             error_flag_list.append(0)
     draw_rank_hot(error_flag_list,pic_save_path)
     print(f"图片保存在：{pic_save_path}")
-
-
-
 
 def main():
     coco = COCO(anno_coco_error_json_path)

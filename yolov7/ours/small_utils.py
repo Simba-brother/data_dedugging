@@ -1,15 +1,15 @@
 import os
 import json
 
-def get_all_files(directory):
+def get_all_files(directory)->list[str]:
     files = []
-    for filename in os.listdir(directory):
+    for filename in sorted(os.listdir(directory)):
         filepath = os.path.join(directory, filename)
         if os.path.isfile(filepath):
             files.append(filepath)
     return files
 
-def get_nc(dataset_name):
+def get_nc(dataset_name)->int:
     if dataset_name == "VOC2012":
         nc = 20
     elif dataset_name == "KITTI_8":

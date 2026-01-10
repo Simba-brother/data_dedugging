@@ -17,9 +17,6 @@ def model_load_weight(model:nn.Module,device,weight_path:str):
         model.load_state_dict(state_dict, strict=True)
     return model
 
-
-    
-
 def main():
     # 加载最后的模型
     model_weight_path = get_error_train_model_weight_file_path(dataset_name,model_name,epoch=49)

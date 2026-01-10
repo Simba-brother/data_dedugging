@@ -82,8 +82,11 @@ def test_8():
             print(f"重复行号 {idxs}: {k}")
 
 def test_9():
-    a = np.mean([])
-    print()
+    model_name = "FRCNN"
+    offset = model_name != "YOLOv7"
+    print(offset)
+
+
 if __name__ == "__main__":
     # test_2()
     test_9()
