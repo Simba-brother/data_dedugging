@@ -1,4 +1,6 @@
 import os
+import json
+
 def get_all_files(directory):
     files = []
     for filename in os.listdir(directory):
@@ -19,3 +21,9 @@ def get_nc(dataset_name):
     else:
         raise Exception("数据集参数错误")
     return nc
+
+def read_json(json_path:str):
+    _json = None
+    with open(json_path, "r") as f:
+        _json = json.load(f)
+    return _json

@@ -4,6 +4,13 @@
 import os
 
 exp_data_root_dir = "/data/mml/data_debugging_data/"
+fault_type_map = {
+    'no_fault': 0,
+    'cls_fault': 1,
+    'loc_fault': 2,
+    'redundancy_fault': 3,
+    'missing_fault': 4,
+}
 
 def get_correct_ann_file_path(dataset_name,train_or_val):
     ann_file_path = ""
@@ -93,6 +100,8 @@ def get_nc_by_datasetname(dataset_name) -> int:
         return 8
     elif dataset_name == "VisDrone":
         return 10
+    
+
 
 
 if __name__ == "__main__":
