@@ -5,6 +5,8 @@ import json
 from collections import defaultdict
 from ours.base_data_manager import (get_ours_rank_res_path,get_collected_gt_box_json_path,
                                     get_error_ann_file_path,get_correct_ann_file_path)
+from ours.data_organization_tools import conver_ours_rank
+from ours.small_utils import read_json
 
 def get_gid_to_img_and_line():
     res = {}
@@ -75,17 +77,6 @@ def get_anno_correct_img_name_to_annos():
 
     return res
 
-
-def get_gid_to_anno_id():
-    gid_to_anno_id = {}
-    gid_to_img_and_line =get_gid_to_img_and_line()
-    img_name_to_ann_ids = get_img_name_to_ann_ids()
-    for gid in gid_to_img_and_line.keys():
-        img_name = gid_to_img_and_line[gid]["img_name"]
-        line_no = gid_to_img_and_line[gid]["line_no"]
-        anno_id = img_name_to_ann_ids[img_name][line_no]
-        gid_to_anno_id[gid] = anno_id
-    return gid_to_anno_id
 
 def get_repair_info():
     repair_info = {}
@@ -169,7 +160,13 @@ def repair_anno_json(cur_anno_json,recify_info):
 
 def main():
     # 得到修复信息
+    g_boxes_json = read_json(gt_json_path)
+    anno_error_json = read_json(anno_error_path)
+    converted_ours_rank = conver_ours_rank(rank_res,g_boxes_json,anno_error_json)
+
+    
     repair_info = get_repair_info()
+    
     # 修复anno
     with open(anno_error_path,"r") as f:
         anno_error_json = json.load(f)
@@ -183,10 +180,10 @@ if __name__ == "__main__":
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
     rank_res = joblib.load(os.path.join(exp_root_dir,"final_res","ours",dataset_name,model_name,
-                                        "rank_res","rank_topsis_new_alpha=1.3.joblib"))
+                                        "rank_res","alpha=1.5","rank_topsis.joblib"))
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     anno_error_path = get_error_ann_file_path(dataset_name)
     anno_correct_path = get_correct_ann_file_path(dataset_name,"train")
     repair_anno_save_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train",
-                                         f"_annotations.coco_repair_ours_{model_name}_new_alpha=1.3.json")
+                                         f"_annotations.coco_repair_ours_{model_name}_alpha=1.5.json")
     main()

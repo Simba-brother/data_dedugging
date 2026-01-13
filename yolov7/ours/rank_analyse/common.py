@@ -57,17 +57,20 @@ def compute_apfd(fault_set:set, rankded_list):
     apfd = round(apfd,4)
     return apfd
 
-def calc_fpr_fnr(rank_list,error_set):
+def calc_fpr_fnr_f1(rank_list,error_set):
     cut_off = 0.4
     cut_point = int(len(rank_list) * cut_off)
     P_list = rank_list[:cut_point]
     N_list = rank_list[cut_point:]
     fp = 0
     fn = 0
+    tp = 0
     correct_set = set(rank_list) - error_set
     for idd in P_list:
         if idd not in error_set:
             fp += 1
+        else:
+            tp += 1
     for idd in N_list:
         if idd in error_set:
             fn += 1
@@ -75,7 +78,11 @@ def calc_fpr_fnr(rank_list,error_set):
     fnr = fn / len(error_set)
     fpr = round(fpr,4)
     fnr = round(fnr,4)
-    return fpr,fnr
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
+    f1 = 2*precision*recall / (precision + recall)
+    f1 = round(f1,4)
+    return fpr,fnr,f1
 
 def draw_total_rank(error_flag_list, save_path):
     # error_flag_list: 包含 0/1/2 的列表

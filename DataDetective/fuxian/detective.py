@@ -134,14 +134,14 @@ if __name__ == "__main__":
             'missing_fault': 4,
     }
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     
-    crop_infer_results_path=f'{exp_data_root}/final_res/datactive/{dataset_name}/infer_results/crop.json'
-    others_infer_results_path=f'{exp_data_root}/final_res/datactive/{dataset_name}/infer_results/other_objects.json'
+    crop_infer_results_path=f'{exp_data_root}/final_res/datactive/{dataset_name}/infer_results/new/crop.json'
+    others_infer_results_path=f'{exp_data_root}/final_res/datactive/{dataset_name}/infer_results/new/other_objects.json'
 
     annotation_path=f'{exp_data_root}/datasets/{dataset_name}-coco/train/_annotations.coco_error.json'
     annotation_with_miss_path = os.path.join(exp_data_root,"error_anno",dataset_name,"coco_format", "annotations_with_miss.json")
-    rank_result_save_path = os.path.join(exp_data_root,"final_res","datactive",dataset_name, "ranked_result", "ranked_list.joblib")
+    rank_result_save_path = os.path.join(exp_data_root,"final_res","datactive",dataset_name, "ranked_result","new","ranked_list.joblib")
     if dataset_name == "VOC2012":
         bg_clss_id = 20
     elif dataset_name == "KITTI": # 9 个 clss

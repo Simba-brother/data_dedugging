@@ -44,6 +44,19 @@ def get_img_name_to_ann_ids(anno:dict) -> dict:
         imgname_to_annids[img_name].append(anno_id)
     return imgname_to_annids
 
+def get_img_name_to_missed_annids(anno_with_miss:dict) -> dict:
+    imgname_to_missedannids = defaultdict(list)
+    img_id_to_img_name = get_imgid_to_imgname(anno_with_miss)
+    annos = anno_with_miss["annotations"]
+    for anno in annos:
+        anno_id = anno["id"]
+        image_id = anno["image_id"]
+        img_name = img_id_to_img_name[image_id]
+        fault_type = anno["fault_type"]
+        if fault_type == 4:
+            imgname_to_missedannids[img_name].append(anno_id)
+    return imgname_to_missedannids
+
 def get_gid_to_img_and_line(g_boxes_json:dict):
     res = {}
     for img_name,g_box_list in g_boxes_json.items():
@@ -77,6 +90,14 @@ def get_annoid_to_imgname(anno_json:dict) -> dict:
         annoid_to_imgname[anno["id"]] = img_name
     return annoid_to_imgname
 
+def get_error_annoid_set(anno_json:dict) -> set:
+    error_annoid_set = set()
+    annos = anno_json["annotations"]
+    for anno in annos:
+         if anno["fault_type"] != 0:
+            error_annoid_set.add(anno["id"])
+    return error_annoid_set
+
 def get_all_miss_img_name_list(anno_with_miss_json:dict) -> list:
     imgid_to_imgname = get_imgid_to_imgname(anno_with_miss_json)
     miss_img_name_list = []
@@ -86,5 +107,78 @@ def get_all_miss_img_name_list(anno_with_miss_json:dict) -> list:
             img_name = imgid_to_imgname[anno["image_id"]]
             miss_img_name_list.append(img_name)
     return miss_img_name_list
+
+
+def get_annoId_to_anno(anno_error_with_miss:dict)->dict:
+    annoId_to_anno = {}
+    annos = anno_error_with_miss["annotations"]
+    for anno in annos:
+        annoId_to_anno[anno["id"]] = anno
+    return annoId_to_anno
+
+def get_all_error_annoids(anno_error_with_miss:dict) -> list:
+    all_error_annoids = []
+    annos = anno_error_with_miss["annotations"]
+    for anno in annos:
+        if anno["fault_type"] != 0:
+            all_error_annoids.append(anno["id"])
+    return all_error_annoids
+
+def get_all_error_clean_set(anno_error_with_miss:dict) -> dict:
+    all_miss_img_name_set = set()
+    cls_error_annoid_set = set()
+    loc_error_annoid_set =set()
+    redun_error_annoid_set = set()
+    clean_annoid_set = set()
+    imgId_to_imgName = get_imgid_to_imgname(anno_error_with_miss)
+    annos = anno_error_with_miss["annotations"]
+    for anno in annos:
+        if anno["fault_type"] == 0:
+            clean_annoid_set.add(anno["id"])
+        elif anno["fault_type"] == 1:
+            cls_error_annoid_set.add(anno["id"])
+        elif anno["fault_type"] == 2:
+            loc_error_annoid_set.add(anno["id"])
+        elif anno["fault_type"] == 3:
+            redun_error_annoid_set.add(anno["id"])
+        elif anno["fault_type"] == 4:
+            image_id = anno["image_id"]
+            image_name = imgId_to_imgName[image_id]
+            all_miss_img_name_set.add(image_name)
+    all_error_clean_set = {
+        "miss_set":all_miss_img_name_set,
+        "cls_set":cls_error_annoid_set,
+        "loc_set":loc_error_annoid_set,
+        "redun_set":redun_error_annoid_set,
+        "clean_set":clean_annoid_set
+    }
+    return all_error_clean_set
+
+def conver_ours_rank(ours_rank:list,g_boxes_json:dict,anno_error_json:dict) -> list:
+
+    gid_to_anno_id = get_gid_to_anno_id(g_boxes_json, anno_error_json)
+    converted_ours_rank = []
+    for idd in ours_rank:
+        if type(idd) is str:
+            img_name = idd
+            converted_ours_rank.append(img_name)
+        else:
+            gid = idd
+            annoid = gid_to_anno_id[gid]
+            converted_ours_rank.append(annoid)
+    return converted_ours_rank
+
+def conver_datactive_rank(datactive_rank:list, bg_catId:int) -> list:
+    converted_rank_list = []
+    for instance in datactive_rank:
+        gt_category_id = instance["gt_category_id"]
+        if gt_category_id == bg_catId:
+            converted_rank_list.append(instance["image_name"])
+        else:
+            converted_rank_list.append(instance["anno_id"])
+    return converted_rank_list
+
+
+
 
 

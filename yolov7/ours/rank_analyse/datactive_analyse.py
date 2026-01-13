@@ -8,6 +8,7 @@ from pycocotools.coco import COCO
 from ours.base_data_manager import (exp_data_root_dir, get_datactive_rank_res_path,
                                     get_error_ann_file_path,get_annotations_with_miss_json_path)
 from common import *
+from ours.data_organization_tools import conver_datactive_rank
 
 def get_image_id_to_image_name_for_coco(annos_with_miss_json:dict) -> dict:
     id2name = {}
@@ -82,16 +83,38 @@ def main():
 
     # 计算APFD,FPR和FNR
     APFD = compute_apfd(total_error_set, converted_rank_list)
-    FPR,FNR =calc_fpr_fnr(converted_rank_list, total_error_set)
-    print(f"AFFD:{APFD},FPR:{FPR},FNR:{FNR}")
+    FPR,FNR,F1 =calc_fpr_fnr_f1(converted_rank_list, total_error_set)
+    print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR},F1:{F1}")
+
+def xiufu_rank_res():
+    coco = COCO(anno_coco_error_json_path)
+    catIds = coco.getCatIds()
+    bg_id = catIds[-1]+1
+    converted_rank = conver_datactive_rank(ranked_list, bg_id)
+    assert 129286 in converted_rank, "不通过"
+    assert 61921 in converted_rank, "不通过"
+    removed_idx_list = []
+    for idx, instance in enumerate(ranked_list):
+        if instance["anno_id"] == 129286:
+            removed_idx_list.append(idx)
+        if instance["anno_id"] == 61921:
+            removed_idx_list.append(idx)
+    for idx in removed_idx_list:
+        del ranked_list[idx]
+
+    joblib.dump(ranked_list,"/data/mml/data_debugging_data/final_res/datactive/VisDrone/ranked_result/new/ranked_list.joblib")
+    print()
+
+
 
 if __name__ == "__main__":
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     # datactive 排序的idd
-    ranked_list = joblib.load(get_datactive_rank_res_path(dataset_name))
+    ranked_list = joblib.load("/data/mml/data_debugging_data/final_res/datactive/VisDrone/ranked_result/new/ranked_list_bak.joblib")
     anno_coco_error_json_path = get_error_ann_file_path(dataset_name)
     annotations_with_miss_json_path =get_annotations_with_miss_json_path(dataset_name)
-    main()
+    # main()
+    xiufu_rank_res()
 
 
 

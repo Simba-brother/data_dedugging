@@ -1038,8 +1038,8 @@ def main():
     # 计算APFD,FPR和FNR
     error_set = all_errored_g_box_id_set | all_miss_error_img_name_set
     APFD = compute_apfd(error_set, total_rank)
-    FPR,FNR =calc_fpr_fnr(total_rank, error_set)
-    print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR}")
+    FPR,FNR,F1 =calc_fpr_fnr_f1(total_rank, error_set)
+    print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR},F1:{F1}")
 
 
 def strict_analyse_rank(g_boxes_json:dict, annos_with_miss_json_path:str, rank_res:list):
@@ -1047,10 +1047,23 @@ def strict_analyse_rank(g_boxes_json:dict, annos_with_miss_json_path:str, rank_r
     all_errored_g_box_id_set = get_all_errored_g_box_id_set(g_boxes_json)
     # 得到missed_error_img_name_set
     all_miss_error_img_name_set = get_all_miss_error_img_name_set(annos_with_miss_json_path)
+
+    # 可视化一下两个序列的情况
+    ranked_gid_list = []
+    ranked_image_name_list = []
+    for idd in rank_res:
+        if type(idd) == str:
+            ranked_image_name_list.append(idd)
+        else:
+            ranked_gid_list.append(idd)
+    assert len(ranked_gid_list) + len(ranked_image_name_list) == len(rank_res), "数量不对"
+    look_gid_rank(ranked_gid_list, all_errored_g_box_id_set)
+    look_img_rank(ranked_image_name_list,all_miss_error_img_name_set)
+    look_total_rank(rank_res,all_errored_g_box_id_set,all_miss_error_img_name_set)
     error_set = error_set = all_errored_g_box_id_set | all_miss_error_img_name_set
     APFD = compute_apfd(error_set, rank_res)
-    FPR,FNR =calc_fpr_fnr(rank_res, error_set)
-    print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR}")
+    FPR,FNR,F1 =calc_fpr_fnr_f1(rank_res, error_set)
+    print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR},F1:{F1}")
 
 
 if __name__ == "__main__":
@@ -1071,5 +1084,5 @@ if __name__ == "__main__":
     # main()
 
     g_boxes_json = read_json(gt_json_path)
-    rank_res = joblib.load("/data/mml/data_debugging_data/final_res/ours/VisDrone/YOLOv7/rank_res/rank_topsis_new.joblib")
+    rank_res = joblib.load("/data/mml/data_debugging_data/final_res/ours/VisDrone/YOLOv7/rank_res/alpha=1.5/rank_topsis.joblib")
     strict_analyse_rank(g_boxes_json, annos_with_miss_json_path, rank_res)
