@@ -1,0 +1,216 @@
+
+import os
+import joblib
+import json
+import time
+from datetime import datetime
+from collections import defaultdict
+from ours.base_data_manager import (get_ours_rank_res_path,get_collected_gt_box_json_path,
+                                    get_error_ann_file_path,get_correct_ann_file_path)
+from ours.data_organization_tools import (conver_ours_rank,conver_datactive_rank,
+                                          get_img_name_to_ann_ids,get_annoId_to_anno,
+                                          get_all_error_annoids)
+from ours.small_utils import read_json
+from pprint import pprint
+from pycocotools.coco import COCO
+
+def get_gid_to_img_and_line():
+    res = {}
+    with open(gt_json_path,mode='r') as f:
+        gt_box = json.load(f)
+    for img_name,g_box_list in gt_box.items():
+        line_no = 0
+        for g_box in g_box_list:
+            gid = g_box["box_id"]
+            res[gid] = {
+                "img_name":img_name,
+                "line_no":line_no
+            }
+            line_no += 1
+    return res
+
+
+
+
+def get_repair_info(converted_rank:list,anno_correct_json:dict, anno_error_json:dict,cut_off_rate:float)->dict:
+    repair_info = {
+        "miss":{}, # {imgname:[missed_annos]}
+        "cls":{}, # {anno_id:correct_anno}
+        "loc":{}, # {anno_id:correct_anno}
+        "redun":[] # [redun_anno_ids]
+    }
+
+
+    cut_off = int(cut_off_rate*len(converted_rank))
+    cuted_converted_rank = converted_rank[:cut_off]
+
+    correct_imgname_to_annoids = get_img_name_to_ann_ids(anno_correct_json)
+    error_imgname_to_annoids = get_img_name_to_ann_ids(anno_error_json)
+    correct_annoId_to_anno = get_annoId_to_anno(anno_correct_json)
+    error_annoId_to_anno = get_annoId_to_anno(anno_error_json)
+
+    for idd in cuted_converted_rank:
+        if type(idd) is str:
+            image_name = idd
+            missd_annos = [] # 用于存放该image的真正missed annos
+            correct_anno_ids = correct_imgname_to_annoids[image_name]
+            cur_anno_ids = error_imgname_to_annoids[image_name]
+            # 正确的有，当前没有
+            missed_anno_id_set = set(correct_anno_ids) - set(cur_anno_ids)
+            missed_anno_id_list = list(missed_anno_id_set)
+            for missed_anno_id in missed_anno_id_list:
+                missed_anno = correct_annoId_to_anno[missed_anno_id]
+                missd_annos.append(missed_anno)
+            repair_info["miss"][image_name] = missd_annos
+        else:
+            anno_id = idd
+            cur_anno = error_annoId_to_anno[anno_id]
+            if cur_anno["fault_type"] == 1:
+                 # cls fault
+                 correct_anno = correct_annoId_to_anno[anno_id]
+                 correct_anno["repair_ops"] = "repair_cls"
+                 repair_info["cls"][anno_id] = correct_anno
+            elif cur_anno["fault_type"] == 2:
+                # loc fault
+                correct_anno = correct_annoId_to_anno[anno_id]
+                correct_anno["repair_ops"] = "repair_loc"
+                repair_info["loc"][anno_id] = correct_anno
+            elif cur_anno["fault_type"] == 3:
+                # redun fault
+                repair_info["redun"].append(anno_id)
+    return repair_info
+    
+
+def repair_anno_json(cur_anno_json:dict,repair_info:dict)->dict:
+    repair_info = {
+        "miss":{}, # {imgname:[missed_annos]}
+        "cls":{}, # {anno_id:correct_anno}
+        "loc":{}, # {anno_id:correct_anno}
+        "redun":[] # [redun_anno_ids]
+    }
+    miss_info = repair_info["miss"]
+    cls_info = repair_info["cls"]
+    loc_info = repair_info["loc"]
+    redun_anno_id_list = repair_info["redun"]
+
+    annos = cur_anno_json["annotations"]
+    # 修复 cls
+    for anno in annos:
+        anno_id = anno["id"]
+        if anno_id in cls_info:
+            correct_anno = cls_info[anno_id]
+            anno["category_id"] = correct_anno["category_id"]
+    # 修复 loc
+    for anno in annos:
+        anno_id = anno["id"]
+        if anno_id in loc_info:
+            correct_anno = cls_info[anno_id]
+            anno["bbox"] = correct_anno["bbox"]
+
+    # 修复mis
+    for img_name,missed_annos in miss_info.items():
+        annos.extend(missed_annos)
+
+    # 修复redun
+    new_annos = [anno for anno in annos if anno["id"] not in redun_anno_id_list]
+    cur_anno_json["annotations"] = new_annos
+    return cur_anno_json
+
+def count_repair_info(repair_info:dict,anno_with_miss_error_json:dict):
+    all_error_annoids = get_all_error_annoids(anno_with_miss_error_json) # 包括 miss fault
+
+    miss_info = repair_info["miss"]
+    cls_info = repair_info["cls"]
+    loc_info = repair_info["loc"]
+    redun_anno_id_list = repair_info["redun"]
+
+    repaired_miss_box_count = 0 # 修复的miss fault box数量
+    for img_name, missed_annos in miss_info.items():
+        repaired_miss_box_count += len(missed_annos)
+    
+    repaired_cls_count = len(cls_info)
+    repaired_loc_count = len(loc_info)
+    repaired_redun_count = len(redun_anno_id_list)
+
+    total_repair_num = repaired_miss_box_count + repaired_cls_count + repaired_loc_count + repaired_redun_count
+    repair_rate = round(total_repair_num / len(all_error_annoids),4)
+
+    count_info = {
+        "all_fault_num": len(all_error_annoids),
+        "total_repair_num": total_repair_num,
+        "repair_rate": repair_rate
+    }
+    return count_info
+
+
+def repair_kit(converted_rank:list, anno_correct_json:dict, anno_error_json:dict, cut_off_rate:float) -> dict:
+    repair_info = get_repair_info(
+        converted_rank,
+        anno_correct_json,
+        anno_error_json,
+        cut_off_rate)
+    
+    # 统计一下修复信息
+    anno_with_miss_error_json = read_json(anno_with_miss_error_path)
+    count_info = count_repair_info(repair_info,anno_with_miss_error_json)
+    pprint(count_info,indent=4)
+    # 修复anno
+    new_annos = repair_anno_json(anno_error_json,repair_info)
+
+    return new_annos
+    
+
+def main():
+    start_time = time.time()  # 记录开始时间
+
+    # 正确标注json和错误标注json
+    anno_error_json = read_json(anno_error_path)
+    anno_correct_json = read_json(anno_correct_path)
+
+    # 排序数据转换
+    if rank_method == "ours":
+        g_boxes_json = read_json(gt_json_path)
+        converted_rank = conver_ours_rank(rank,g_boxes_json,anno_error_json)
+    elif rank_method == "datactive":
+        coco = COCO(anno_error_path)
+        bg_catId = coco.getCatIds()[-1]+1
+        converted_rank = conver_datactive_rank(rank,bg_catId)
+    else:
+        raise Exception("rank method 参数错误")
+
+    # 修复的标注json
+    anno_repaired_json = repair_kit(converted_rank, anno_correct_json, anno_error_json, cut_off_rate=0.4)
+
+    # 结果保存与计时
+    if is_save:
+        with open(repair_anno_save_path,"w") as f:
+            json.dump(anno_repaired_json,f)
+        print(f"anno_repaired_json保存在: {repair_anno_save_path}")
+    end_time = time.time()  # 记录结束时间
+    elapsed_time = end_time - start_time  # 计算运行时间（秒）
+    hours = int(elapsed_time // 3600)  # 计算小时数
+    minutes = int((elapsed_time % 3600) // 60)  # 计算分钟数
+    seconds = elapsed_time % 60  # 计算剩余的秒数
+    print(f"运行时间：{hours:02d}:{minutes:02d}:{seconds:02.0f}")
+    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"实验结束时刻: {now_str}")
+    
+    
+
+if __name__ == "__main__":
+    exp_root_dir = "/data/mml/data_debugging_data"
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
+    gt_json_path = get_collected_gt_box_json_path(dataset_name)
+    anno_error_path = get_error_ann_file_path(dataset_name)
+    anno_with_miss_error_path = os.path.join(exp_root_dir,"error_anno",dataset_name,"coco_format",
+                                             "annotations_with_miss.json")
+    anno_correct_path = get_correct_ann_file_path(dataset_name,"train")
+
+    rank_method = "datactive" # ours|datactive
+    is_save = True
+    rank = joblib.load("/data/mml/data_debugging_data/final_res/datactive/VisDrone/ranked_result/ranked_list.joblib")
+    if is_save:
+        repair_anno_save_path = "/data/mml/data_debugging_data/datasets/VisDrone-coco/train/_annotations.coco_repair_datactive.json"
+
+    main()

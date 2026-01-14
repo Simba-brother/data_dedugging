@@ -109,9 +109,9 @@ def get_all_miss_img_name_list(anno_with_miss_json:dict) -> list:
     return miss_img_name_list
 
 
-def get_annoId_to_anno(anno_error_with_miss:dict)->dict:
+def get_annoId_to_anno(anno_json:dict)->dict:
     annoId_to_anno = {}
-    annos = anno_error_with_miss["annotations"]
+    annos = anno_json["annotations"]
     for anno in annos:
         annoId_to_anno[anno["id"]] = anno
     return annoId_to_anno

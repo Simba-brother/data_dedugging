@@ -1,6 +1,7 @@
 
 import os
 import numpy as np
+from pprint import pprint,pformat
 def test_1():
     data = [3,4,2,1]
     b = data[[0,8]]
@@ -82,9 +83,28 @@ def test_8():
             print(f"重复行号 {idxs}: {k}")
 
 def test_9():
-    model_name = "FRCNN"
-    offset = model_name != "YOLOv7"
-    print(offset)
+    data = {
+    "name": "张三",
+    "age": 25,
+    "address_list": [{
+        "city": "北京",
+        "street": "朝阳路",
+        "postcode": "100000"
+    },
+    {
+        "city": "北京",
+        "street": "朝阳路",
+        "postcode": "100000"
+    }],
+    "hobbies": ["阅读", "游泳", "编程"]
+}   
+    print(data)
+    # 直接打印
+    pprint(data, indent=2)
+
+    # 获取格式化的字符串
+    formatted = pformat(data, indent=2)
+    print(formatted)
 
 
 if __name__ == "__main__":
