@@ -592,7 +592,7 @@ if __name__ == '__main__':
     trainset_stat = "repair_datactive" # clean|error|repair_ours|repair_datactive
     model_save_dir = os.path.join(exp_data_root,
                                   "models",dataset_name.lower(),model_name.lower(),
-                                  trainset_stat,"new")
+                                  trainset_stat,"now") 
     os.makedirs(model_save_dir,exist_ok=True)
     if trainset_stat in ["repair_ours", "repair_datactive"]:
         opt.weights = os.path.join(exp_data_root, "models", dataset_name.lower(), "yolov7", "error", "new", "weights", "last.pt")

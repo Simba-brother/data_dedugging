@@ -108,7 +108,6 @@ def get_all_miss_img_name_list(anno_with_miss_json:dict) -> list:
             miss_img_name_list.append(img_name)
     return miss_img_name_list
 
-
 def get_annoId_to_anno(anno_json:dict)->dict:
     annoId_to_anno = {}
     annos = anno_json["annotations"]
@@ -178,7 +177,10 @@ def conver_datactive_rank(datactive_rank:list, bg_catId:int) -> list:
             converted_rank_list.append(instance["anno_id"])
     return converted_rank_list
 
-
-
-
+def get_all_image_name_list(anno_json:dict)->list:
+    all_img_name_list = []
+    images = anno_json["images"]
+    all_img_name_list = [img["file_name"] for img in images]
+    assert len(set(all_img_name_list)) == len(all_img_name_list), "具有重复元素"
+    return all_img_name_list
 
