@@ -10,7 +10,8 @@ from ours.base_data_manager import exp_data_root_dir
 from ours.small_utils import read_json
 from ours.data_organization_tools import (get_g_id_to_g_box, get_gid_to_anno_id,
                                           get_imgname_to_imgid, get_cls_id_to_name, get_annoid_to_imgname,
-                                          get_all_miss_img_name_list)
+                                          get_all_miss_img_name_list,conver_ours_rank,
+                                          get_img_name_to_missed_annids,get_img_name_to_ann_ids)
 
 
 
@@ -279,19 +280,19 @@ def main():
 
     
     # 看下miss的修复结果
-    # for img_name in miss_img_name_list:
-    #     # 得到这张图像的所有正确标注
-    #     correct_annos = get_annos_based_img_name(anno_correct_json,img_name)
-    #     # 得到这张图像的miss错误标注
-    #     error_annos = get_annos_based_img_name(anno_error_json, img_name)
-    #     # 得到这张图像的修复后的标注
-    #     repair_annos = get_annos_based_img_name(anno_repair_json, img_name)
-    #     visual_img(img_name,cls_id_to_name,correct_annos,error_annos,repair_annos)
+    for img_name in miss_img_name_list:
+        # 得到这张图像的所有正确标注
+        correct_annos = get_annos_based_img_name(anno_correct_json,img_name)
+        # 得到这张图像的miss错误标注
+        error_annos = get_annos_based_img_name(anno_error_json, img_name)
+        # 得到这张图像的修复后的标注
+        repair_annos = get_annos_based_img_name(anno_repair_json, img_name)
+        visual_img(img_name,cls_id_to_name,correct_annos,error_annos,repair_annos)
     
 
-    error_annoid_to_imgname = get_annoid_to_imgname(anno_error_json)
-    
-    # 看下cls fault的修复结果
+    # error_annoid_to_imgname = get_annoid_to_imgname(anno_error_json)
+
+    # # 看下cls fault的修复结果
     # for ann_id in cls_annoid_list:
     #     img_name = error_annoid_to_imgname[ann_id]
     #     # 得到这张图像的所有正确标注
@@ -304,7 +305,7 @@ def main():
     
 
     
-    # 看下loc fault的修复结果
+    # # 看下loc fault的修复结果
     # for ann_id in loc_annoid_list:
     #     img_name = error_annoid_to_imgname[ann_id]
     #     # 得到这张图像的所有正确标注
@@ -315,32 +316,65 @@ def main():
     #     repair_annos = get_annos_based_img_name(anno_repair_json, img_name)
     #     visual_img(img_name,cls_id_to_name,correct_annos,error_annos,repair_annos)
 
-    # 看下redun fault的修复结果
-    for ann_id in redun_annoid_list:
-        img_name = error_annoid_to_imgname[ann_id]
-        # 得到这张图像的所有正确标注
-        correct_annos = get_annos_based_img_name(anno_correct_json,img_name)
-        # 得到这张图像的miss错误标注
-        error_annos = get_annos_based_img_name(anno_error_json, img_name)
-        # 得到这张图像的修复后的标注
-        repair_annos = get_annos_based_img_name(anno_repair_json, img_name)
-        visual_img(img_name,cls_id_to_name,correct_annos,error_annos,repair_annos)
+    
+    # # 看下redun fault的修复结果
+    # for ann_id in redun_annoid_list:
+    #     img_name = error_annoid_to_imgname[ann_id]
+    #     # 得到这张图像的所有正确标注
+    #     correct_annos = get_annos_based_img_name(anno_correct_json,img_name)
+    #     # 得到这张图像的miss错误标注
+    #     error_annos = get_annos_based_img_name(anno_error_json, img_name)
+    #     # 得到这张图像的修复后的标注
+    #     repair_annos = get_annos_based_img_name(anno_repair_json, img_name)
+    #     visual_img(img_name,cls_id_to_name,correct_annos,error_annos,repair_annos)
+
+def check_miss(gt_missed_annoids, repairAnnids, errorAnnids, correctAnnids):
+    assert set(correctAnnids) - set(errorAnnids) == set(gt_missed_annoids), "没通过"
+    for missed_annid in gt_missed_annoids:
+        assert missed_annid in repairAnnids, "没修复"
+
+
+def detail_check():
+    anno_with_miss_json = read_json(anno_with_miss_json_path)
+    anno_error_json = read_json(anno_error_json_path)
+    anno_correct_json = read_json(anno_correct_json_path)
+    anno_repair_json = read_json(anno_repair_json_path)
+    converted_rank = conver_ours_rank(rank_res)
+    cutted_rank = converted_rank[:int(len(converted_rank)*0.4)]
+
+    miss_imgname_list = get_all_miss_img_name_list(anno_with_miss_json)
+    imgname_to_missed_annids = get_img_name_to_missed_annids(anno_with_miss_json)
+    imgname_to_errorAnnids = get_img_name_to_ann_ids(anno_error_json)
+    imgname_to_correctAnnids = get_img_name_to_ann_ids(anno_correct_json)
+    imgname_to_repairAnnids = get_img_name_to_ann_ids(anno_repair_json)
+    for idd in cutted_rank:
+        if type(idd) is str:
+            img_name = idd
+            if img_name in miss_imgname_list:
+                missed_annoids = imgname_to_missed_annids[img_name]
+                errorAnnids = imgname_to_errorAnnids[img_name]
+                correctAnnids = imgname_to_correctAnnids[img_name]
+                repairAnnids = imgname_to_repairAnnids[img_name]
+                check_miss(missed_annoids,repairAnnids,errorAnnids,correctAnnids)
+
+                
+
+
+
 
 
 
 if __name__ == '__main__':
-    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
 
     anno_json_dir = os.path.join(exp_data_root_dir, "datasets", f"{dataset_name}-coco", "train")
     anno_error_json_path = os.path.join(anno_json_dir,"_annotations.coco_error.json")
     anno_with_miss_json_path = os.path.join(exp_data_root_dir,"error_anno", dataset_name, "coco_format", "annotations_with_miss.json")
     anno_correct_json_path = os.path.join(anno_json_dir,"_annotations.coco_correct.json")
-    anno_repair_json_path = os.path.join(anno_json_dir,f"_annotations.coco_repair_ours_{model_name}.json")
-    rank_res = joblib.load(os.path.join(exp_data_root_dir,"final_res","ours",dataset_name,
-                            model_name,"rank_res","rank_topsis.joblib"))
+    anno_repair_json_path = "/data/mml/data_debugging_data/datasets/VisDrone-coco/train/_annotations.coco_repair_ours_YOLOv7_alpha=1.5.json"
+    rank_res = joblib.load("/data/mml/data_debugging_data/final_res/ours/VisDrone/YOLOv7/rank_res/alpha=1.5/rank_topsis.joblib")
     g_boxes_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
                                      dataset_name,model_name,"gt_bboxs.json")
-
 
     main()

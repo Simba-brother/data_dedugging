@@ -42,14 +42,14 @@ def get_repair_info(converted_rank:list,anno_correct_json:dict, anno_error_json:
 
 
     cut_off = int(cut_off_rate*len(converted_rank))
-    cuted_converted_rank = converted_rank[:cut_off]
+    cutted_converted_rank = converted_rank[:cut_off]
 
     correct_imgname_to_annoids = get_img_name_to_ann_ids(anno_correct_json)
     error_imgname_to_annoids = get_img_name_to_ann_ids(anno_error_json)
     correct_annoId_to_anno = get_annoId_to_anno(anno_correct_json)
     error_annoId_to_anno = get_annoId_to_anno(anno_error_json)
 
-    for idd in cuted_converted_rank:
+    for idd in cutted_converted_rank:
         if type(idd) is str:
             image_name = idd
             missd_annos = [] # 用于存放该image的真正missed annos
@@ -82,12 +82,15 @@ def get_repair_info(converted_rank:list,anno_correct_json:dict, anno_error_json:
     
 
 def repair_anno_json(cur_anno_json:dict,repair_info:dict)->dict:
+    '''
+    Args: 
     repair_info = {
         "miss":{}, # {imgname:[missed_annos]}
         "cls":{}, # {anno_id:correct_anno}
         "loc":{}, # {anno_id:correct_anno}
         "redun":[] # [redun_anno_ids]
     }
+    '''
     miss_info = repair_info["miss"]
     cls_info = repair_info["cls"]
     loc_info = repair_info["loc"]
@@ -104,7 +107,7 @@ def repair_anno_json(cur_anno_json:dict,repair_info:dict)->dict:
     for anno in annos:
         anno_id = anno["id"]
         if anno_id in loc_info:
-            correct_anno = cls_info[anno_id]
+            correct_anno = loc_info[anno_id]
             anno["bbox"] = correct_anno["bbox"]
 
     # 修复mis
@@ -200,7 +203,7 @@ def main():
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
+    model_name = "YOLOv7" # YOLOv7|FRCNN
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     anno_error_path = get_error_ann_file_path(dataset_name)
     anno_with_miss_error_path = os.path.join(exp_root_dir,"error_anno",dataset_name,"coco_format",
@@ -212,5 +215,4 @@ if __name__ == "__main__":
     rank = joblib.load("/data/mml/data_debugging_data/final_res/datactive/VisDrone/ranked_result/ranked_list.joblib")
     if is_save:
         repair_anno_save_path = "/data/mml/data_debugging_data/datasets/VisDrone-coco/train/_annotations.coco_repair_datactive.json"
-
     main()

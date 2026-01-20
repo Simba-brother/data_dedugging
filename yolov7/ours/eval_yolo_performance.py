@@ -25,7 +25,7 @@ from ours.base_data_manager import (get_correct_ann_file_path,get_error_ann_file
 def get_model(model,device):
     # 加载模型权重
     
-    if weights_path.endswith("last.pt"):
+    if weights_path.endswith("last.pt") or weights_path.endswith("best.pt"):
         state_dict = torch.load(weights_path, map_location=device, weights_only=False)
         state_dict = state_dict['model'].float().state_dict()
         model.load_state_dict(state_dict, strict=True)
@@ -372,13 +372,17 @@ def get_COCOANN_FILE(train_or_val:str):
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
-    model_state = "clean" # clean|error|repair_ours|repair_datactive
+    model_state = "repair_ours" # clean|error|repair_ours|repair_datactive
     train_or_val = "val"
     gpu_id = 1
-    ANN_FILE = get_correct_ann_file_path(dataset_name,train_or_val)
+    # ANN_FILE = get_correct_ann_file_path(dataset_name,train_or_val)
+    # ANN_FILE = 
     cocoGt = COCO(ANN_FILE)
+
+    weights_path = "/data/mml/data_debugging_data/models/visdrone/yolov7/repair_ours/alpha=1.5_val/weights/best.pt"
+    '''
     if model_state == "clean":
         weights_path = get_clean_train_model_weight_file_path(dataset_name,model_name)
     elif model_state == "error":
@@ -388,5 +392,6 @@ if __name__ == "__main__":
     elif model_state == "repair_datactive":
         weights_path = get_repair_train_model_weight_file_path(dataset_name,model_name,method_name="datactive")
     # buquan_anno_file()
+    '''
     eval_perform_coco_style()
 
