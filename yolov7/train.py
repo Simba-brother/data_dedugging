@@ -527,9 +527,11 @@ def train(hyp, opt, device, tb_writer=None):
 
         # Strip optimizers
         final = best if best.exists() else last  # final model
+        '''
         for f in last, best:
             if f.exists():
                 strip_optimizer(f)  # strip optimizers
+        '''
         if opt.bucket:
             os.system(f'gsutil cp {final} gs://{opt.bucket}/weights')  # upload
         if wandb_logger.wandb and not opt.evolve:  # Log the stripped model
@@ -592,15 +594,20 @@ if __name__ == '__main__':
     trainset_stat = "repair_datactive" # clean|error|repair_ours|repair_datactive
     model_save_dir = os.path.join(exp_data_root,
                                   "models",dataset_name.lower(),model_name.lower(),
-                                  trainset_stat,"split") 
+                                  trainset_stat,"old_val_resume")
     os.makedirs(model_save_dir,exist_ok=True)
     if trainset_stat in ["repair_ours", "repair_datactive"]:
-        opt.weights = os.path.join(exp_data_root, "models", dataset_name.lower(), "yolov7", "error", "new", "weights", "last.pt")
-        opt.epochs = 25
+        # opt.weights = os.path.join(exp_data_root, "models", dataset_name.lower(), "yolov7", "error", "new", "weights", "last.pt")
+        # 设置恢复训练的ckpt
+        opt.resume = "trained_models/visdrone/error_resume.pt"
+        # 设置结束的训练轮次
+        epochs = 75
+        # 指定恢复训练需要的yaml
+        opt.opt_yaml_path = "trained_models/visdrone/error_resume_opt.yaml"
+        # 恢复训练时不需要保存每个epoch的ckpt
         save_each_epoch = False
     else:
         save_each_epoch = True
-
     # Set DDP variables
     opt.world_size = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
     # -1 说明当前代码不运行在分布式训练环境中
@@ -615,9 +622,13 @@ if __name__ == '__main__':
         ckpt = opt.resume if isinstance(opt.resume, str) else get_latest_run()  # specified or most recent path
         assert os.path.isfile(ckpt), 'ERROR: --resume checkpoint does not exist'
         apriori = opt.global_rank, opt.local_rank
-        with open(Path(ckpt).parent.parent / 'opt.yaml') as f:
+        # with open(Path(ckpt).parent.parent / 'opt.yaml') as f:
+        with open(opt.opt_yaml_path) as f:
             opt = argparse.Namespace(**yaml.load(f, Loader=yaml.SafeLoader))  # replace
         opt.cfg, opt.weights, opt.resume, opt.batch_size, opt.global_rank, opt.local_rank = '', ckpt, True, opt.total_batch_size, *apriori  # reinstate
+        # 这两个参数要覆盖下opt_yaml
+        opt.save_dir = model_save_dir # resume train 结果保存路径
+        opt.epochs = epochs # resume epoch 终点
         logger.info('Resuming training from %s' % ckpt)
     else:
         # opt.hyp = opt.hyp or ('hyp.finetune.yaml' if opt.weights else 'hyp.scratch.yaml')
