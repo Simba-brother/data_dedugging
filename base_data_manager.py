@@ -5,17 +5,26 @@ import os
 
 exp_data_root_dir = "/data/mml/data_debugging_data/"
 
-def get_correct_ann_file_path(dataset_name,train_or_val):
+def get_correct_ann_file_path(dataset_name,tvt:str) -> str:
+    '''
+    获得数据集不同tvt的coco类型的correct ann_file_path
+    '''
     ann_file_path = ""
-    if train_or_val == "val":
-        ann_file_path = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco",train_or_val,"_annotations.coco.json")
+    if tvt in ["val","test"]: # 验证集和测试集都是最初始的标签
+        ann_file_path = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco",tvt,
+                                     "_annotations.coco.json")
     else:
-        ann_file_path = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco",train_or_val,"_annotations.coco_correct.json")
-        
+        # 这里是训练集的正确标签
+        ann_file_path = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco",tvt,
+                                     "_annotations.coco_correct.json")
     return ann_file_path
 
 def get_error_ann_file_path(dataset_name):
-    ann_file_path = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco","train","_annotations.coco_error.json")
+    '''
+    获得数据集的训练集的coco类型的error ann_file_path
+    '''
+    ann_file_path = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco","train",
+                                 "_annotations.coco_error.json")
     return ann_file_path
 
 def get_annotations_with_miss_json_path(dataset_name):

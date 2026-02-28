@@ -1,20 +1,33 @@
 
+'''
+coco格式数据标注转yolo格式
+'''
 from pathlib import Path
 from labelformat.formats import (YOLOv7ObjectDetectionInput, COCOObjectDetectionOutput, 
                                  COCOObjectDetectionInput, PascalVOCObjectDetectionOutput, 
                                  KittiObjectDetectionInput, YOLOv7ObjectDetectionOutput,
                                  )
-# coco -> yolov7
-exp_data_root = "/data/mml/data_debugging_data"
-coco_input_path = Path("/data/mml/data_debugging_data/datasets/VisDrone-coco/train/_annotations.coco_repair_datactive.json")
-yolo_output_path = Path("/data/mml/data_debugging_data/error_anno/VisDrone/yolo_format/repair_datactive/old/data.yaml")
-coco_input = COCOObjectDetectionInput(input_file=coco_input_path)
-yolo_output = YOLOv7ObjectDetectionOutput(
-    output_file=yolo_output_path,
-    output_split="train"
-)
-yolo_output.save(label_input=coco_input)
-print("Conversion from COCO to YOLOv7 completed successfully!")
+def coco2yolo(coco_anno_json_path:Path,yolo_output_dir:Path,tvt:str):
+    '''
+    tvt:"train"|"test"|"val"
+    '''
+    # coco -> yolov7
+    coco_input = COCOObjectDetectionInput(input_file=coco_anno_json_path)
+    yolo_output_path = yolo_output_dir.joinpath(Path("data.yaml"))
+    yolo_output = YOLOv7ObjectDetectionOutput(
+        output_file=yolo_output_path,
+        output_split=tvt
+    )
+    yolo_output.save(label_input=coco_input)
+    print("Conversion from COCO to YOLOv7 completed successfully!")
+
+
+
+if __name__ == "__main__":
+    exp_data_root = "/data/mml/data_debugging_data"
+    coco_anno_json_path = Path("/data/mml/data_debugging_data/datasets/VisDrone-coco/train/_annotations.coco_repair_datactive.json")
+    yolo_output_dir = Path("/data/mml/data_debugging_data/error_anno/VisDrone/yolo_format/repair_datactive/old/")
+    coco2yolo(coco_anno_json_path,yolo_output_dir,tvt="train")
 
 
 # Load KITTI labels

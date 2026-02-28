@@ -1,5 +1,5 @@
 '''
-Docstring for ours.build_retrain_dataset
+为了修复后的retrain, 我们将trainset split 为 train and val
 '''
 import os
 
@@ -32,9 +32,6 @@ def extract_imgs():
     print("抽取val imgs...")
     extract_ops(val_img_name_list,source_imgs_dir,target_val_images_dir)
 
-
-
-
 def extract_labels():
     def extract_labels_help(imgs_dir,source_labels_dir,target_labels_dir):
         img_path_list = get_all_files(imgs_dir)
@@ -48,26 +45,29 @@ def extract_labels():
     print("抽取train labels...")
     extract_labels_help(target_train_imgs_dir,source_labels_dir,target_train_labels_dir)
     print("抽取val labels...")
-    extract_labels_help(target_val_imgs_dir,source_labels_dir,target_val_labels_dir)
+    extract_labels_help(target_val_images_dir,source_labels_dir,target_val_labels_dir)
 
 
 if __name__ == "__main__":
-    '''
-    # 选择从总的训练集中选择的数据用于验证集 20%, 剩下80%数据用于训练集
-    random_seed = "42"
-    val_rate = 0.2
+    random_seed = 42
+    # origin trainset imgs
     source_imgs_dir = "/data/mml/data_debugging_data/retrain_dataset_split/VisDrone/images/origin"
+    # 切分出用于验证的比例
+    val_rate = 0.2
     target_train_imgs_dir = "/data/mml/data_debugging_data/retrain_dataset_split/VisDrone/images/split/train"
     target_val_images_dir = "/data/mml/data_debugging_data/retrain_dataset_split/VisDrone/images/split/val"
-    extract_imgs()
-    '''
-
-
-    target_train_imgs_dir = "/data/mml/data_debugging_data/retrain_dataset_split/VisDrone/images/split/train"
-    target_val_imgs_dir = "/data/mml/data_debugging_data/retrain_dataset_split/VisDrone/images/split/val"
+    
+    # 选择从总的训练集中选择的数据用于验证集 20%, 剩下80%数据用于训练集
+    # 1.抽取img
+    # extract_imgs()
+    
+    # 2.抽取label
+    # origin train的labels dir(yolo style)
     source_labels_dir = "/data/mml/data_debugging_data/retrain_dataset_split/VisDrone/labels/repair_datactive/origin"
+    # 切出的train labels dir
     target_train_labels_dir = "/data/mml/data_debugging_data/retrain_dataset_split/VisDrone/labels/repair_datactive/split/train"
+    # 切出的val labels dir
     target_val_labels_dir = "/data/mml/data_debugging_data/retrain_dataset_split/VisDrone/labels/repair_datactive/split/val"
-    extract_labels()
+    # extract_labels()
 
 

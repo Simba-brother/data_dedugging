@@ -356,7 +356,7 @@ def test(data,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog='test.py')
-    parser.add_argument('--weights', nargs='+', type=str, default='trained_models/visdrone/datactive_repair_resume_val_new.pt', help='model.pt path(s)')
+    parser.add_argument('--weights', nargs='+', type=str, default='trained_models/visdrone/ours_repair_alpha=1.5.pt', help='model.pt path(s)')
     parser.add_argument('--data', type=str, default='data/VisDrone.yaml', help='*.data path')
     parser.add_argument('--batch-size', type=int, default=32, help='size of each image batch')
     parser.add_argument('--img-size', type=int, default=640, help='inference size (pixels)')
@@ -376,8 +376,10 @@ if __name__ == '__main__':
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--no-trace', action='store_true', help='don`t trace model')
     parser.add_argument('--v5-metric', action='store_true', help='assume maximum recall as 1.0 in AP calculation')
+    # 参数解析出来存到opt实例里面
     opt = parser.parse_args()
     opt.save_json |= opt.data.endswith('coco.yaml')
+    # 检查一下opt.data中的数据
     opt.data = check_file(opt.data)  # check file
     print(opt)
 

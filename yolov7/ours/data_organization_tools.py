@@ -71,6 +71,9 @@ def get_gid_to_img_and_line(g_boxes_json:dict):
     return res
 
 def get_gid_to_anno_id(g_boxes_json:dict,anno:dict):
+    '''
+    我们收集的gboxs和coco风格的anno json的box进行对应，即gid to annoid
+    '''
     gid_to_anno_id = {}
     gid_to_img_and_line =get_gid_to_img_and_line(g_boxes_json)
     img_name_to_ann_ids = get_img_name_to_ann_ids(anno)
@@ -154,7 +157,9 @@ def get_all_error_clean_set(anno_error_with_miss:dict) -> dict:
     return all_error_clean_set
 
 def conver_ours_rank(ours_rank:list,g_boxes_json:dict,anno_error_json:dict) -> list:
-
+    '''
+    把我们方法的到的混排（imgname or gid）转换为（imgname or anno_id）
+    '''
     gid_to_anno_id = get_gid_to_anno_id(g_boxes_json, anno_error_json)
     converted_ours_rank = []
     for idd in ours_rank:
@@ -162,15 +167,18 @@ def conver_ours_rank(ours_rank:list,g_boxes_json:dict,anno_error_json:dict) -> l
             img_name = idd
             converted_ours_rank.append(img_name)
         else:
-            gid = idd
+            gid = idd # 我们方法rank的idd是（imgname or gid）
             annoid = gid_to_anno_id[gid]
             converted_ours_rank.append(annoid)
-    return converted_ours_rank
+    return converted_ours_rank # imgname or gid 的排序
 
 def conver_datactive_rank(datactive_rank:list, bg_catId:int) -> list:
+    '''
+    把datactive方法得到的序（instances）转换为统一的（imgname or anno_id）序
+    '''
     converted_rank_list = []
     for instance in datactive_rank:
-        gt_category_id = instance["gt_category_id"]
+        gt_category_id = instance["gt_category_id"] # 背景类实例其实就是被怀疑有miss fault的img
         if gt_category_id == bg_catId:
             converted_rank_list.append(instance["image_name"])
         else:

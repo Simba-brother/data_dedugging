@@ -907,6 +907,9 @@ def get_image_id_to_image_name_for_coco(annos_with_miss_json:dict) -> dict:
 
 
 def get_all_miss_error_img_name_set(annos_with_miss_json_path:str) -> set[str]:
+    '''
+    获得所有具有miss fault的 img name set
+    '''
     with open(annos_with_miss_json_path, "r") as f:
         annos_with_miss_json = json.load(f)
     imageid_2_imagename = get_image_id_to_image_name_for_coco(annos_with_miss_json)
@@ -1003,7 +1006,8 @@ def get_img_level_rank(imgs_dir:str,match_json_path:str):
     return ranked_image_name_list,ranked_img_score_list
 
 
-def merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,ranked_img_score_list,alpha:float=1.5) -> list:
+def merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,ranked_img_score_list,
+               alpha:float=1.5) -> list:
     merged_rank = []
     idd_to_score = {}
     for gid,score in zip(ranked_gid_list,ranked_gid_score_list):
