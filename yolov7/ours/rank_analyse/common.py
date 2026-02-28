@@ -1,6 +1,6 @@
 
 import os
-import scienceplots
+import scienceplots # sci绘图包
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, BoundaryNorm

@@ -6,7 +6,8 @@ import joblib
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-from ours.base_data_manager import exp_data_root_dir
+from ours.base_data_manager import (exp_data_root_dir,get_correct_ann_file_path,get_error_ann_file_path,
+                                    get_annotations_with_miss_json_path,get_collected_gt_box_json_path)
 from ours.small_utils import read_json
 from ours.data_organization_tools import (get_g_id_to_g_box, get_gid_to_anno_id,
                                           get_imgname_to_imgid, get_cls_id_to_name, get_annoid_to_imgname,
@@ -357,7 +358,7 @@ def detail_check():
                 repairAnnids = imgname_to_repairAnnids[img_name]
                 check_miss(missed_annoids,repairAnnids,errorAnnids,correctAnnids)
 
-                
+
 
 
 
@@ -368,13 +369,14 @@ if __name__ == '__main__':
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
 
-    anno_json_dir = os.path.join(exp_data_root_dir, "datasets", f"{dataset_name}-coco", "train")
-    anno_error_json_path = os.path.join(anno_json_dir,"_annotations.coco_error.json")
-    anno_with_miss_json_path = os.path.join(exp_data_root_dir,"error_anno", dataset_name, "coco_format", "annotations_with_miss.json")
-    anno_correct_json_path = os.path.join(anno_json_dir,"_annotations.coco_correct.json")
+    anno_correct_json_path = get_correct_ann_file_path(dataset_name,"train")
+    anno_error_json_path = get_error_ann_file_path(dataset_name)
+    anno_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
+    
+    # repaired anno json path
     anno_repair_json_path = "/data/mml/data_debugging_data/datasets/VisDrone-coco/train/_annotations.coco_repair_ours_YOLOv7_alpha=1.5.json"
+    # 排序结果
     rank_res = joblib.load("/data/mml/data_debugging_data/final_res/ours/VisDrone/YOLOv7/rank_res/alpha=1.5/rank_topsis.joblib")
-    g_boxes_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
-                                     dataset_name,model_name,"gt_bboxs.json")
-
+    # 收集的gboxs
+    g_boxes_json_path = get_collected_gt_box_json_path(dataset_name)
     main()

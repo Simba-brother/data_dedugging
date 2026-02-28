@@ -1,4 +1,8 @@
 
+
+'''
+基于方法(ours/datactive)的排序结果，对label进行修复(repair) coco_style
+'''
 import os
 import joblib
 import json
@@ -6,7 +10,8 @@ import time
 from datetime import datetime
 from collections import defaultdict
 from ours.base_data_manager import (get_ours_rank_res_path,get_collected_gt_box_json_path,
-                                    get_error_ann_file_path,get_correct_ann_file_path)
+                                    get_error_ann_file_path,get_correct_ann_file_path,
+                                    get_annotations_with_miss_json_path,get_datactive_rank_res_path)
 from ours.data_organization_tools import (conver_ours_rank,conver_datactive_rank,
                                           get_img_name_to_ann_ids,get_annoId_to_anno,
                                           get_all_error_annoids)
@@ -28,9 +33,6 @@ def get_gid_to_img_and_line():
             }
             line_no += 1
     return res
-
-
-
 
 def get_repair_info(converted_rank:list,anno_correct_json:dict, anno_error_json:dict,cut_off_rate:float)->dict:
     repair_info = {
@@ -197,22 +199,26 @@ def main():
     print(f"运行时间：{hours:02d}:{minutes:02d}:{seconds:02.0f}")
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print(f"实验结束时刻: {now_str}")
-    
-    
+
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7" # YOLOv7|FRCNN
+    # 收集的gboxs
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
+    # anno_error
     anno_error_path = get_error_ann_file_path(dataset_name)
-    anno_with_miss_error_path = os.path.join(exp_root_dir,"error_anno",dataset_name,"coco_format",
-                                             "annotations_with_miss.json")
+    # anno_error_withmiss
+    anno_with_miss_error_path = get_annotations_with_miss_json_path(dataset_name)
+    # anno correct
     anno_correct_path = get_correct_ann_file_path(dataset_name,"train")
 
+    # 排序法(ours/datactive)
     rank_method = "datactive" # ours|datactive
-    is_save = True
-    rank = joblib.load("/data/mml/data_debugging_data/final_res/datactive/VisDrone/ranked_result/ranked_list.joblib")
+    is_save = False
+    rank = joblib.load(get_datactive_rank_res_path(dataset_name))
     if is_save:
-        repair_anno_save_path = "/data/mml/data_debugging_data/datasets/VisDrone-coco/train/_annotations.coco_repair_datactive.json"
+        repair_anno_save_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco", "train",
+                                             "_annotations.coco_repair_datactive.json")
     main()

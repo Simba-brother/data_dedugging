@@ -15,6 +15,9 @@ fault_type_map = {
 }
 
 def get_correct_ann_file_path(dataset_name,train_or_val):
+    '''
+    得到正确的anno file
+    '''
     ann_file_path = ""
     if train_or_val == "val":
         ann_file_path = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco",train_or_val,
@@ -82,6 +85,9 @@ def get_ours_rank_res_path(dataset_name,model_name,istopsis:bool):
     return os.path.join(exp_data_root_dir,"final_res","ours",dataset_name,model_name,"rank_res","rank.joblib")
 
 def get_datactive_rank_res_path(dataset_name):
+    '''
+    获得datactive的排序结果(instance list)
+    '''
     return os.path.join(exp_data_root_dir, "final_res","datactive",dataset_name,"ranked_result","ranked_list.joblib")
 
 def get_collected_gt_box_json_path(dataset_name):
@@ -115,8 +121,6 @@ def get_nc_by_datasetname(dataset_name) -> int:
         return 8
     elif dataset_name == "VisDrone":
         return 10
-    
-
 
 
 if __name__ == "__main__":

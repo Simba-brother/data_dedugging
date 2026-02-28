@@ -87,6 +87,9 @@ def main():
     print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR},F1:{F1}")
 
 def xiufu_rank_res():
+    '''
+    这是个一次性方法
+    '''
     coco = COCO(anno_coco_error_json_path)
     catIds = coco.getCatIds()
     bg_id = catIds[-1]+1
@@ -103,7 +106,6 @@ def xiufu_rank_res():
         del ranked_list[idx]
 
     joblib.dump(ranked_list,"/data/mml/data_debugging_data/final_res/datactive/VisDrone/ranked_result/new/ranked_list.joblib")
-    print()
 
 
 
@@ -114,7 +116,8 @@ if __name__ == "__main__":
     anno_coco_error_json_path = get_error_ann_file_path(dataset_name)
     annotations_with_miss_json_path =get_annotations_with_miss_json_path(dataset_name)
     # main()
-    xiufu_rank_res()
+    # xiufu_rank_res()
+
 
 
 

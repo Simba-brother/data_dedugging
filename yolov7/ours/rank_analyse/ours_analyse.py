@@ -1,4 +1,7 @@
 
+'''
+我们方法序的详细分析脚本
+'''
 import os
 import json
 import joblib
@@ -890,6 +893,10 @@ def rank_gid_original(g_id_to_features,feature_name_to_sign:dict):
     return ranked_gid_list, ranked_score_list
 
 def get_all_errored_g_box_id_set(gt_json:dict) -> set[int]:
+    '''
+    基于我们收集的g_boxs，获得fault g box id set
+    '''
+
     all_errored_g_box_id_set = set()
     for img_name,g_boxs in gt_json.items():
         for g_box in g_boxs:
@@ -1036,7 +1043,7 @@ def main():
     look_gid_rank(ranked_gid_list, all_errored_g_box_id_set)
     look_img_rank(ranked_image_name_list,all_miss_error_img_name_set)
     # 合并
-    alpha = 1
+    alpha = 1.5
     total_rank = merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,ranked_img_score_list,alpha)
     look_total_rank(total_rank,all_errored_g_box_id_set,all_miss_error_img_name_set)
     # 计算APFD,FPR和FNR
@@ -1046,13 +1053,16 @@ def main():
     print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR},F1:{F1}")
 
 
-def strict_analyse_rank(g_boxes_json:dict, annos_with_miss_json_path:str, rank_res:list):
+def apart_analyse_rank(g_boxes_json:dict, annos_with_miss_json_path:str, rank_res:list):
+    '''
+    rank_res: 我们方法获得的排序结果（idd:img_name or gid）
+    '''
     # 得到错误的gid_set
     all_errored_g_box_id_set = get_all_errored_g_box_id_set(g_boxes_json)
     # 得到missed_error_img_name_set
     all_miss_error_img_name_set = get_all_miss_error_img_name_set(annos_with_miss_json_path)
 
-    # 可视化一下两个序列的情况
+    # 可视化一下两个序列(imgname与gid)的情况
     ranked_gid_list = []
     ranked_image_name_list = []
     for idd in rank_res:
@@ -1083,10 +1093,14 @@ if __name__ == "__main__":
     # match_json_path = "/data/mml/data_debugging_data/temp/match/iou=0.4_PG/match.json"
     # g_box_metrics_json_path = "/data/mml/data_debugging_data/temp/match/iou=0.4_PG/metrics.json"
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
-    predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box","v2")
+    predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
+                                       dataset_name,model_name,"collected_predicted_box","v2")
     imgs_dir = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-yolo","train","images")
-    # main()
+    main()
 
+    # 收集的gboxs
     g_boxes_json = read_json(gt_json_path)
+    # 我们的序
     rank_res = joblib.load("/data/mml/data_debugging_data/final_res/ours/VisDrone/YOLOv7/rank_res/alpha=1.5/rank_topsis.joblib")
-    strict_analyse_rank(g_boxes_json, annos_with_miss_json_path, rank_res)
+    # 序两个部分的分析
+    apart_analyse_rank(g_boxes_json, annos_with_miss_json_path, rank_res)
