@@ -374,7 +374,7 @@ if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
-    model_state = "repair_ours" # clean|error|repair_ours|repair_datactive
+    model_state = "clean" # clean|error|repair_ours|repair_datactive
     train_or_val = "val"
     gpu_id = 1
     # ANN_FILE = get_correct_ann_file_path(dataset_name,train_or_val)

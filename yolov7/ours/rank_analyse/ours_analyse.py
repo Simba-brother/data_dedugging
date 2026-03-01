@@ -1040,12 +1040,12 @@ def main():
     # 得到missed_error_img_name_set
     all_miss_error_img_name_set = get_all_miss_error_img_name_set(annos_with_miss_json_path)
     # 可视化一下两个序列的情况
-    look_gid_rank(ranked_gid_list, all_errored_g_box_id_set)
-    look_img_rank(ranked_image_name_list,all_miss_error_img_name_set)
+    # look_gid_rank(ranked_gid_list, all_errored_g_box_id_set)
+    # look_img_rank(ranked_image_name_list,all_miss_error_img_name_set)
     # 合并
     alpha = 1.5
     total_rank = merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,ranked_img_score_list,alpha)
-    look_total_rank(total_rank,all_errored_g_box_id_set,all_miss_error_img_name_set)
+    # look_total_rank(total_rank,all_errored_g_box_id_set,all_miss_error_img_name_set)
     # 计算APFD,FPR和FNR
     error_set = all_errored_g_box_id_set | all_miss_error_img_name_set
     APFD = compute_apfd(error_set, total_rank)
@@ -1071,13 +1071,14 @@ def apart_analyse_rank(g_boxes_json:dict, annos_with_miss_json_path:str, rank_re
         else:
             ranked_gid_list.append(idd)
     assert len(ranked_gid_list) + len(ranked_image_name_list) == len(rank_res), "数量不对"
-    look_gid_rank(ranked_gid_list, all_errored_g_box_id_set)
-    look_img_rank(ranked_image_name_list,all_miss_error_img_name_set)
-    look_total_rank(rank_res,all_errored_g_box_id_set,all_miss_error_img_name_set)
+    # look_gid_rank(ranked_gid_list, all_errored_g_box_id_set)
+    # look_img_rank(ranked_image_name_list,all_miss_error_img_name_set)
+    # look_total_rank(rank_res,all_errored_g_box_id_set,all_miss_error_img_name_set)
     error_set = error_set = all_errored_g_box_id_set | all_miss_error_img_name_set
     APFD = compute_apfd(error_set, rank_res)
     FPR,FNR,F1 =calc_fpr_fnr_f1(rank_res, error_set)
     print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR},F1:{F1}")
+    pass
 
 
 if __name__ == "__main__":
@@ -1096,7 +1097,8 @@ if __name__ == "__main__":
     predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
                                        dataset_name,model_name,"collected_predicted_box","v2")
     imgs_dir = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-yolo","train","images")
-    main()
+    # main()
+
 
     # 收集的gboxs
     g_boxes_json = read_json(gt_json_path)
