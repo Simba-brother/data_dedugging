@@ -1,128 +1,21 @@
 
 '''
-我们方法序的详细分析脚本
+基于收集到的数据获得我们方法的rank结果
 '''
 import os
 import json
 import joblib
-from datetime import datetime
+import pprint
+
 from collections import defaultdict
 import numpy as np
 import topsispy as tp
-import matplotlib.pyplot as plt
-from common import *
 from ours.base_data_manager import (exp_data_root_dir,
-                                    get_ours_gt_box_metric_path,
-                                    get_ours_match_path,get_annotations_with_miss_json_path,
+                                    get_annotations_with_miss_json_path,
                                     get_collected_gt_box_json_path
                                     )
 from ours.small_utils import read_json
 
-def draw_violin(data,save_path):
-    # 假设 data 已经存在，形状为 (10000, 50)
-    # data = np.random.rand(10000, 50)  # 示例
-
-    num_epochs = data.shape[1]
-    epochs = np.arange(1, num_epochs + 1)
-
-    plt.figure(figsize=(16, 6))
-
-    # violinplot 期望的输入是“每个分布一列”的序列
-    # 这里每个 epoch 对应 data[:, i]
-    violin_parts = plt.violinplot(
-        [data[:, i] for i in range(num_epochs)],
-        positions=epochs,
-        showmeans=False,
-        showmedians=True,
-        showextrema=True,
-    )
-
-    plt.xlabel("Epoch")
-    plt.ylabel("Confidence score")
-    plt.title("Confidence distribution per epoch (violin plot)")
-
-    # x 轴刻度：每个 epoch 一个刻度，或者隔几个画一个防止太密
-    plt.xticks(epochs)  # 如果太密，可以改成 plt.xticks(epochs[::5])
-
-    # 如果你的 confidence 在 [0, 1] 区间，可以固定 y 轴范围
-    plt.ylim(0.0, 1.0)
-
-    plt.tight_layout()
-    plt.savefig(save_path, bbox_inches='tight', dpi=800)
-    print(f"图像保存在：{save_path}")
-
-def draw_box(data,save_path):
-    num_epochs = data.shape[1]
-    epochs = np.arange(1, num_epochs + 1)
-
-    plt.figure(figsize=(16, 6))
-
-    # 箱线图：每列是一个 epoch 上的 10000 个 confidence
-    # matplotlib 的 boxplot 默认是“每一列一个箱子”，所以直接转置即可
-    box = plt.boxplot(
-        data,                # 形状 (10000, 50)，每列一个箱线
-        positions=epochs,    # 对应的 epoch 位置
-        showfliers=False,    # 是否显示离群点，可按需改 True/False
-        patch_artist=True    # 允许填充颜色，方便后面美化
-    )
-
-    plt.xlabel("Epoch")
-    plt.ylabel("Confidence score")
-    plt.title("Confidence distribution per epoch (boxplot)")
-
-    # x 轴刻度：如果太密，可以改成 epochs[::5]
-    plt.xticks(epochs)
-
-    # 如果 confidence 在 [0, 1]，固定 y 轴范围
-    plt.ylim(0.0, 1.0)
-    plt.tight_layout()
-    plt.savefig(save_path, bbox_inches='tight', dpi=800)
-    print(f"图像保存在：{save_path}")
-
-def draw_hot(data,save_path):
-    num_epochs = data.shape[1]
-    epochs = np.arange(1, num_epochs + 1)
-
-    # 1. 为 confidence 定义若干 bin
-    num_bins = 10  # 纵向分成 50 个格子，可按需调整
-    conf_min, conf_max = 0.0, 1.0  # 如果不是 [0,1]，可以改为 data.min(), data.max()
-    bins = np.linspace(conf_min, conf_max, num_bins + 1)
-
-    # 2. 统计每个 epoch 在各个 bin 内的样本数
-    #    density[i, j] 表示第 j 个 epoch 在第 i 个 bin 的样本数量
-    density = np.zeros((num_bins, num_epochs), dtype=float)
-
-    for j in range(num_epochs):
-        hist, _ = np.histogram(data[:, j], bins=bins)
-        density[:, j] = hist
-
-    # 也可以转成概率密度（按每个 epoch 共 10000 个样本归一化）
-    density = density / density.sum(axis=0, keepdims=True)
-
-    # 3. 画成热力图
-    plt.figure(figsize=(14, 6))
-
-    # imshow 的 extent: [x_min, x_max, y_min, y_max]
-    # 注意 origin='lower'，让低 confidence 在下，高的在上
-    im = plt.imshow(
-        density,
-        aspect='auto',
-        origin='lower',
-        extent=[1, num_epochs, conf_min, conf_max],
-    )
-
-    plt.colorbar(im, label="Density")
-
-    plt.xlabel("Epoch")
-    plt.ylabel("Confidence")
-    plt.title("Confidence density over epochs")
-
-    # 可选：只在 x 轴上每隔几个 epoch 标一下，防止太挤
-    plt.xticks(np.linspace(1, num_epochs, 11, dtype=int))  # 例如 1,6,11,...,50
-
-    plt.tight_layout()
-    plt.savefig(save_path, bbox_inches='tight', dpi=800)
-    print(f"图像保存在：{save_path}")
 
 def get_all_gids(gt_json:dict) -> list[int]:
     '''
@@ -168,10 +61,7 @@ def get_g_id_to_metric(metric_json_path):
         }
     return g_box_id_to_metric
 
-def get_formatted_time():
-    """返回当前时间的格式化字符串（YYYY-MM-DD HH:MM:SS）"""
-    now = datetime.now()
-    return now.strftime("%Y-%m-%d_%H:%M:%S")
+
 
 def add_path_value(d:dict, keys:list, value):
     '''
@@ -336,15 +226,6 @@ def epoch_freq(boxes,last_epoch):
         epoch_cover.add(p_box["epoch"])
     return len(epoch_cover) / last_epoch
 
-def caclu_cluster_score(cluster,last_epoch):
-    
-    conf = conf_score(cluster) # [0,1]
-    stab = stability_pairwise_mean_iou(cluster) # [0,1]
-    cls_consis = cls_consis_score(cluster) # [0,1]
-    e_freq = epoch_freq(cluster,last_epoch) # [0,1]
-    
-    score=0.30*conf+0.20*stab+0.20*cls_consis+0.30*e_freq
-    return score
 
 def get_cluster_feaure(cluster,last_epoch):
     conf = conf_score(cluster) # [0,1] 
@@ -408,18 +289,6 @@ def get_img_to_topsis_score(img_to_clusters:dict,last_epoch:int):
         img_name_to_max_score[img_name] = max_score
     return img_name_to_max_score
 
-def sort_cluster_by_weight_score(img_to_clusters,last_epoch):
-    cluster_list = []
-    for img_name,clusters in img_to_clusters.items():
-        for cluster in clusters:
-            s = caclu_cluster_score(cluster,last_epoch)
-            cluster_list.append({
-                "cluster":cluster,
-                "img_name":img_name,
-                "score":s
-            })
-    sorted_cluster_list = sorted(cluster_list, key=lambda x: x['score'], reverse=True)
-    return sorted_cluster_list
 
 def get_img_name_to_epoch_to_unmatched_p_boxs(epoch_to_matched_p_ids:dict,last_epoch: int=5, conf_threshold: float=0.6):
     '''
@@ -461,53 +330,8 @@ def get_img_name_to_epoch_to_unmatched_p_boxs(epoch_to_matched_p_ids:dict,last_e
                     add_path_value(img_name_to_no_match_p,keys=[img_name,epoch],value=p_box)
     return img_name_to_no_match_p
 
-def sort_img(sorted_clusters):
-    '''
-    sorted_clusters:根据簇得分排序后的簇
-    '''
-    img_name_to_score = defaultdict(float)
-    for cluster in sorted_clusters:
-        img_name = cluster['img_name']
-        score = cluster["score"]
-        if score > img_name_to_score[img_name]:
-            img_name_to_score[img_name] = score
-    # [(img_name,max_cluster_score),...]
-    sorted_imgs = sorted(img_name_to_score.items(), key=lambda item: item[1], reverse=True)
-    return sorted_imgs
 
-def filter_imgs(sorted_imgs,threshold_score=0.6):
-    filterd_imgs = []
-    for img_name,score in sorted_imgs:
-        if score > threshold_score:
-            filterd_imgs.append(img_name)
-    return filterd_imgs
 
-def get_fault_img_name_set(fault_type_list, annos_with_miss_json:dict) -> set[str]:
-    '''
-    参数：
-    ----
-    fault_type_list : list[int]
-        [1,2,3,4]:
-        1: cls fault
-        2: loc fault
-        3: redundancy_fault
-        4: missing_fault
-    返回：
-    ---
-    fault_img_name_set : set[str]
-        返回所有的包含错误anno的img_name set
-    '''
-    img_id_to_img_name = {}
-    for image in annos_with_miss_json["images"]:
-        img_id_to_img_name[image["id"]] = image["file_name"]
-
-    annos = annos_with_miss_json['annotations']
-    fault_img_name_set = set()
-    for anno in annos:
-        if anno["fault_type"] in fault_type_list:
-            img_name = img_id_to_img_name[anno["image_id"]]
-            fault_img_name_set.add(img_name)
-    return fault_img_name_set
 
 def get_all_img_name(imgs_dir:str) -> list[str]:
     img_name_list = []
@@ -889,99 +713,6 @@ def rank_gid_original(g_id_to_features,feature_name_to_sign:dict):
         ranked_score_list.append(score_array[gid])
     return ranked_gid_list, ranked_score_list
 
-def get_all_errored_g_box_id_set(gt_json:dict) -> set[int]:
-    '''
-    基于我们收集的g_boxs，获得fault g box id set
-    '''
-
-    all_errored_g_box_id_set = set()
-    for img_name,g_boxs in gt_json.items():
-        for g_box in g_boxs:
-            if g_box["fault_type"] != 0:
-                all_errored_g_box_id_set.add(g_box["box_id"])
-    return all_errored_g_box_id_set
-
-def get_image_id_to_image_name_for_coco(annos_with_miss_json:dict) -> dict:
-    id2name = {}
-    images = annos_with_miss_json["images"]
-    for image in images:
-        id2name[image["id"]] = image["file_name"] 
-    return id2name
-
-
-
-def get_all_miss_error_img_name_set(annos_with_miss_json_path:str) -> set[str]:
-    '''
-    获得所有具有miss fault的 img name set
-    '''
-    with open(annos_with_miss_json_path, "r") as f:
-        annos_with_miss_json = json.load(f)
-    imageid_2_imagename = get_image_id_to_image_name_for_coco(annos_with_miss_json)
-    print(f"总图像数:{len(list(imageid_2_imagename.keys()))}")
-    anns = annos_with_miss_json["annotations"]
-    all_miss_error_img_name_set = set()
-    for ann in anns:
-        if ann["fault_type"] == 4:
-            image_name = imageid_2_imagename[ann["image_id"]]
-            all_miss_error_img_name_set.add(image_name)
-    print(f"miss error 图像数量:{len(all_miss_error_img_name_set)}")
-    return all_miss_error_img_name_set
-
-def look_gid_rank(ranked_gid_list:list[int], all_errored_g_box_id_set:set[int]):
-    pic_save_path = os.path.join(exp_data_root_dir,"temp", "gid_rank.png")
-    error_flag_list = []
-    for gid in ranked_gid_list:
-        if gid in all_errored_g_box_id_set:
-            error_flag_list.append(1)
-        else:
-            error_flag_list.append(0)
-    draw_rank_hot(error_flag_list,pic_save_path)
-    print(f"图片保存在：{pic_save_path}")
-
-def look_metirc(g_box_id_to_metric, all_gids, gt_json:dict):
-    for g_id in all_gids:
-        if g_id not in g_box_id_to_metric:
-            g_box_id_to_metric[g_id] = {
-                "conf_list":[0] * epochs,
-                "iou_list":[0] * epochs
-            } 
-
-    error_group = defaultdict(list[int])
-    for img_name,g_boxs in gt_json.items():
-        for g_box in g_boxs:
-            error_group[g_box["fault_type"]].append(g_box["box_id"])
-
-
-    fault_to_metric = {}
-    for fault_type, g_ids in error_group.items():
-        conf_list_list = []
-        iou_list_list = []
-        for g_id in g_ids:
-            conf_list_list.append(g_box_id_to_metric[g_id]["conf_list"])
-            iou_list_list.append(g_box_id_to_metric[g_id]["iou_list"])
-        conf_2darray = np.array(conf_list_list)
-        iou_2darray = np.array(iou_list_list)
-
-        conf_avg = np.mean(conf_2darray,axis = 0)
-        iou_avg = np.mean(iou_2darray,axis = 0)
-        conf_mid = np.median(conf_2darray,axis = 0)
-        iou_mid = np.median(iou_2darray,axis = 0)
-        fault_to_metric[fault_type] = {
-            "conf_avg":conf_avg.tolist(),
-            "iou_avg":iou_avg.tolist(),
-            "conf_mid":conf_mid.tolist(),
-            "iou_mid":iou_mid.tolist(),
-            "conf_2d_array": conf_2darray,
-            "iou_2d_array": iou_2darray
-        }
-    # 0: correct, 1:cls, 2:loc, 3:redun
-    conf_2darray = fault_to_metric[0]["conf_2d_array"]
-    save_path = "/data/mml/data_debugging_data/temp/correct_confi_dist_hot.png"
-    # draw_violin(conf_2darray, save_path)
-    # draw_box(conf_2darray, save_path)
-    draw_hot(conf_2darray, save_path)
-    
-
 def get_gid_level_rank(gt_json:dict,g_box_metrics_json_path:str):
     '''
     ours方法的gid rank
@@ -1032,48 +763,52 @@ def merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,rank
     return merged_rank
 
 
-
-def analyse_rank(gt_json_path:str, annos_with_miss_json_path:str, rank_res:list):
-    '''
-    rank_res: 我们方法获得的排序结果（idd:img_name or gid）
-    '''
-    g_boxes_json = read_json(gt_json_path)
-    # 得到错误的gid_set
-    all_errored_g_box_id_set = get_all_errored_g_box_id_set(g_boxes_json)
-    # 得到missed_error_img_name_set
-    all_miss_error_img_name_set = get_all_miss_error_img_name_set(annos_with_miss_json_path)
-
-    # 计算APFD,FPR和FNR
-    error_set = all_errored_g_box_id_set | all_miss_error_img_name_set
-    APFD = compute_apfd(error_set, rank_res)
-    FPR,FNR,F1 =calc_fpr_fnr_f1(rank_res, error_set)
-    print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR},F1:{F1}")
-
-    # 可视化一下两个序列(imgname与gid)的情况
-    # ranked_gid_list = []
-    # ranked_image_name_list = []
-    # for idd in rank_res:
-    #     if type(idd) == str:
-    #         ranked_image_name_list.append(idd)
-    #     else:
-    #         ranked_gid_list.append(idd)
-    # assert len(ranked_gid_list) + len(ranked_image_name_list) == len(rank_res), "数量不对"
-    # look_gid_rank(ranked_gid_list, all_errored_g_box_id_set)
-    # look_img_rank(ranked_image_name_list,all_miss_error_img_name_set)
-    # look_total_rank(rank_res,all_errored_g_box_id_set,all_miss_error_img_name_set)
-
+def main():
+    # 读取gbox
+    gt_json = read_json(gt_json_path)
+    # 得到gid的排序
+    ranked_gid_list,ranked_gid_score_list = get_gid_level_rank(gt_json,g_box_metrics_json_path)
+    # 得到img的排序
+    ranked_image_name_list,ranked_img_score_list = get_img_level_rank(imgs_dir,match_json_path)
+    # 合并排序
+    alpha = _args["alpha"]
+    total_rank = merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,ranked_img_score_list,alpha)
+    save_path = os.path.join(_args["save_dir"], "rank.joblib")
+    joblib.dump(total_rank,save_path)
+    print(f"排序结果保存在:{save_path}")
 
 if __name__ == "__main__":
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
-    epochs = 50
+    exp_data_root_dir = "/data/mml/data_debugging_data"
+    exp_id = "01"
+    # 实验参数
+    _args = {
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "model_name":"YOLOv7",# YOLOv7|FRCNN|SSD
+        "epochs":50,
+        "alpha":1.5,
+        "save_dir":os.path.join(exp_data_root_dir, "ours_rank", f"exp_{exp_id}")
+    }
+    pprint.pprint(_args)
+
+    # 创建出保存的目录
+    os.makedirs(_args["save_dir"],exist_ok=True)
+    # 脚本需要用到的公共数据
+    dataset_name = _args["dataset_name"]
+    model_name = _args["model_name"]
+    epochs = _args["epochs"]
+
+    # 需要的数据文件路径
+    gt_json_path = get_collected_gt_box_json_path(dataset_name)
+    match_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,
+                                   "gp_box_match","match_v2.json")
+    g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collection_metric",
+                                           "collection_metrics_v2.json")
+    # match_json_path = "/data/mml/data_debugging_data/temp/match/iou=0.4_PG/match.json"
+    # g_box_metrics_json_path = "/data/mml/data_debugging_data/temp/match/iou=0.4_PG/metrics.json"
+    annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
                                        dataset_name,model_name,"collected_predicted_box","v2")
-    # 收集的gboxs
-    gt_json_path = get_collected_gt_box_json_path(dataset_name)
-    annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
-    # 我们的序
-    rank_res = joblib.load("/data/mml/data_debugging_data/ours_rank/exp_01/rank.joblib")
-    # 序分析
-    analyse_rank(gt_json_path, annos_with_miss_json_path, rank_res)
-    
+    imgs_dir = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-yolo","train","images")
+
+    # 主函数
+    main()

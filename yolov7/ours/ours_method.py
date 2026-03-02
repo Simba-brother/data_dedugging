@@ -50,7 +50,6 @@ def get_iou_matrix_PG(p_box_list,gt_box_list):
             iou_matrix[i][j] = iou
     return iou_matrix
 
-
 def get_iou_matrix_GP(gt_box_list, p_box_list):
     
     G = len(gt_box_list)
@@ -510,8 +509,6 @@ def correct_vs_fault(metric_json_path):
     data_loc_fault = fault_to_metric[2]["iou_2d_array"]
     data_redun_fault = fault_to_metric[3]["iou_2d_array"]
     draw_scatter(data_correct,data_cls_fault,data_loc_fault,data_redun_fault,metric_name="IOU")
-
-
 
 def add_path_value(d, keys, value):
     cur = d
@@ -1061,7 +1058,7 @@ def eval_apfd(rank_res):
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "FRCNN" # YOLOv7|FRCNN|SSD
+    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
     epochs = 50
 
     gt_json_path = get_collected_gt_box_json_path(dataset_name)

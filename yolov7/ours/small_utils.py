@@ -1,6 +1,6 @@
 import os
 import json
-
+from datetime import datetime
 def get_all_files(directory)->list[str]:
     files = []
     for filename in sorted(os.listdir(directory)):
@@ -27,3 +27,8 @@ def read_json(json_path:str):
     with open(json_path, "r") as f:
         _json = json.load(f)
     return _json
+
+def get_formatted_time():
+    """返回当前时间的格式化字符串（YYYY-MM-DD_HH:MM:SS）"""
+    now = datetime.now()
+    return now.strftime("%Y-%m-%d_%H:%M:%S")
