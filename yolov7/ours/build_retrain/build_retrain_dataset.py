@@ -30,7 +30,7 @@ def extract_imgs():
     print("抽取train imgs...")
     extract_ops(train_img_name_list,source_imgs_dir,target_train_imgs_dir)
     print("抽取val imgs...")
-    extract_ops(val_img_name_list,source_imgs_dir,target_val_images_dir)
+    extract_ops(val_img_name_list,source_imgs_dir,target_val_imgs_dir)
 
 def extract_labels():
     def extract_labels_help(imgs_dir,source_labels_dir,target_labels_dir):
@@ -42,20 +42,27 @@ def extract_labels():
             label_name = base_name+".txt"
             label_name_list.append(label_name)
         extract_ops(label_name_list,source_labels_dir,target_labels_dir)
+
     print("抽取train labels...")
     extract_labels_help(target_train_imgs_dir,source_labels_dir,target_train_labels_dir)
     print("抽取val labels...")
-    extract_labels_help(target_val_images_dir,source_labels_dir,target_val_labels_dir)
+    extract_labels_help(target_val_imgs_dir,source_labels_dir,target_val_labels_dir)
 
 
 if __name__ == "__main__":
+    exp_root_dir = "/data/mml/data_debugging_data"
+    dataset_name = "VisDrone"
     random_seed = 42
-    # origin trainset imgs
-    source_imgs_dir = "/data/mml/data_debugging_data/retrain_dataset_split/VisDrone/images/origin"
     # 切分出用于验证的比例
     val_rate = 0.2
-    target_train_imgs_dir = "/data/mml/data_debugging_data/retrain_dataset_split/VisDrone/images/split/train"
-    target_val_images_dir = "/data/mml/data_debugging_data/retrain_dataset_split/VisDrone/images/split/val"
+
+
+    # origin trainset imgs
+    source_imgs_dir = os.path.join(exp_root_dir, "retrain_dataset_split", dataset_name, "images", "origin")
+    target_train_imgs_dir = os.path.join(exp_root_dir, "retrain_dataset_split", dataset_name, "images", "split", 
+                                         "train")
+    target_val_imgs_dir = os.path.join(exp_root_dir, "retrain_dataset_split", dataset_name, "images", "split", 
+                                         "val")
     
     # 选择从总的训练集中选择的数据用于验证集 20%, 剩下80%数据用于训练集
     # 1.抽取img
@@ -63,11 +70,11 @@ if __name__ == "__main__":
     
     # 2.抽取label
     # origin train的labels dir(yolo style)
-    source_labels_dir = "/data/mml/data_debugging_data/retrain_dataset_split/VisDrone/labels/repair_datactive/origin"
+    source_labels_dir = "/data/mml/data_debugging_data/ours_retrain/label_split/exp_01/total_labels"
     # 切出的train labels dir
-    target_train_labels_dir = "/data/mml/data_debugging_data/retrain_dataset_split/VisDrone/labels/repair_datactive/split/train"
+    target_train_labels_dir = "/data/mml/data_debugging_data/ours_retrain/label_split/exp_01/splitted_labels/train"
     # 切出的val labels dir
-    target_val_labels_dir = "/data/mml/data_debugging_data/retrain_dataset_split/VisDrone/labels/repair_datactive/split/val"
-    # extract_labels()
+    target_val_labels_dir = "/data/mml/data_debugging_data/ours_retrain/label_split/exp_01/splitted_labels/val"
+    extract_labels()
 
 

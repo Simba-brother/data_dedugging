@@ -2,7 +2,7 @@ weights: yolov7.pt
 cfg: cfg/training/yolov7.yaml
 data: data/VisDrone.yaml
 hyp: data/hyp.scratch.p5.yaml
-epochs: 50
+epochs: 50 # 恢复的epoch启动点
 batch_size: 32
 img_size:
 - 640

@@ -7,6 +7,7 @@ import time
 from copy import deepcopy
 from pathlib import Path
 from threading import Thread
+import pprint
 
 import numpy as np
 import torch.distributed as dist
@@ -548,10 +549,23 @@ def train(hyp, opt, device, tb_writer=None):
 if __name__ == '__main__':
 
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7"
+    exp_id = "01"
     gpu_id = 1
-    
+
+    _args = {
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "model_name":"YOLOv7",
+        "gpu_id":gpu_id,
+        "trainset_stat":"repair_ours", # clean|error|repair_ours|repair_datactive
+        "model_save_dir":os.path.join(exp_data_root,"ours_retrain","retrained_models",f"exp_{exp_id}")
+    }
+
+    pprint.pprint(_args)
+
+
+    dataset_name = _args["dataset_name"]
+    model_name = _args["model_name"]
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', type=str, default='yolov7.pt', help='initial weights path')
     parser.add_argument('--cfg', type=str, default='cfg/training/yolov7.yaml', help='model.yaml path')
@@ -592,22 +606,19 @@ if __name__ == '__main__':
     opt = parser.parse_args()
 
 
-    # train set的状态
-    trainset_stat = "repair_datactive" # clean|error|repair_ours|repair_datactive
-    # 训练好后模型保存的目录
-    model_save_dir = os.path.join(exp_data_root,
-                                  "models",dataset_name.lower(),model_name.lower(),
-                                  trainset_stat,"old_val_resume")
-    os.makedirs(model_save_dir,exist_ok=True)
     
-    if trainset_stat.startswith("repair"):
+    # 训练好后模型保存的目录
+    model_save_dir = _args["model_save_dir"]
+    
+
+    if _args["trainset_stat"].startswith("repair"):
         # opt.weights = os.path.join(exp_data_root, "models", dataset_name.lower(), "yolov7", "error", "new", "weights", "last.pt")
         # 设置恢复训练的ckpt
         opt.resume = "trained_models/visdrone/error_resume.pt"
-        # 设置结束的训练轮次
-        epochs = 75
         # 指定恢复训练需要的yaml
         opt.opt_yaml_path = "trained_models/visdrone/error_resume_opt.yaml"
+        # 设置结束的训练轮次点
+        epochs = 75
         # 恢复训练时不需要保存每个epoch的ckpt
         save_each_epoch = False
     else:
@@ -621,7 +632,7 @@ if __name__ == '__main__':
     #    check_git_status()
     #    check_requirements()
     # Resume
-    wandb_run = check_wandb_resume(opt)
+    wandb_run = check_wandb_resume(opt) # 不使用wandb的话, 一般是None
     if opt.resume and not wandb_run:  # resume an interrupted run
         ckpt = opt.resume if isinstance(opt.resume, str) else get_latest_run()  # specified or most recent path
         assert os.path.isfile(ckpt), 'ERROR: --resume checkpoint does not exist'
@@ -631,7 +642,7 @@ if __name__ == '__main__':
             opt = argparse.Namespace(**yaml.load(f, Loader=yaml.SafeLoader))  # replace
         opt.cfg, opt.weights, opt.resume, opt.batch_size, opt.global_rank, opt.local_rank = '', ckpt, True, opt.total_batch_size, *apriori  # reinstate
         # 这两个参数要覆盖下opt_yaml
-        opt.save_dir = model_save_dir # resume train 结果保存路径
+        opt.save_dir = _args["model_save_dir"] # resume train 结果保存路径
         opt.epochs = epochs # resume epoch 终点
         logger.info('Resuming training from %s' % ckpt)
     else:

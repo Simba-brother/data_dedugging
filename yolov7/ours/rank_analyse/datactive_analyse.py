@@ -76,9 +76,9 @@ def main():
     with open(annotations_with_miss_json_path,'r') as f:
         annotations_with_miss_json = json.load(f)
     missed_img_name_set =  get_missed_img_name_set(annotations_with_miss_json)
-    look_annid_rank(ranked_annid_list, error_ann_id_set)
-    look_img_rank(ranked_img_name_list, missed_img_name_set)
-    look_total_rank(converted_rank_list,error_ann_id_set,missed_img_name_set)
+    # look_annid_rank(ranked_annid_list, error_ann_id_set)
+    # look_img_rank(ranked_img_name_list, missed_img_name_set)
+    # look_total_rank(converted_rank_list,error_ann_id_set,missed_img_name_set)
     total_error_set = error_ann_id_set | missed_img_name_set
 
     # 计算APFD,FPR和FNR
@@ -104,18 +104,16 @@ def xiufu_rank_res():
             removed_idx_list.append(idx)
     for idx in removed_idx_list:
         del ranked_list[idx]
-
-    joblib.dump(ranked_list,"/data/mml/data_debugging_data/final_res/datactive/VisDrone/ranked_result/new/ranked_list.joblib")
-
+    # joblib.dump(ranked_list,"/data/mml/data_debugging_data/final_res/datactive/VisDrone/ranked_result/new/ranked_list.joblib")
 
 
 if __name__ == "__main__":
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     # datactive 排序的idd
-    ranked_list = joblib.load("/data/mml/data_debugging_data/final_res/datactive/VisDrone/ranked_result/new/ranked_list_bak.joblib")
+    ranked_list = joblib.load("/data/mml/data_debugging_data/final_res/datactive/VisDrone/ranked_result/new/ranked_list.joblib")
     anno_coco_error_json_path = get_error_ann_file_path(dataset_name)
     annotations_with_miss_json_path =get_annotations_with_miss_json_path(dataset_name)
-    # main()
+    main()
     # xiufu_rank_res()
 
 

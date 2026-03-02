@@ -8,7 +8,7 @@ import joblib
 import json
 import time
 from datetime import datetime
-from collections import defaultdict
+
 from ours.base_data_manager import (get_ours_rank_res_path,get_collected_gt_box_json_path,
                                     get_error_ann_file_path,get_correct_ann_file_path,
                                     get_annotations_with_miss_json_path,get_datactive_rank_res_path)
@@ -16,7 +16,7 @@ from ours.data_organization_tools import (conver_ours_rank,conver_datactive_rank
                                           get_img_name_to_ann_ids,get_annoId_to_anno,
                                           get_all_error_annoids)
 from ours.small_utils import read_json
-from pprint import pprint
+import pprint
 from pycocotools.coco import COCO
 
 def get_gid_to_img_and_line():
@@ -158,7 +158,7 @@ def repair_kit(converted_rank:list, anno_correct_json:dict, anno_error_json:dict
     # 统计一下修复信息
     anno_with_miss_error_json = read_json(anno_with_miss_error_path)
     count_info = count_repair_info(repair_info,anno_with_miss_error_json)
-    pprint(count_info,indent=4)
+    pprint.pprint(count_info,indent=4)
     # 修复anno
     new_annos = repair_anno_json(anno_error_json,repair_info)
 
@@ -173,10 +173,10 @@ def main():
     anno_correct_json = read_json(anno_correct_path)
 
     # 排序数据转换
-    if rank_method == "ours":
+    if _args['rank_method'] == "ours":
         g_boxes_json = read_json(gt_json_path)
         converted_rank = conver_ours_rank(rank,g_boxes_json,anno_error_json)
-    elif rank_method == "datactive":
+    elif _args['rank_method'] == "datactive":
         coco = COCO(anno_error_path)
         bg_catId = coco.getCatIds()[-1]+1
         converted_rank = conver_datactive_rank(rank,bg_catId)
@@ -187,7 +187,7 @@ def main():
     anno_repaired_json = repair_kit(converted_rank, anno_correct_json, anno_error_json, cut_off_rate=0.4)
 
     # 结果保存与计时
-    if is_save:
+    if _args["is_save"]:
         with open(repair_anno_save_path,"w") as f:
             json.dump(anno_repaired_json,f)
         print(f"anno_repaired_json保存在: {repair_anno_save_path}")
@@ -197,14 +197,26 @@ def main():
     minutes = int((elapsed_time % 3600) // 60)  # 计算分钟数
     seconds = elapsed_time % 60  # 计算剩余的秒数
     print(f"运行时间：{hours:02d}:{minutes:02d}:{seconds:02.0f}")
-    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"实验结束时刻: {now_str}")
+    now_timestr = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"实验结束时刻: {now_timestr}")
 
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7" # YOLOv7|FRCNN
+    exp_id = "01"
+
+    _args = {
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "model_name":"YOLOv7", # YOLOv7|FRCNN
+        "rank_method":"datactive", # ours|datactive 排序法
+        "save_dir":os.path.join(exp_root_dir,"datactive_res",f"exp_{exp_id}", "repair"),
+        "is_save":True
+        
+    }
+    pprint.pprint(_args)
+    # 获得公共数据
+    dataset_name = _args["dataset_name"]
+    model_name = _args["model_name"]
     # 收集的gboxs
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     # anno_error
@@ -213,12 +225,8 @@ if __name__ == "__main__":
     anno_with_miss_error_path = get_annotations_with_miss_json_path(dataset_name)
     # anno correct
     anno_correct_path = get_correct_ann_file_path(dataset_name,"train")
-
-    # 排序法(ours/datactive)
-    rank_method = "datactive" # ours|datactive
-    is_save = False
-    rank = joblib.load(get_datactive_rank_res_path(dataset_name))
-    if is_save:
-        repair_anno_save_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco", "train",
-                                             "_annotations.coco_repair_datactive.json")
+    # rank = joblib.load(get_datactive_rank_res_path(dataset_name))
+    rank = joblib.load("/data/mml/data_debugging_data/datactive_res/exp_01/rank/ranked_list.joblib")
+    if _args["is_save"]:
+        repair_anno_save_path = os.path.join(_args["save_dir"],"_annotations.coco_repair.json")
     main()
