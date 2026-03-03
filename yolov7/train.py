@@ -556,13 +556,10 @@ if __name__ == '__main__':
         "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
-        "trainset_stat":"repair_ours", # clean|error|repair_ours|repair_datactive
-        "model_save_dir":os.path.join(exp_data_root,"ours_retrain","retrained_models",f"exp_{exp_id}")
+        "trainset_stat":"repair_datactive", # clean|error|repair_ours|repair_datactive
+        "model_save_dir":os.path.join(exp_data_root,"Results","datactive",f"exp_{exp_id}", "retrain", "retrained_model")
     }
-
     pprint.pprint(_args)
-
-
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
 

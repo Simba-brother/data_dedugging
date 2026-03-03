@@ -70,11 +70,11 @@ if __name__ == "__main__":
     
     # 2.抽取label
     # origin train的labels dir(yolo style)
-    source_labels_dir = "/data/mml/data_debugging_data/ours_retrain/label_split/exp_01/total_labels"
+    source_labels_dir = "/data/mml/data_debugging_data/Results/datactive/exp_01/retrain/label_split/total_labels"
     # 切出的train labels dir
-    target_train_labels_dir = "/data/mml/data_debugging_data/ours_retrain/label_split/exp_01/splitted_labels/train"
+    target_train_labels_dir = "/data/mml/data_debugging_data/Results/datactive/exp_01/retrain/label_split/splitted_labels/train"
     # 切出的val labels dir
-    target_val_labels_dir = "/data/mml/data_debugging_data/ours_retrain/label_split/exp_01/splitted_labels/val"
+    target_val_labels_dir = "/data/mml/data_debugging_data/Results/datactive/exp_01/retrain/label_split/splitted_labels/val"
     extract_labels()
 
 
