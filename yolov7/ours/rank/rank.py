@@ -782,20 +782,22 @@ if __name__ == "__main__":
     exp_id = "01"
     # 实验参数
     _args = {
-        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",# YOLOv7|FRCNN|SSD
         "epochs":50,
         "alpha":1.5,
-        "save_dir":os.path.join(exp_data_root_dir, "Results","ours","VOC2012","YOLOv7", f"exp_{exp_id}", "rank")
     }
-    pprint.pprint(_args)
-
-    # 创建出保存的目录
-    os.makedirs(_args["save_dir"],exist_ok=True)
-    # 脚本需要用到的公共数据
+    
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
     epochs = _args["epochs"]
+    _args["save_dir"] = os.path.join(exp_data_root_dir,"Results","ours",
+                                     dataset_name,model_name,f"exp_{exp_id}","rank")
+
+    pprint.pprint(_args)
+    # 创建出保存的目录
+    os.makedirs(_args["save_dir"],exist_ok=True)
+    # 脚本需要用到的公共数据
 
     # 需要的数据文件路径
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
@@ -808,7 +810,9 @@ if __name__ == "__main__":
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
                                        dataset_name,model_name,"collected_predicted_box","v2")
-    imgs_dir = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-yolo","train","images")
+    imgs_dir = os.path.join(exp_data_root_dir,"retrain_dataset_split", dataset_name, "images", "origin")
+    /data/mml/data_debugging_data/retrain_dataset_split/KITTI_8/images/origin
+    os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-yolo","train","images")
 
     # 主函数
     main()

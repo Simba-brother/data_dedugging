@@ -64,42 +64,32 @@ def main():
     
     print(f"总共有错误的box数量（包括miss error）:{len(all_error_annoids)}")
     cut_off_rate = 0.4
-    repaired_box_count,repair_rate = count_repair_rate(converted_datactive_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
-    print(f"datactive修复数量: {repaired_box_count}, 修复率: {repair_rate}")
 
     repaired_box_count,repair_rate = count_repair_rate(converted_ours_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
     print(f"ours修复数量: {repaired_box_count}, 修复率: {repair_rate}")
 
-def temp():
-    rank1_file_path = "/data/mml/data_debugging_data/final_res/datactive/VisDrone/ranked_result/new/ranked_list.joblib"
-    rank2_file_path = "/data/mml/data_debugging_data/final_res/datactive/VisDrone/ranked_result/ranked_list.joblib"
-    rank1 = joblib.load(rank1_file_path)
-    rank2 = joblib.load(rank2_file_path)
-    coco = COCO(anno_error_path)
-    bg_catId = coco.getCatIds()[-1]+1
-    rank1 = conver_datactive_rank(rank1, bg_catId)
-    rank2 = conver_datactive_rank(rank2, bg_catId)
+    repaired_box_count,repair_rate = count_repair_rate(converted_datactive_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
+    print(f"datactive修复数量: {repaired_box_count}, 修复率: {repair_rate}")
 
-
-
-    for idd1,idd2 in zip(rank1,rank2):
-        print()
-
+    
 
 
 
 if __name__ == "__main__":
-    dataset_name = "VisDrone"
+    exp_data_root_dir = "/data/mml/data_debugging_data"
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
 
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     anno_error_path = get_error_ann_file_path(dataset_name)
     anno_with_miss_error_path = get_annotations_with_miss_json_path(dataset_name)
 
-    ours_rank_path = "/data/mml/data_debugging_data/final_res/ours/VisDrone/YOLOv7/rank_res/rank_topsis.joblib"
-    datactive_rank_path = os.path.join(exp_data_root_dir,"final_res","datactive",dataset_name,
-                                    "ranked_result","ranked_list.joblib")
     
-    # main()
-    temp()
+    ours_rank_path = os.path.join(exp_data_root_dir,"Results","ours",dataset_name,model_name,
+                                  "exp_01","rank","rank.joblib")
+    
+    datactive_rank_path = os.path.join(exp_data_root_dir,"Results","datactive",dataset_name,model_name,
+                                  "exp_01","rank","rank.joblib")
+    main()
+    
 

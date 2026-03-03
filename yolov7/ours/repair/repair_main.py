@@ -206,19 +206,18 @@ if __name__ == "__main__":
     exp_id = "01"
 
     _args = {
-        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7", # YOLOv7|FRCNN
         "rank_method":"ours", # ours|datactive 排序法
-        "rank_data_path":"/data/mml/data_debugging_data/Results/ours/VOC2012/YOLOv7/exp_01/rank/rank.joblib",
-        "save_dir":os.path.join(exp_root_dir,"Results","ours","VOC2012","YOLOv7",f"exp_{exp_id}", "repair"),
         "is_save":True
     }
-    
-
-    pprint.pprint(_args)
-    # 获得公共数据
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
+    _args["save_dir"] = os.path.join(exp_root_dir,"Results","ours",dataset_name,model_name,f"exp_{exp_id}", "repair")
+    _args["rank_data_path"] = os.path.join(exp_root_dir,"Results","ours",
+                                           dataset_name,model_name,f"exp_{exp_id}", "rank", "rank.joblib")
+    pprint.pprint(_args)
+    # 获得公共数据
     # 收集的gboxs
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     # anno_error

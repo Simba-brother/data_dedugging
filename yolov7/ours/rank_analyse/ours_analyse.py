@@ -1064,7 +1064,7 @@ def analyse_rank(gt_json_path:str, annos_with_miss_json_path:str, rank_res:list)
 
 
 if __name__ == "__main__":
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
     epochs = 50
     predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
@@ -1073,7 +1073,7 @@ if __name__ == "__main__":
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     # 我们的序
-    rank_res = joblib.load("/data/mml/data_debugging_data/Results/ours/VisDrone/YOLOv7/exp_01/rank/rank.joblib")
+    rank_res = joblib.load("")
     # 序分析
     analyse_rank(gt_json_path, annos_with_miss_json_path, rank_res)
     

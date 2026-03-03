@@ -550,19 +550,21 @@ if __name__ == '__main__':
 
     exp_data_root = "/data/mml/data_debugging_data"
     exp_id = "01"
-    gpu_id = 1
+    gpu_id = 0
 
     _args = {
-        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
         "trainset_stat":"repair_ours", # clean|error|repair_ours|repair_datactive
-        "model_save_dir":os.path.join(exp_data_root,"Results","ours","VOC2012","YOLOv7",f"exp_{exp_id}","retrain", "retrained_model")
     }
-    
-    pprint.pprint(_args)
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
+    method_name = _args["trainset_stat"].split("_")[-1]
+    _args["model_save_dir"] = os.path.join(exp_data_root,"Results",method_name,
+                                   dataset_name,model_name,f"exp_{exp_id}","retrain","retrained_model")
+    
+    pprint.pprint(_args)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', type=str, default='yolov7.pt', help='initial weights path')

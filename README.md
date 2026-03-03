@@ -2,6 +2,10 @@
 
 数据的错误注入：
 `data_debugging/DataDetective/fuxian/fault_gen.py`
+数据集元信息：
+`/home/mml/workspace/data_debugging/check_dataset.py`
+打印数据集包含的错误信息：
+`/home/mml/workspace/data_debugging/yolov7/ours/check_fault_info.py`
 数据标签格式转换：
 `/home/mml/workspace/data_debugging/yolov7/ours/labelconver/labelconver.py`
 
