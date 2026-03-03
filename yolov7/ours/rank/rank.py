@@ -782,11 +782,11 @@ if __name__ == "__main__":
     exp_id = "01"
     # 实验参数
     _args = {
-        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",# YOLOv7|FRCNN|SSD
         "epochs":50,
         "alpha":1.5,
-        "save_dir":os.path.join(exp_data_root_dir, "ours_rank", f"exp_{exp_id}")
+        "save_dir":os.path.join(exp_data_root_dir, "Results","ours","VOC2012","YOLOv7", f"exp_{exp_id}", "rank")
     }
     pprint.pprint(_args)
 

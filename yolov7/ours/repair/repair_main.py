@@ -206,13 +206,15 @@ if __name__ == "__main__":
     exp_id = "01"
 
     _args = {
-        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7", # YOLOv7|FRCNN
-        "rank_method":"datactive", # ours|datactive 排序法
-        "save_dir":os.path.join(exp_root_dir,"datactive_res",f"exp_{exp_id}", "repair"),
+        "rank_method":"ours", # ours|datactive 排序法
+        "rank_data_path":"/data/mml/data_debugging_data/Results/ours/VOC2012/YOLOv7/exp_01/rank/rank.joblib",
+        "save_dir":os.path.join(exp_root_dir,"Results","ours","VOC2012","YOLOv7",f"exp_{exp_id}", "repair"),
         "is_save":True
-        
     }
+    
+
     pprint.pprint(_args)
     # 获得公共数据
     dataset_name = _args["dataset_name"]
@@ -226,7 +228,7 @@ if __name__ == "__main__":
     # anno correct
     anno_correct_path = get_correct_ann_file_path(dataset_name,"train")
     # rank = joblib.load(get_datactive_rank_res_path(dataset_name))
-    rank = joblib.load("/data/mml/data_debugging_data/datactive_res/exp_01/rank/ranked_list.joblib")
+    rank = joblib.load(_args["rank_data_path"])
     if _args["is_save"]:
         repair_anno_save_path = os.path.join(_args["save_dir"],"_annotations.coco_repair.json")
     main()

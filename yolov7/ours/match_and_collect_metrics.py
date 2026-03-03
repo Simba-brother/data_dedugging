@@ -1,4 +1,7 @@
 
+'''
+收集的标注框和所有轮次的预测框的匹配和度量(confi/iou)统计
+'''
 import os
 import json
 import time

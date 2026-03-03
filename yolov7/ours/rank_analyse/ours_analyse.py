@@ -1073,7 +1073,7 @@ if __name__ == "__main__":
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     # 我们的序
-    rank_res = joblib.load("/data/mml/data_debugging_data/ours_rank/exp_01/rank.joblib")
+    rank_res = joblib.load("/data/mml/data_debugging_data/Results/ours/VisDrone/YOLOv7/exp_01/rank/rank.joblib")
     # 序分析
     analyse_rank(gt_json_path, annos_with_miss_json_path, rank_res)
     
