@@ -6,6 +6,7 @@ yolov7/inference
 yolov7/*.pt
 yolov7/data
 yolov7/figure
+yolov7/trained_models
 
 frcnn_ssd/check_points
 

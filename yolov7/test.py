@@ -355,9 +355,9 @@ def test(data,
 
 
 if __name__ == '__main__':
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
     parser = argparse.ArgumentParser(prog='test.py')
-    parser.add_argument('--weights', nargs='+', type=str, default='trained_models/visdrone/error_resume.pt', help='model.pt path(s)')
+    parser.add_argument('--weights', nargs='+', type=str, default=f'trained_models/{dataset_name.lower()}/ours_best.pt', help='model.pt path(s)')
     parser.add_argument('--data', type=str, default=f'data/{dataset_name}.yaml', help='*.data path')
     parser.add_argument('--batch-size', type=int, default=32, help='size of each image batch')
     parser.add_argument('--img-size', type=int, default=640, help='inference size (pixels)')

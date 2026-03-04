@@ -550,17 +550,18 @@ if __name__ == '__main__':
 
     exp_data_root = "/data/mml/data_debugging_data"
     exp_id = "01"
-    gpu_id = 0
+    gpu_id = 1
 
     _args = {
-        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
-        "trainset_stat":"repair_ours", # clean|error|repair_ours|repair_datactive
+        "trainset_stat":"datactive", # clean|error|ours|datactive
+        "save_each_epoch":False
     }
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
-    method_name = _args["trainset_stat"].split("_")[-1]
+    method_name = _args["trainset_stat"]
     _args["model_save_dir"] = os.path.join(exp_data_root,"Results",method_name,
                                    dataset_name,model_name,f"exp_{exp_id}","retrain","retrained_model")
     
@@ -611,7 +612,7 @@ if __name__ == '__main__':
     model_save_dir = _args["model_save_dir"]
     
 
-    if _args["trainset_stat"].startswith("repair"):
+    if _args["trainset_stat"] in ["ours","datactive"]:
         # opt.weights = os.path.join(exp_data_root, "models", dataset_name.lower(), "yolov7", "error", "new", "weights", "last.pt")
         # 设置恢复训练的ckpt
         opt.resume = f"trained_models/{dataset_name.lower()}/error_resume.pt"
@@ -620,9 +621,8 @@ if __name__ == '__main__':
         # 设置结束的训练轮次点
         epochs = 75
         # 恢复训练时不需要保存每个epoch的ckpt
-        save_each_epoch = False
-    else:
-        save_each_epoch = True
+    save_each_epoch = _args["save_each_epoch"]
+
     # Set DDP variables
     opt.world_size = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
     # -1 说明当前代码不运行在分布式训练环境中

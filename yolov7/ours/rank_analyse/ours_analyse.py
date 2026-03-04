@@ -1047,6 +1047,7 @@ def analyse_rank(gt_json_path:str, annos_with_miss_json_path:str, rank_res:list)
     error_set = all_errored_g_box_id_set | all_miss_error_img_name_set
     APFD = compute_apfd(error_set, rank_res)
     FPR,FNR,F1 =calc_fpr_fnr_f1(rank_res, error_set)
+    print(f"排序总长度:{len(rank_res)}")
     print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR},F1:{F1}")
 
     # 可视化一下两个序列(imgname与gid)的情况
@@ -1064,8 +1065,9 @@ def analyse_rank(gt_json_path:str, annos_with_miss_json_path:str, rank_res:list)
 
 
 if __name__ == "__main__":
+    exp_data_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
+    model_name = "FRCNN" # YOLOv7|FRCNN|SSD
     epochs = 50
     predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
                                        dataset_name,model_name,"collected_predicted_box","v2")
@@ -1073,7 +1075,8 @@ if __name__ == "__main__":
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     # 我们的序
-    rank_res = joblib.load("")
+    rank_res = joblib.load(os.path.join(exp_data_root_dir,"Results","ours",dataset_name,model_name,
+                                        "exp_01","rank","rank.joblib"))
     # 序分析
     analyse_rank(gt_json_path, annos_with_miss_json_path, rank_res)
     

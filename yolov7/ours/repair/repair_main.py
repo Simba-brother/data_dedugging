@@ -116,7 +116,7 @@ def repair_anno_json(cur_anno_json:dict,repair_info:dict)->dict:
     for img_name,missed_annos in miss_info.items():
         annos.extend(missed_annos)
 
-    # 修复redun
+    # 修复redun(最后删除修复冗余annoid)
     new_annos = [anno for anno in annos if anno["id"] not in redun_anno_id_list]
     cur_anno_json["annotations"] = new_annos
     return cur_anno_json
@@ -208,13 +208,13 @@ if __name__ == "__main__":
     _args = {
         "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7", # YOLOv7|FRCNN
-        "rank_method":"ours", # ours|datactive 排序法
+        "rank_method":"datactive", # ours|datactive 排序法
         "is_save":True
     }
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
-    _args["save_dir"] = os.path.join(exp_root_dir,"Results","ours",dataset_name,model_name,f"exp_{exp_id}", "repair")
-    _args["rank_data_path"] = os.path.join(exp_root_dir,"Results","ours",
+    _args["save_dir"] = os.path.join(exp_root_dir,"Results",_args["rank_method"],dataset_name,model_name,f"exp_{exp_id}", "repair")
+    _args["rank_data_path"] = os.path.join(exp_root_dir,"Results",_args["rank_method"],
                                            dataset_name,model_name,f"exp_{exp_id}", "rank", "rank.joblib")
     pprint.pprint(_args)
     # 获得公共数据

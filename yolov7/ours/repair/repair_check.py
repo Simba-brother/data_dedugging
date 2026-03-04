@@ -11,7 +11,7 @@ from ours.base_data_manager import (exp_data_root_dir,get_correct_ann_file_path,
 from ours.small_utils import read_json
 from ours.data_organization_tools import (get_g_id_to_g_box, get_gid_to_anno_id,
                                           get_imgname_to_imgid, get_cls_id_to_name, get_annoid_to_imgname,
-                                          get_all_miss_img_name_list,conver_ours_rank,
+                                          get_all_miss_img_name_list,conver_ours_rank,conver_datactive_rank,
                                           get_img_name_to_missed_annids,get_img_name_to_ann_ids)
 
 
@@ -279,7 +279,6 @@ def main():
     loc_annoid_list = repaired_info["loc_falut"][:4]
     redun_annoid_list = repaired_info["redun_fault"][:4]
 
-    
     # 看下miss的修复结果
     for img_name in miss_img_name_list:
         # 得到这张图像的所有正确标注
@@ -359,14 +358,9 @@ def detail_check():
                 check_miss(missed_annoids,repairAnnids,errorAnnids,correctAnnids)
 
 
-
-
-
-
-
-
 if __name__ == '__main__':
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    exp_data_root_dir = "/data/mml/data_debugging_data"
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
 
     anno_correct_json_path = get_correct_ann_file_path(dataset_name,"train")
@@ -374,9 +368,11 @@ if __name__ == '__main__':
     anno_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     
     # repaired anno json path
-    anno_repair_json_path = "/data/mml/data_debugging_data/datasets/VisDrone-coco/train/_annotations.coco_repair_ours_YOLOv7_alpha=1.5.json"
+    anno_repair_json_path = os.path.join(exp_data_root_dir,"Results",dataset_name,model_name,"exp_01",
+                                         "repair","_annotations.coco_repair.json")
     # 排序结果
-    rank_res = joblib.load("/data/mml/data_debugging_data/final_res/ours/VisDrone/YOLOv7/rank_res/alpha=1.5/rank_topsis.joblib")
+    rank_res = joblib.load(os.path.join(exp_data_root_dir,"Results",dataset_name,model_name,"exp_01",
+                                        "rank","rank.joblib"))
     # 收集的gboxs
     g_boxes_json_path = get_collected_gt_box_json_path(dataset_name)
     main()

@@ -773,6 +773,7 @@ def main():
     # 合并排序
     alpha = _args["alpha"]
     total_rank = merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,ranked_img_score_list,alpha)
+    print(f"排序总长度:{len(total_rank)}")
     save_path = os.path.join(_args["save_dir"], "rank.joblib")
     joblib.dump(total_rank,save_path)
     print(f"排序结果保存在:{save_path}")
@@ -782,8 +783,8 @@ if __name__ == "__main__":
     exp_id = "01"
     # 实验参数
     _args = {
-        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
-        "model_name":"YOLOv7",# YOLOv7|FRCNN|SSD
+        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
+        "model_name":"FRCNN",# YOLOv7|FRCNN|SSD
         "epochs":50,
         "alpha":1.5,
     }
@@ -811,8 +812,6 @@ if __name__ == "__main__":
     predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
                                        dataset_name,model_name,"collected_predicted_box","v2")
     imgs_dir = os.path.join(exp_data_root_dir,"retrain_dataset_split", dataset_name, "images", "origin")
-    /data/mml/data_debugging_data/retrain_dataset_split/KITTI_8/images/origin
-    os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-yolo","train","images")
 
     # 主函数
     main()

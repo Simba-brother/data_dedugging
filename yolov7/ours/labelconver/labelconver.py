@@ -25,8 +25,8 @@ def coco2yolo(coco_anno_json_path:Path,yolo_output_dir:Path,tvt:str):
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    coco_anno_json_path = Path("/data/mml/data_debugging_data/Results/ours/KITTI_8/YOLOv7/exp_01/repair/_annotations.coco_repair.json")
-    yolo_output_dir = Path("/data/mml/data_debugging_data/Results/ours/KITTI_8/YOLOv7/exp_01/repair/yolo_format")
+    coco_anno_json_path = Path("/data/mml/data_debugging_data/Results/datactive/KITTI_8/YOLOv7/exp_01/repair/_annotations.coco_repair.json")
+    yolo_output_dir = Path("/data/mml/data_debugging_data/Results/datactive/KITTI_8/YOLOv7/exp_01/repair/yolo_format")
     coco2yolo(coco_anno_json_path,yolo_output_dir,tvt="train")
 
 

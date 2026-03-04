@@ -107,9 +107,9 @@ def xiufu_rank_res():
     # joblib.dump(ranked_list,"/data/mml/data_debugging_data/final_res/datactive/VisDrone/ranked_result/new/ranked_list.joblib")
 
 if __name__ == "__main__":
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
     # datactive 排序的idd
-    ranked_list = joblib.load("/data/mml/data_debugging_data/Results/datactive/KITTI_8/YOLOv7/exp_01/rank/ranked_list.joblib")
+    ranked_list = joblib.load("/data/mml/data_debugging_data/Results/datactive/VOC2012/FRCNN/exp_01/rank/rank.joblib")
     anno_coco_error_json_path = get_error_ann_file_path(dataset_name)
     annotations_with_miss_json_path =get_annotations_with_miss_json_path(dataset_name)
     main()

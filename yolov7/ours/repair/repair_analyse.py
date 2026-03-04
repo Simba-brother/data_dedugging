@@ -77,8 +77,8 @@ def main():
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7"
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    model_name = "FRCNN" # YOLOv7 | FRCNN
 
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     anno_error_path = get_error_ann_file_path(dataset_name)
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     ours_rank_path = os.path.join(exp_data_root_dir,"Results","ours",dataset_name,model_name,
                                   "exp_01","rank","rank.joblib")
     
-    datactive_rank_path = os.path.join(exp_data_root_dir,"Results","datactive",dataset_name,model_name,
+    datactive_rank_path = os.path.join(exp_data_root_dir,"Results","datactive",dataset_name,"YOLOv7",
                                   "exp_01","rank","rank.joblib")
     main()
     
