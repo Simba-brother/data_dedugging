@@ -1,4 +1,8 @@
 
+'''
+YOLOv7在3个数据集上的其他基线方法复现代码
+'''
+
 import yaml
 import argparse
 from utils.datasets import create_dataloader

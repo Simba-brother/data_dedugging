@@ -553,10 +553,10 @@ if __name__ == '__main__':
     gpu_id = 0
 
     _args = {
-        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
-        "trainset_stat":"error", # clean|error|ours|datactive
+        "trainset_stat":"ours", # clean|error|ours|datactive
         "save_each_epoch":False
     }
     dataset_name = _args["dataset_name"]

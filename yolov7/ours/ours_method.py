@@ -1057,8 +1057,8 @@ def eval_apfd(rank_res):
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    model_name = "SSD" # YOLOv7|FRCNN|SSD
     epochs = 50
 
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
@@ -1076,14 +1076,14 @@ if __name__ == "__main__":
     os.makedirs(match_save_dir,exist_ok=True)
     match_json_save_path = os.path.join(match_save_dir,"match_v2.json")
     offset = (model_name != "YOLOv7") # model不是YOLOv7时，会对预测标签进行offset(-1)
-    # match(match_json_save_path,offset=offset)
+    match(match_json_save_path,offset=offset)
 
     # 2:metirc
     collection_metric_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",
                                               dataset_name,model_name, "collection_metric")
     os.makedirs(collection_metric_save_dir,exist_ok=True)
     metric_save_path = os.path.join(collection_metric_save_dir,"collection_metrics_v2.json")
-    # gt_box_metric_collection(match_json_save_path,metric_save_path)
+    gt_box_metric_collection(match_json_save_path,metric_save_path)
     
     # 3: 绘制metric line
     # correct_vs_fault(metric_save_path)
@@ -1091,6 +1091,7 @@ if __name__ == "__main__":
 
     # 4: 得到并保存排序结果
     # gid排序
+    '''
     g_id_to_features,feature_name_to_sign = gt_box_features_build(metric_save_path)
     ranked_gid_list, topsis_score_list = rank_gid(g_id_to_features,feature_name_to_sign)
     # img name to topsis score
@@ -1101,6 +1102,7 @@ if __name__ == "__main__":
                                           img_name_to_topsis_score,alpha)
     print(f"rank_res的长度:{len(rank_res)}") 
     eval_apfd(rank_res)
+    '''
     '''
     # img排序
     ranked_img_list,detected_mis_img_name_list = misimg_detect_by_weight_score(match_json_save_path)

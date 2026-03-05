@@ -155,11 +155,11 @@ def collect_predicted_box():
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    gpu_id = 1
+    gpu_id = 0
     PID = os.getpid()
     print("PID:",PID)
     _args = {
-        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
         "model_name":"SSD", # FRCNN|SSD
         "num_epochs":50,
         "custom_nums":False
