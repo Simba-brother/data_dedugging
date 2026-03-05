@@ -1,4 +1,5 @@
 
+import pprint
 from torch.utils.data import DataLoader
 from torchvision.transforms import ToTensor
 from datasets import CocoDetectionDataset
@@ -356,36 +357,53 @@ def collection_FRCNN_indicator(model,device,dataloader,epoch):
     print(f"保存在：{save_path}")
 
 if __name__ == "__main__":
-
+    PID = os.getpid()
+    print("PID:",PID)
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "FRCNN" # FRCNN|SSD
-    trainset_status = "repair_ours" # clean|error|repair_ours|repair_datactive
+    gpu_id = 0
+    _args = {
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "model_name":"SSD",# FRCNN|SSD
+        "trainset_status":"error", # clean|error|ours|datactive
+    }
+    
+    dataset_name = _args["dataset_name"]
+    model_name = _args["model_name"]
 
-    if trainset_status in ["repair_ours", "repair_datactive"]:
+    if _args["trainset_status"] in ["ours", "datactive"]:
         model_weight_path = get_error_train_model_weight_file_path(dataset_name,model_name,epoch=49)
         num_epochs = 25
     else:
         model_weight_path = None
         num_epochs = 50
-    gpu_id = 1
-    init_lr = 5e-3  # SSD:1e-3
+    
+    if _args["model_name"] == "SSD":
+        init_lr = 1e-3
+    else:
+        init_lr = 5e-3
+    _args["model_weight_path"] = model_weight_path
+    _args["init_lr"] = init_lr
+    _args["num_epochs"] = num_epochs
+
     epoch_save_dir = os.path.join(exp_data_root_dir,"models",dataset_name.lower(),
-                                  model_name.lower(), trainset_status)
+                                  model_name.lower(), _args["trainset_status"])
     os.makedirs(epoch_save_dir,exist_ok=True)
+    _args["epoch_save_dir"] = epoch_save_dir
+    pprint.pprint(_args)
+
     train_imgs_dir = get_imgs_dir(dataset_name,"train",style="coco")
     val_imgs_dir = get_imgs_dir(dataset_name,"val",style="coco")
 
-    if trainset_status == "clean":
+    if _args["trainset_status"] == "clean":
         train_annotation_path = get_correct_ann_file_path(dataset_name,"train")
-    elif trainset_status == "error":
+    elif _args["trainset_status"] == "error":
         train_annotation_path = get_error_ann_file_path(dataset_name)
-    elif trainset_status == "repair_ours":
+    elif _args["trainset_status"] == "repair_ours":
         # train_annotation_path = get_repair_ann_file_path(dataset_name,"ours",model_name)
         train_annotation_path = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco",
                                              "train",
                                              f"_annotations.coco_repair_ours_{model_name}_alpha=1.5.json")
-    elif trainset_status == "repair_datactive":
+    elif _args["trainset_status"] == "repair_datactive":
         train_annotation_path = get_repair_ann_file_path(dataset_name,"datactive",model_name)
 
     val_annotation_path = get_correct_ann_file_path(dataset_name,"val")

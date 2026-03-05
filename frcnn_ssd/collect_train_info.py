@@ -153,10 +153,12 @@ def collect_predicted_box():
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
-    model_name = "FRCNN" # FRCNN|SSD
+    model_name = "SSD" # FRCNN|SSD
     gpu_id = 0
     num_epochs = 50
-    error_model_pth_dir = os.path.join(exp_data_root_dir,"models",dataset_name.lower(),model_name.lower(),"error")
-    collect_save_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box", "v2")
+    error_model_pth_dir = os.path.join(exp_data_root_dir,"models",dataset_name.lower(),
+                                       model_name.lower(),"error")
+    collect_save_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
+                                    dataset_name,model_name,"collected_predicted_box", "v2")
     os.makedirs(collect_save_dir,exist_ok=True)
     collect_predicted_box()

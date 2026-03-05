@@ -39,5 +39,5 @@ freeze:
 v5_metric: false
 world_size: 1
 global_rank: -1
-save_dir: /data/mml/data_debugging_data/models/kitti_8/yolov7/error/weights
+save_dir: /data/mml/data_debugging_data/Results/error/KITTI_8/YOLOv7/exp_01/retrain/retrained_model/weights
 total_batch_size: 32

@@ -550,13 +550,13 @@ if __name__ == '__main__':
 
     exp_data_root = "/data/mml/data_debugging_data"
     exp_id = "01"
-    gpu_id = 1
+    gpu_id = 0
 
     _args = {
-        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
-        "trainset_stat":"datactive", # clean|error|ours|datactive
+        "trainset_stat":"error", # clean|error|ours|datactive
         "save_each_epoch":False
     }
     dataset_name = _args["dataset_name"]
