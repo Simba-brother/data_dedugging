@@ -360,9 +360,9 @@ if __name__ == "__main__":
     PID = os.getpid()
     print("PID:",PID)
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    gpu_id = 0
+    gpu_id = 1
     _args = {
-        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
         "model_name":"SSD",# FRCNN|SSD
         "trainset_status":"error", # clean|error|ours|datactive
     }

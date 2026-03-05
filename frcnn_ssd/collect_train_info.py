@@ -4,6 +4,7 @@ Docstring for collection
 
 import os
 import time
+import pprint
 import json
 from PIL import Image
 from torch.utils.data import DataLoader
@@ -61,8 +62,9 @@ def set_nms(model, model_name, conf_threshold=0.25,iou_threshold=0.65):
         model.score_thresh = conf_threshold
         model.nms_thresh = iou_threshold
     elif model_name == "FRCNN":
-        model.roi_heads.nms_thresh = iou_threshold
         model.roi_heads.score_thresh = conf_threshold
+        model.roi_heads.nms_thresh = iou_threshold
+        
     else:
         raise Exception("模型名称错误")
     return model
@@ -132,7 +134,8 @@ def collect_predicted_box():
     num_classes = len(train_dataset.coco.getCatIds()) + 1
     # 构建模型
     model = get_model(num_classes)
-    # model = set_nms(model,model_name=model_name)
+    if _args["custom_nums"] is True:
+        model = set_nms(model,model_name=model_name)
     # 得到设备
     device = torch.device(f"cuda:{gpu_id}")
     model.to(device)
@@ -152,10 +155,20 @@ def collect_predicted_box():
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
-    model_name = "SSD" # FRCNN|SSD
-    gpu_id = 0
-    num_epochs = 50
+    gpu_id = 1
+    PID = os.getpid()
+    print("PID:",PID)
+    _args = {
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "model_name":"SSD", # FRCNN|SSD
+        "num_epochs":50,
+        "custom_nums":False
+    }
+    pprint.pprint(_args)
+    
+    dataset_name = _args["dataset_name"]
+    model_name = _args["model_name"]
+    num_epochs = _args["num_epochs"]
     error_model_pth_dir = os.path.join(exp_data_root_dir,"models",dataset_name.lower(),
                                        model_name.lower(),"error")
     collect_save_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
