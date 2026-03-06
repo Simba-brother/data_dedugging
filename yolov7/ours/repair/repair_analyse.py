@@ -78,7 +78,7 @@ def main():
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "FRCNN" # YOLOv7 | FRCNN
+    model_name = "SSD" # YOLOv7|FRCNN|SSD
 
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     anno_error_path = get_error_ann_file_path(dataset_name)

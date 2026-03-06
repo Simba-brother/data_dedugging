@@ -203,7 +203,7 @@ def get_gt_boxs():
 
 def get_img_path_by_img_name(img_name,style):
     if style == "yolo":
-        image_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-yolo","train","images",img_name)
+        image_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-yolo","origin","train","images",img_name)
     elif style == "coco":
         image_path = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-coco","train",img_name)
     return image_path
@@ -1056,8 +1056,10 @@ def eval_apfd(rank_res):
 
 
 if __name__ == "__main__":
+    PID = os.getpid()
+    print("PID:",PID)
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "SSD" # YOLOv7|FRCNN|SSD
     epochs = 50
 

@@ -1066,8 +1066,8 @@ def analyse_rank(gt_json_path:str, annos_with_miss_json_path:str, rank_res:list)
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
-    model_name = "FRCNN" # YOLOv7|FRCNN|SSD
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    model_name = "SSD" # YOLOv7|FRCNN|SSD
     epochs = 50
     predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
                                        dataset_name,model_name,"collected_predicted_box","v2")
