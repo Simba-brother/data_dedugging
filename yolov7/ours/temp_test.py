@@ -2,6 +2,13 @@
 import os
 import numpy as np
 from pprint import pprint,pformat
+
+
+from queue import PriorityQueue
+
+
+
+
 def test_1():
     data = [3,4,2,1]
     b = data[[0,8]]
@@ -106,10 +113,24 @@ def test_9():
     formatted = pformat(data, indent=2)
     print(formatted)
 
+def test10():
+    # 创建一个优先级队列
+    priority_queue = PriorityQueue()
+
+    # 添加元素到队列中，格式为(优先级, 值)
+    priority_queue.put((1, '任务1'))
+    priority_queue.put((2, '任务2'))
+    priority_queue.put((0, '任务0'))
+
+    # 获取并弹出优先级最高的元素
+    while not priority_queue.empty():
+        priority, task = priority_queue.get()
+        print(f"处理任务: {task}")
+
 
 if __name__ == "__main__":
     # test_2()
-    test_9()
+    test10()
     # bbox = [0.499,0.4866666666666667,0.106,0.14666666666666667]
     # W = 500
     # H = 375

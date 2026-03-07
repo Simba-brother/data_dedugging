@@ -1,7 +1,7 @@
 
 from collections import defaultdict
 from pycocotools.coco import COCO
-
+import json
 def get_g_id_to_g_box(g_boxes_json:dict) -> dict:
     g_id_to_g_box = {}
     for img_name, g_boxes in g_boxes_json.items():
@@ -203,3 +203,66 @@ def get_name_id_map(ANN_FILE):
     id2name = {img_id: img_info["file_name"] for img_id, img_info in coco.imgs.items()}
 
     return name2id,id2name
+
+
+def get_all_errored_g_box_id_set(gt_json:dict) -> set[int]:
+    '''
+    基于我们收集的g_boxs，获得fault g box id set
+    '''
+
+    all_errored_g_box_id_set = set()
+    for img_name,g_boxs in gt_json.items():
+        for g_box in g_boxs:
+            if g_box["fault_type"] != 0:
+                all_errored_g_box_id_set.add(g_box["box_id"])
+    return all_errored_g_box_id_set
+
+
+def get_image_id_to_image_name_for_coco(annos_with_miss_json:dict) -> dict:
+    id2name = {}
+    images = annos_with_miss_json["images"]
+    for image in images:
+        id2name[image["id"]] = image["file_name"] 
+    return id2name
+
+
+def get_all_miss_error_img_name_set(annos_with_miss_json_path:str) -> set[str]:
+    '''
+    获得所有具有miss fault的 img name set
+    '''
+    with open(annos_with_miss_json_path, "r") as f:
+        annos_with_miss_json = json.load(f)
+    imageid_2_imagename = get_image_id_to_image_name_for_coco(annos_with_miss_json)
+    print(f"总图像数:{len(list(imageid_2_imagename.keys()))}")
+    anns = annos_with_miss_json["annotations"]
+    all_miss_error_img_name_set = set()
+    for ann in anns:
+        if ann["fault_type"] == 4:
+            image_name = imageid_2_imagename[ann["image_id"]]
+            all_miss_error_img_name_set.add(image_name)
+    print(f"miss error 图像数量:{len(all_miss_error_img_name_set)}")
+    return all_miss_error_img_name_set
+
+
+def get_all_gids(gt_json:dict) -> list[int]:
+    '''
+    得到所有的g_box_id_list
+    
+    参数
+    ----
+    gt_json : dict
+        数据格式：
+        {
+            image_name:[g_box_1,g_box_2],
+            ...
+        }
+    返回
+    ---
+    all_g_box_id_list : list[int]
+        提取出的所有的g_box_id_list
+    '''
+    all_g_box_id_list = []
+    for img_name, g_box_list in gt_json.items():
+        for g_box in g_box_list:
+            all_g_box_id_list.append(g_box["box_id"])
+    return all_g_box_id_list
