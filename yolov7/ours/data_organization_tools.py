@@ -1,5 +1,6 @@
 
 from collections import defaultdict
+from pycocotools.coco import COCO
 
 def get_g_id_to_g_box(g_boxes_json:dict) -> dict:
     g_id_to_g_box = {}
@@ -190,3 +191,15 @@ def get_all_image_name_list(anno_json:dict)->list:
     assert len(set(all_img_name_list)) == len(all_img_name_list), "具有重复元素"
     return all_img_name_list
 
+
+def get_name_id_map(ANN_FILE):
+    
+    coco = COCO(ANN_FILE)
+
+    # 1) file_name -> img_id（假设 file_name 唯一）
+    name2id = {img_info["file_name"]: img_id for img_id, img_info in coco.imgs.items()}
+
+    # 2) 反向：img_id -> file_name
+    id2name = {img_id: img_info["file_name"] for img_id, img_info in coco.imgs.items()}
+
+    return name2id,id2name

@@ -85,7 +85,7 @@ def collect_one_epoch(model,dataloader,epoch, conf_thres=0.25,iou_thres=0.65):
     save_json_path = os.path.join(save_dir,save_json_file_name)
     with open(save_json_path, "w", encoding="utf-8") as f:
         json.dump(predicted_box_dict, f, indent=4)
-    print(f"数据保存在:{predicted_box_dict}")
+    print(f"数据保存在:{save_json_path}")
 
 def collect_predicted_box(conf_thres=0.25,iou_thres=0.65):
     # 拿到数据yaml文件
