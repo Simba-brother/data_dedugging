@@ -182,8 +182,7 @@ if __name__ == "__main__":
     epochs = 50
 
     # 收集预测框的存放目录
-    collect_p_box_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box","v3" \
-    "")
+    collect_p_box_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,model_name,"collected_predicted_box","v3")
     os.makedirs(collect_p_box_dir,exist_ok=True)
     collect_predicted_box(conf_thres=0.25,iou_thres=0.65)
 
