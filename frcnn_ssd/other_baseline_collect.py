@@ -322,7 +322,7 @@ if __name__ == "__main__":
     PID = os.getpid()
     print("PID:",PID)
     _args = {
-        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
         "model_name":"SSD", # FRCNN|SSD
         "epoch":49,
         "custom_nums":False

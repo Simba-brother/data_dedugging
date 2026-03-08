@@ -363,7 +363,7 @@ def collect_p():
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7"
+    model_name = "SSD" # YOLOv7|FRCNN|SSD
     epoch = 49
     gpu_id = 0
     device = torch.device(f"cuda:{gpu_id}")
@@ -372,7 +372,7 @@ if __name__ == "__main__":
                                      dataset_name,model_name,"other_baselines",
                                      "collected_predicted_box_withprobs")
     os.makedirs(collect_p_box_dir,exist_ok=True)
-    collect_p()
+    # collect_p()
 
     g_json_path = get_collected_gt_box_json_path(dataset_name)
     p_json_path = os.path.join(collect_p_box_dir,

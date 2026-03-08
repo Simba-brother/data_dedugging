@@ -8,7 +8,8 @@ import torch.nn.functional as F
 from ours.small_utils import read_json
 from queue import PriorityQueue
 from ours.data_organization_tools import get_all_gids
-from ours.base_data_manager import get_collected_gt_box_json_path,get_all_img_name
+from ours.base_data_manager import get_collected_gt_box_json_path,get_all_img_name,get_annotations_with_miss_json_path
+from ours.rank_analyse.other_baselines_analyse import analyse_rank
 
 def calcu_entropy(prob_list):
     entropy = 0.0
@@ -100,7 +101,7 @@ if __name__ == "__main__":
     print("PID:",PID)
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7"
+    model_name = "SSD" # YOLOv7|FRCNN|SSD
     exp_id = "01"
     baseline_name = "loss" # entropy|loss|deepgini|margin|
     g_json_path = get_collected_gt_box_json_path(dataset_name)
@@ -108,14 +109,18 @@ if __name__ == "__main__":
                               dataset_name,model_name,"other_baselines",
                               "gp_box_match","match.json")
     all_train_img_dir = os.path.join(exp_root_dir,"retrain_dataset_split", dataset_name, "images", "origin")
-    gid_rank = main(g_json_path,match_json_path,baseline_name)
+    rank = main(g_json_path,match_json_path,baseline_name)
 
     save_dir = os.path.join(exp_root_dir,"Results","other_baselines",baseline_name,
                             dataset_name,model_name,f"exp_{exp_id}","rank")
     save_file_name = "rank.joblib"
     save_path = os.path.join(save_dir,save_file_name)
-    joblib.dump(gid_rank,save_path)
-    print(f"rank长度为:{len(gid_rank)}")
+    joblib.dump(rank,save_path)
+    print(f"rank长度为:{len(rank)}")
     print(f'rank结果保存在:{save_path}')
+
+    # 最简单排序分析
+    annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
+    analyse_rank(g_json_path,rank,annos_with_miss_json_path)
 
 

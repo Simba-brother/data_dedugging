@@ -8,7 +8,7 @@ from ours.rank_analyse.common import compute_apfd,calc_fpr_fnr_f1
 from ours.data_organization_tools import get_all_errored_g_box_id_set,get_all_miss_error_img_name_set
 
 
-def analyse_rank(gt_json_path:str, rank_res:list):
+def analyse_rank(gt_json_path:str, rank_res:list, annos_with_miss_json_path:str):
     '''
     rank_res: 我们方法获得的排序结果（idd:img_name or gid）
     '''
@@ -53,5 +53,5 @@ if __name__ == "__main__":
 
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
-    analyse_rank(gt_json_path,rank)
+    analyse_rank(gt_json_path,rank,annos_with_miss_json_path)
     # compare()
