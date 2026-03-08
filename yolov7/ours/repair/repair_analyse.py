@@ -57,6 +57,16 @@ def main():
     converted_datactive_rank = conver_datactive_rank(datactive_rank, bg_catId)
     print(f"datactive rank数量:{len(converted_datactive_rank)}")
 
+    # 得到entropy rank
+    entropy_rank = joblib.load(entropy_rank_path)
+    converted_entropy_rank = conver_ours_rank(entropy_rank, g_boxes_json, anno_error)
+    print(f"entropy rank数量:{len(converted_entropy_rank)}")
+
+    # 得到loss rank
+    loss_rank = joblib.load(loss_rank_path)
+    converted_loss_rank = conver_ours_rank(loss_rank, g_boxes_json, anno_error)
+    print(f"loss rank数量:{len(converted_loss_rank)}")
+
     anno_with_miss_error = read_json(anno_with_miss_error_path)
     all_error_annoids = get_all_error_annoids(anno_with_miss_error)
     annoId_to_anno = get_annoId_to_anno(anno_with_miss_error)
@@ -70,6 +80,12 @@ def main():
 
     repaired_box_count,repair_rate = count_repair_rate(converted_datactive_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
     print(f"datactive修复数量: {repaired_box_count}, 修复率: {repair_rate}")
+
+    repaired_box_count,repair_rate = count_repair_rate(converted_entropy_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
+    print(f"entropy修复数量: {repaired_box_count}, 修复率: {repair_rate}")
+
+    repaired_box_count,repair_rate = count_repair_rate(converted_loss_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
+    print(f"loss修复数量: {repaired_box_count}, 修复率: {repair_rate}")
 
     
 
@@ -90,6 +106,11 @@ if __name__ == "__main__":
     
     datactive_rank_path = os.path.join(exp_data_root_dir,"Results","datactive",dataset_name,"YOLOv7",
                                   "exp_01","rank","rank.joblib")
-    main()
-    
 
+    
+    entropy_rank_path = os.path.join(exp_data_root_dir,"Results","other_baselines","entropy",dataset_name,"YOLOv7",
+                                  "exp_01","rank","rank.joblib")
+    
+    loss_rank_path = os.path.join(exp_data_root_dir,"Results","other_baselines","loss",dataset_name,"YOLOv7",
+                                  "exp_01","rank","rank.joblib")
+    main()

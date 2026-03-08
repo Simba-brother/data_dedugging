@@ -173,7 +173,7 @@ def main():
     anno_correct_json = read_json(anno_correct_path)
 
     # 排序数据转换
-    if _args['rank_method'] == "ours":
+    if _args['rank_method'] in ["ours","entropy","loss"]:
         g_boxes_json = read_json(gt_json_path)
         converted_rank = conver_ours_rank(rank,g_boxes_json,anno_error_json)
     elif _args['rank_method'] == "datactive":
@@ -206,16 +206,19 @@ if __name__ == "__main__":
     exp_id = "01"
 
     _args = {
-        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
-        "model_name":"YOLOv7", # YOLOv7|FRCNN
-        "rank_method":"datactive", # ours|datactive 排序法
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "model_name":"YOLOv7", # YOLOv7
+        "rank_method":"loss", # ours|datactive|entropy|loss 排序法
         "is_save":True
     }
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
-    _args["save_dir"] = os.path.join(exp_root_dir,"Results",_args["rank_method"],dataset_name,model_name,f"exp_{exp_id}", "repair")
-    _args["rank_data_path"] = os.path.join(exp_root_dir,"Results",_args["rank_method"],
-                                           dataset_name,model_name,f"exp_{exp_id}", "rank", "rank.joblib")
+    _args["save_dir"] = os.path.join(exp_root_dir,"Results","other_baselines",
+                                     _args["rank_method"],dataset_name,model_name,
+                                     f"exp_{exp_id}", "repair")
+    _args["rank_data_path"] = os.path.join(exp_root_dir,"Results","other_baselines",
+                                           _args["rank_method"],dataset_name,model_name,
+                                           f"exp_{exp_id}", "rank", "rank.joblib")
     pprint.pprint(_args)
     # 获得公共数据
     # 收集的gboxs

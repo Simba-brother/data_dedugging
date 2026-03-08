@@ -36,9 +36,6 @@ def get_error_ann_file_path(dataset_name):
                                  "_annotations.coco_error.json")
     return ann_file_path
 
-
-
-
 def get_repair_ann_file_path(dataset_name,
                              method_name,
                              model_name:None):

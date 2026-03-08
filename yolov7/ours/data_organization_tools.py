@@ -191,7 +191,6 @@ def get_all_image_name_list(anno_json:dict)->list:
     assert len(set(all_img_name_list)) == len(all_img_name_list), "具有重复元素"
     return all_img_name_list
 
-
 def get_name_id_map(ANN_FILE):
     
     coco = COCO(ANN_FILE)
@@ -203,7 +202,6 @@ def get_name_id_map(ANN_FILE):
     id2name = {img_id: img_info["file_name"] for img_id, img_info in coco.imgs.items()}
 
     return name2id,id2name
-
 
 def get_all_errored_g_box_id_set(gt_json:dict) -> set[int]:
     '''
@@ -217,14 +215,12 @@ def get_all_errored_g_box_id_set(gt_json:dict) -> set[int]:
                 all_errored_g_box_id_set.add(g_box["box_id"])
     return all_errored_g_box_id_set
 
-
 def get_image_id_to_image_name_for_coco(annos_with_miss_json:dict) -> dict:
     id2name = {}
     images = annos_with_miss_json["images"]
     for image in images:
         id2name[image["id"]] = image["file_name"] 
     return id2name
-
 
 def get_all_miss_error_img_name_set(annos_with_miss_json_path:str) -> set[str]:
     '''
@@ -242,7 +238,6 @@ def get_all_miss_error_img_name_set(annos_with_miss_json_path:str) -> set[str]:
             all_miss_error_img_name_set.add(image_name)
     print(f"miss error 图像数量:{len(all_miss_error_img_name_set)}")
     return all_miss_error_img_name_set
-
 
 def get_all_gids(gt_json:dict) -> list[int]:
     '''
@@ -266,3 +261,27 @@ def get_all_gids(gt_json:dict) -> list[int]:
         for g_box in g_box_list:
             all_g_box_id_list.append(g_box["box_id"])
     return all_g_box_id_list
+
+def get_all_error_gids(gt_json:dict) -> list[int]:
+    '''
+    得到所有的error_g_box_id_list
+    
+    参数
+    ----
+    gt_json : dict
+        数据格式：
+        {
+            image_name:[g_box_1,g_box_2],
+            ...
+        }
+    返回
+    ---
+    error_g_box_id_list : list[int]
+        提取出的所有的g_box_id_list
+    '''
+    error_g_box_id_list = []
+    for img_name, g_box_list in gt_json.items():
+        for g_box in g_box_list:
+            if g_box["fault_type"] != 0:
+                error_g_box_id_list.append(g_box["box_id"])
+    return error_g_box_id_list

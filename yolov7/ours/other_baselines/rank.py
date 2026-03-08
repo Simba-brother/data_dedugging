@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from ours.small_utils import read_json
 from queue import PriorityQueue
-from ours.data_organization_tools import get_all_gids
+from ours.data_organization_tools import get_all_gids,get_all_error_gids
 from ours.base_data_manager import get_collected_gt_box_json_path,get_all_img_name,get_annotations_with_miss_json_path
 from ours.rank_analyse.other_baselines_analyse import analyse_rank
 
@@ -77,11 +77,19 @@ def main(g_json_path,match_json_path,baseline_name:str):
         matchid_gid_set.add(int(gid))
 
     print(f"all gid数量:{len(all_gids)}")
-    print(f"matched_gid数量:{len(matchid_gid_set)}")
-    
+    print(f"匹配上的gid数量:{len(matchid_gid_set)}")
+    print(f"没匹配上的gid数量:{len(all_gids) - len(matchid_gid_set)}")
+    erro_gids = get_all_error_gids(g_json)
+    print(f"fault gid数量:{len(erro_gids)}")
+    no_matched_gid_set = set(all_gids) - matchid_gid_set
+    bad_gid_set = set(erro_gids) & no_matched_gid_set
+    print(f"没匹配上的gid中的错误数量:{len(bad_gid_set)}/{len(erro_gids)}")
+
     for g_id in all_gids:
         if g_id not in matchid_gid_set:
             priority_queue.put((-100,g_id))
+
+    erro_gids
 
     # 获取并弹出优先级最高的元素
     gid_rank = []
@@ -100,17 +108,21 @@ if __name__ == "__main__":
     PID = os.getpid()
     print("PID:",PID)
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "SSD" # YOLOv7|FRCNN|SSD
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
+    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
     exp_id = "01"
     baseline_name = "loss" # entropy|loss|deepgini|margin|
     g_json_path = get_collected_gt_box_json_path(dataset_name)
     match_json_path = os.path.join(exp_root_dir, "collection_indicator_bbox_level",
                               dataset_name,model_name,"other_baselines",
                               "gp_box_match","match.json")
-    all_train_img_dir = os.path.join(exp_root_dir,"retrain_dataset_split", dataset_name, "images", "origin")
+    all_train_img_dir = os.path.join(exp_root_dir,"retrain_dataset_split", dataset_name,
+                                    "images", "origin")
     rank = main(g_json_path,match_json_path,baseline_name)
-
+    annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
+    analyse_rank(g_json_path,rank,annos_with_miss_json_path)
+    
+    '''
     save_dir = os.path.join(exp_root_dir,"Results","other_baselines",baseline_name,
                             dataset_name,model_name,f"exp_{exp_id}","rank")
     save_file_name = "rank.joblib"
@@ -122,5 +134,6 @@ if __name__ == "__main__":
     # 最简单排序分析
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     analyse_rank(g_json_path,rank,annos_with_miss_json_path)
+    '''
 
 

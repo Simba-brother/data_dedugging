@@ -32,3 +32,6 @@ def get_formatted_time():
     """返回当前时间的格式化字符串（YYYY-MM-DD_HH:MM:SS）"""
     now = datetime.now()
     return now.strftime("%Y-%m-%d_%H:%M:%S")
+
+def is_directory_exists(path):
+    return os.path.exists(path) and os.path.isdir(path)

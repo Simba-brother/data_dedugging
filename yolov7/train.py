@@ -8,7 +8,7 @@ from copy import deepcopy
 from pathlib import Path
 from threading import Thread
 import pprint
-
+import shutil
 import numpy as np
 import torch.distributed as dist
 import torch.nn as nn
@@ -35,7 +35,7 @@ from utils.loss import ComputeLoss, ComputeLossOTA
 from utils.plots import plot_images, plot_labels, plot_results, plot_evolution
 from utils.torch_utils import ModelEMA, select_device, intersect_dicts, torch_distributed_zero_first, is_parallel
 from utils.wandb_logging.wandb_utils import WandbLogger, check_wandb_resume
-
+from ours.small_utils import is_directory_exists
 logger = logging.getLogger(__name__)
 
 
@@ -546,25 +546,53 @@ def train(hyp, opt, device, tb_writer=None):
     return results
 
 
-if __name__ == '__main__':
+def label_replace(dataset_name):
+    cur_train_labels_dir = f"{exp_data_root}/datasets/{dataset_name}-yolo/train/labels"
+    cur_val_labels_dir = f"{exp_data_root}/datasets/{dataset_name}-yolo/val/labels"
+    if is_directory_exists(cur_train_labels_dir):
+        shutil.rmtree(cur_train_labels_dir)
+        print("删除了train labels")
+    if is_directory_exists(cur_val_labels_dir):
+        shutil.rmtree(cur_val_labels_dir)
+        print("删除了val labels")
 
+    if _args["trainset_stat"] in ["entropy", "loss"]:
+        new_train_labels_dir = f"{exp_data_root}/Results/other_baselines/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_01/retrain/label_split/splitted_labels/train"
+        new_val_labels_dir = f"{exp_data_root}/Results/other_baselines/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_01/retrain/label_split/splitted_labels/val"
+    else:
+        new_train_labels_dir = f"{exp_data_root}/Results/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_01/retrain/label_split/splitted_labels/train"
+        new_val_labels_dir = f"{exp_data_root}/Results/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_01/retrain/label_split/splitted_labels/val"
+
+    # 复制目录
+    shutil.copytree(new_train_labels_dir, cur_train_labels_dir)
+    shutil.copytree(new_val_labels_dir, cur_val_labels_dir)
+    print("便签目录替换完成")
+
+
+if __name__ == '__main__':
+    PID = os.getpid()
+    print("PID:",PID)
     exp_data_root = "/data/mml/data_debugging_data"
     exp_id = "01"
     gpu_id = 0
 
     _args = {
-        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
-        "trainset_stat":"clean", # clean|error|ours|datactive
+        "trainset_stat":"loss", # clean|error|ours|datactive|entropy|loss
         "save_each_epoch":False
     }
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
     method_name = _args["trainset_stat"]
-    _args["model_save_dir"] = os.path.join(exp_data_root,"Results",method_name,
+    if _args["trainset_stat"] in ["entropy","loss"]:
+        _args["model_save_dir"] = os.path.join(exp_data_root,"Results","other_baselines", method_name,
                                    dataset_name,model_name,f"exp_{exp_id}","retrain","retrained_model")
-    
+    else:
+        _args["model_save_dir"] = os.path.join(exp_data_root,"Results",method_name,
+                                   dataset_name,model_name,f"exp_{exp_id}","retrain","retrained_model")
+
     pprint.pprint(_args)
 
     parser = argparse.ArgumentParser()
@@ -612,7 +640,8 @@ if __name__ == '__main__':
     model_save_dir = _args["model_save_dir"]
     
 
-    if _args["trainset_stat"] in ["ours","datactive"]:
+    if _args["trainset_stat"] in ["ours","datactive","entropy","loss"]:
+        
         # opt.weights = os.path.join(exp_data_root, "models", dataset_name.lower(), "yolov7", "error", "new", "weights", "last.pt")
         # 设置恢复训练的ckpt
         opt.resume = f"trained_models/{dataset_name.lower()}/error_resume.pt"
@@ -621,6 +650,7 @@ if __name__ == '__main__':
         # 设置结束的训练轮次点
         epochs = 75
         # 恢复训练时不需要保存每个epoch的ckpt
+        label_replace(dataset_name)
     save_each_epoch = _args["save_each_epoch"]
 
     # Set DDP variables
