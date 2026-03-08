@@ -102,7 +102,7 @@ if __name__ == "__main__":
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
     exp_id = "01"
-    baseline_name = "entropy" # entropy|loss|deepgini|margin|
+    baseline_name = "loss" # entropy|loss|deepgini|margin|
     g_json_path = get_collected_gt_box_json_path(dataset_name)
     match_json_path = os.path.join(exp_root_dir, "collection_indicator_bbox_level",
                               dataset_name,model_name,"other_baselines",

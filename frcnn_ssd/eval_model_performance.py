@@ -189,9 +189,9 @@ def eval_performance():
 
 
 if __name__ == "__main__":
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
     model_name = "FRCNN" # FRCNN, SSD
-    model_state = "error" # clean|error|repair_ours|repair_datactive
+    model_state = "clean" # clean|error|repair_ours|repair_datactive
     gpu_id = 0
     train_or_val = "val" # train|val
     ANN_FILE = get_correct_ann_file_path(dataset_name,train_or_val)

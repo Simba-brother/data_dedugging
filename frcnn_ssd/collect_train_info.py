@@ -129,7 +129,8 @@ def collect_predicted_box():
     # 构建数据集实例
     train_dataset = get_trainset()
     # 构建数据集加载器
-    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=lambda x: tuple(zip(*x)))
+    train_loader = DataLoader(train_dataset, batch_size=16, 
+                              shuffle=True, collate_fn=lambda x: tuple(zip(*x)))
     # 得到数据集nc:
     num_classes = len(train_dataset.coco.getCatIds()) + 1
     # 构建模型

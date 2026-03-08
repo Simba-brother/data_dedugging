@@ -44,7 +44,7 @@ def compare():
 if __name__ == "__main__":
     
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
     baseline_name = "loss" # entropy|loss|deepgini|margin
     rank_path = os.path.join(exp_root_dir,"Results",
