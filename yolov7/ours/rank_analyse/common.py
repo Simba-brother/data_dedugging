@@ -60,20 +60,20 @@ def compute_apfd(fault_set:set, rankded_list):
 def calc_fpr_fnr_f1(rank_list,error_set):
     cut_off = 0.4
     cut_point = int(len(rank_list) * cut_off)
-    P_list = rank_list[:cut_point]
-    N_list = rank_list[cut_point:]
+    P_list = rank_list[:cut_point] # 预测为P
+    N_list = rank_list[cut_point:] # 预测为N
     fp = 0
     fn = 0
     tp = 0
     correct_set = set(rank_list) - error_set
     for idd in P_list:
         if idd not in error_set:
-            fp += 1
+            fp += 1 # 错阳
         else:
-            tp += 1
+            tp += 1 # 正确阳
     for idd in N_list:
         if idd in error_set:
-            fn += 1
+            fn += 1 # 错阴
     fpr = fp / len(correct_set)
     fnr = fn / len(error_set)
     fpr = round(fpr,4)

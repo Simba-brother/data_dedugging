@@ -20,7 +20,7 @@ import torch
 import torch.nn as nn
 from pycocotools.coco import COCO
 from models.yolo import Model
-from base_data_manager import (
+from ours.base_data_manager import (
                             exp_data_root_dir,
                             get_collected_gt_box_json_path,
                             get_error_train_model_weight_file_path, 
@@ -114,6 +114,36 @@ def search_match(gt_box_list, predicted_box_list, iou_thre=0.5):
             matches.append((matched_gt_box,p_box,iou_val))
     return matches
 
+def search_match_v2(gt_box_list, predicted_box_list):
+    '''
+    基于"datactive: For each bounding box in the original annotation set, we identify the
+    predicted box with the highest overlap to compute the prediction loss."
+    对每个GT box找IoU最高的预测框
+    '''
+    matches = []
+    for gt_box in gt_box_list:
+        gt_bbox = gt_box["gt_bbox"]
+        gt_cls = gt_box["cls"]
+
+        # 筛选同类别预测框
+        same_cls_preds = [p for p in predicted_box_list if p["predicted_cls"] == gt_cls]
+        if not same_cls_preds:
+            continue
+
+        # 找IoU最高的预测框
+        max_iou = 0.0
+        best_pred = None
+        for pred in same_cls_preds:
+            iou = calu_iou(gt_bbox, pred["bbox"])
+            if iou > max_iou:
+                max_iou = iou
+                best_pred = pred
+
+        if best_pred and max_iou > 0:
+            matches.append((gt_box, best_pred, max_iou))
+
+    return matches
+
 def offset_p_label(p_box_list):
     # predicted box数量
     for box in p_box_list:
@@ -172,6 +202,9 @@ def model_load_weight(model:nn.Module,device,weight_path:str):
     return model
 
 def collectprobs_one_epoch(model,dataloader,conf_thres=0.25,iou_thres=0.65):
+    '''
+    iou_thres用于NMS
+    '''
     predicted_box_dict = {}
     predicted_box_id = 0
     # 将数据集喂给model
@@ -280,7 +313,7 @@ def match(g_json_path,p_json_path,offset):
         # 获得当前图像g_boxs与当前epoch的p_boxs的匹配关系
         if offset:
             cur_epoch_p_boxs = offset_p_label(cur_epoch_p_boxs)
-        matches = search_match(g_boxs,cur_epoch_p_boxs,iou_thre=0.5)
+        matches = search_match_v2(g_boxs,cur_epoch_p_boxs)
         for match in matches:
             matched_g_box = match[0]
             p_box = match[1]
@@ -297,8 +330,6 @@ def match(g_json_path,p_json_path,offset):
     minutes = int((elapsed_time % 3600) // 60)  # 计算分钟数
     seconds = elapsed_time % 60  # 计算剩余的秒数
     print(f"运行时间：{hours:02d}:{minutes:02d}:{seconds:02.0f}")
-
-
 
 def collect_p():
     # 加载最后的模型
@@ -326,34 +357,30 @@ def collect_p():
     for batch_i, (img, targets, paths, shapes) in enumerate(dataloader):
         imgs_num += img.shape[0]
     print(f"总共图像数量:{imgs_num}")
-    collectprobs_one_epoch(model,dataloader)
+    collectprobs_one_epoch(model,dataloader,conf_thres=0.25,iou_thres=0.65)
 
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012"
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
     epoch = 49
     gpu_id = 0
     device = torch.device(f"cuda:{gpu_id}")
     error_anno_file_path = get_error_ann_file_path(dataset_name)
     collect_p_box_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
-                                     dataset_name,model_name,"collected_predicted_box_withprobs")
+                                     dataset_name,model_name,"other_baselines",
+                                     "collected_predicted_box_withprobs")
     os.makedirs(collect_p_box_dir,exist_ok=True)
     collect_p()
 
     g_json_path = get_collected_gt_box_json_path(dataset_name)
-    p_json_path = os.path.join(
-        exp_data_root_dir,
-        "collection_indicator_bbox_level",
-        dataset_name,
-        model_name,
-        "collected_predicted_box_withprobs",
-        "epoch_49_predicted_bboxs.json"
+    p_json_path = os.path.join(collect_p_box_dir,
+        f"epoch_{epoch}_predicted_bboxs.json"
     )
     offset = (model_name != "YOLOv7") # model不是YOLOv7时，会对预测标签进行offset(-1)
     match_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",
-                                  dataset_name,model_name,"other_baselines", "gp_box_match")
+                                  dataset_name,model_name,"other_baselines","gp_box_match")
     os.makedirs(match_save_dir,exist_ok=True)
     match_save_path = os.path.join(match_save_dir,"match.json")
     match(g_json_path,p_json_path,offset)

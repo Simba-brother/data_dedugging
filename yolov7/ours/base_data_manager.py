@@ -80,6 +80,14 @@ def get_imgs_dir(dataset_name,train_or_val,style):
     elif style == "yolo":
         imgs_dir = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-yolo",train_or_val,"images")
     return imgs_dir
+
+def get_all_img_name(imgs_dir:str) -> list[str]:
+    img_name_list = []
+    for filename in sorted(os.listdir(imgs_dir)):
+        filepath = os.path.join(imgs_dir, filename)
+        if os.path.isfile(filepath):
+            img_name_list.append(filename)
+    return img_name_list
     
 def get_ours_rank_res_path(dataset_name,model_name,istopsis:bool):
     if istopsis:
