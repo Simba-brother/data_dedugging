@@ -577,10 +577,10 @@ if __name__ == '__main__':
     gpu_id = 1
 
     _args = {
-        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
-        "trainset_stat":"entropy", # clean|error|ours|datactive|entropy|loss
+        "trainset_stat":"entropy", # clean|error|ours|datactive|entropy|loss|deepgini|margin
         "save_each_epoch":False
     }
     dataset_name = _args["dataset_name"]
@@ -640,7 +640,7 @@ if __name__ == '__main__':
     model_save_dir = _args["model_save_dir"]
     
 
-    if _args["trainset_stat"] in ["ours","datactive","entropy","loss"]:
+    if _args["trainset_stat"] in ["ours","datactive","entropy","loss","deepgini","margin"]:
         
         # opt.weights = os.path.join(exp_data_root, "models", dataset_name.lower(), "yolov7", "error", "new", "weights", "last.pt")
         # 设置恢复训练的ckpt

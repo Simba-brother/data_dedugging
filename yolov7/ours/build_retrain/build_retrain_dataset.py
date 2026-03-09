@@ -59,10 +59,10 @@ if __name__ == "__main__":
 
     # origin trainset imgs
     source_imgs_dir = os.path.join(exp_root_dir, "retrain_dataset_split", dataset_name, "images", "origin")
-    target_train_imgs_dir = os.path.join(exp_root_dir, "retrain_dataset_split", dataset_name, "images", "split", 
-                                         "train")
-    target_val_imgs_dir = os.path.join(exp_root_dir, "retrain_dataset_split", dataset_name, "images", "split", 
-                                         "val")
+    target_train_imgs_dir = os.path.join(exp_root_dir, "retrain_dataset_split", dataset_name, 
+                                         "images", "split", "train")
+    target_val_imgs_dir = os.path.join(exp_root_dir, "retrain_dataset_split", dataset_name, 
+                                       "images", "split", "val")
     
     # 选择从总的训练集中选择的数据用于验证集 20%, 剩下80%数据用于训练集
     # 1.抽取img
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     
     # 2.抽取label
     # origin train的labels dir(yolo style)
-    method_name = "loss" # entropy|loss
+    method_name = "margin" # entropy|loss|deepgini|margin
     source_labels_dir = f"/data/mml/data_debugging_data/Results/other_baselines/{method_name}/{dataset_name}/YOLOv7/exp_01/repair/yolo_format/labels"
     # 切出的train labels dir
     target_train_labels_dir = f"/data/mml/data_debugging_data/Results/other_baselines/{method_name}/{dataset_name}/YOLOv7/exp_01/retrain/label_split/splitted_labels/train"
