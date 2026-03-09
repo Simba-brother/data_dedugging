@@ -30,6 +30,8 @@ def analyse_rank(gt_json_path:str, rank_res:list, annos_with_miss_json_path:str,
     print(f"排序总长度:{len(rank_res)}")
     print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR},F1:{F1}")
 
+
+    # 统计该rank的修复率
     anno_with_miss_error = read_json(annos_with_miss_json_path)
     imgname_to_missed_annids = get_img_name_to_missed_annids(anno_with_miss_error) 
     all_error_annoids = get_all_error_annoids(anno_with_miss_error)

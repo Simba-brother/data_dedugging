@@ -136,7 +136,3 @@ if __name__ == "__main__":
     
     # 对排序结果进行一个简单性能分析
     analyse_rank(g_json_path,rank,annos_with_miss_json_path,vis=False)
-
-    
-
-
