@@ -22,11 +22,12 @@ def coco2yolo(coco_anno_json_path:Path,yolo_output_dir:Path,tvt:str):
     print("Conversion from COCO to YOLOv7 completed successfully!")
 
 
-
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    coco_anno_json_path = Path("/data/mml/data_debugging_data/Results/other_baselines/loss/VisDrone/YOLOv7/exp_01/repair/_annotations.coco_repair.json")
-    yolo_output_dir = Path("/data/mml/data_debugging_data/Results/other_baselines/loss/VisDrone/YOLOv7/exp_01/repair/yolo_format")
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    method_name = "loss" # entropy|loss
+    coco_anno_json_path = Path(f"/data/mml/data_debugging_data/Results/other_baselines/{method_name}/{dataset_name}/YOLOv7/exp_01/repair/_annotations.coco_repair.json")
+    yolo_output_dir = Path(f"/data/mml/data_debugging_data/Results/other_baselines/{method_name}/{dataset_name}/YOLOv7/exp_01/repair/yolo_format")
     coco2yolo(coco_anno_json_path,yolo_output_dir,tvt="train")
 
 

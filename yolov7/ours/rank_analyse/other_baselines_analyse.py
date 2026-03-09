@@ -7,8 +7,9 @@ from ours.small_utils import read_json
 from ours.rank_analyse.common import compute_apfd,calc_fpr_fnr_f1
 from ours.data_organization_tools import get_all_errored_g_box_id_set,get_all_miss_error_img_name_set
 
+from ours.rank_analyse.common import look_total_rank
 
-def analyse_rank(gt_json_path:str, rank_res:list, annos_with_miss_json_path:str):
+def analyse_rank(gt_json_path:str, rank_res:list, annos_with_miss_json_path:str, vis:bool=False):
     '''
     rank_res: 我们方法获得的排序结果（idd:img_name or gid）
     '''
@@ -24,6 +25,20 @@ def analyse_rank(gt_json_path:str, rank_res:list, annos_with_miss_json_path:str)
     FPR,FNR,F1 =calc_fpr_fnr_f1(rank_res, error_set)
     print(f"排序总长度:{len(rank_res)}")
     print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR},F1:{F1}")
+    if vis:
+        vis_rank(rank_res,all_errored_g_box_id_set,all_miss_error_img_name_set)
+
+def vis_rank(rank_res,errored_gid_set, miss_img_set):
+    ranked_gid_list = []
+    ranked_image_name_list = []
+    for idd in rank_res:
+        if type(idd) == str:
+            ranked_image_name_list.append(idd)
+        else:
+            ranked_gid_list.append(idd)
+    assert len(ranked_gid_list) + len(ranked_image_name_list) == len(rank_res), "数量不对"
+    look_total_rank(rank_res,errored_gid_set,miss_img_set)
+
 
 def compare():
     rank_entropy = joblib.load(os.path.join(exp_root_dir,"Results",
@@ -44,9 +59,9 @@ def compare():
 if __name__ == "__main__":
     
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
-    baseline_name = "loss" # entropy|loss|deepgini|margin
+    baseline_name = "entropy" # entropy|loss|deepgini|margin
     rank_path = os.path.join(exp_root_dir,"Results",
                              "other_baselines",baseline_name,dataset_name,model_name,"exp_01","rank","rank.joblib")
     rank = joblib.load(rank_path)

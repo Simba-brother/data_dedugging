@@ -574,13 +574,13 @@ if __name__ == '__main__':
     print("PID:",PID)
     exp_data_root = "/data/mml/data_debugging_data"
     exp_id = "01"
-    gpu_id = 0
+    gpu_id = 1
 
     _args = {
         "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
-        "trainset_stat":"loss", # clean|error|ours|datactive|entropy|loss
+        "trainset_stat":"entropy", # clean|error|ours|datactive|entropy|loss
         "save_each_epoch":False
     }
     dataset_name = _args["dataset_name"]

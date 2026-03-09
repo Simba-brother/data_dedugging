@@ -202,6 +202,8 @@ def main():
 
 
 if __name__ == "__main__":
+    PID = os.getpid()
+    print("PID:",PID)
     exp_root_dir = "/data/mml/data_debugging_data"
     exp_id = "01"
 
@@ -213,12 +215,20 @@ if __name__ == "__main__":
     }
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
-    _args["save_dir"] = os.path.join(exp_root_dir,"Results","other_baselines",
-                                     _args["rank_method"],dataset_name,model_name,
-                                     f"exp_{exp_id}", "repair")
-    _args["rank_data_path"] = os.path.join(exp_root_dir,"Results","other_baselines",
-                                           _args["rank_method"],dataset_name,model_name,
-                                           f"exp_{exp_id}", "rank", "rank.joblib")
+    if _args["rank_method"] in ["entropy","loss"]:
+        _args["save_dir"] = os.path.join(exp_root_dir,"Results","other_baselines",
+                                        _args["rank_method"],dataset_name,model_name,
+                                        f"exp_{exp_id}", "repair")
+        _args["rank_data_path"] = os.path.join(exp_root_dir,"Results","other_baselines",
+                                            _args["rank_method"],dataset_name,model_name,
+                                            f"exp_{exp_id}", "rank", "rank.joblib")
+    else:
+        _args["save_dir"] = os.path.join(exp_root_dir,"Results",
+                                        _args["rank_method"],dataset_name,model_name,
+                                        f"exp_{exp_id}", "repair")
+        _args["rank_data_path"] = os.path.join(exp_root_dir,"Results",
+                                            _args["rank_method"],dataset_name,model_name,
+                                            f"exp_{exp_id}", "rank", "rank.joblib")
     pprint.pprint(_args)
     # 获得公共数据
     # 收集的gboxs

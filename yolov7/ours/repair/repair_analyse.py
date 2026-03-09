@@ -101,16 +101,20 @@ if __name__ == "__main__":
     anno_with_miss_error_path = get_annotations_with_miss_json_path(dataset_name)
 
     
-    ours_rank_path = os.path.join(exp_data_root_dir,"Results","ours",dataset_name,model_name,
+    ours_rank_path = os.path.join(exp_data_root_dir,"Results","ours",
+                                  dataset_name,model_name,
                                   "exp_01","rank","rank.joblib")
     
-    datactive_rank_path = os.path.join(exp_data_root_dir,"Results","datactive",dataset_name,"YOLOv7",
+    datactive_rank_path = os.path.join(exp_data_root_dir,"Results","datactive",
+                                       dataset_name,"YOLOv7", # 与模型无关
                                   "exp_01","rank","rank.joblib")
 
     
-    entropy_rank_path = os.path.join(exp_data_root_dir,"Results","other_baselines","entropy",dataset_name,"YOLOv7",
+    entropy_rank_path = os.path.join(exp_data_root_dir,"Results","other_baselines","entropy",
+                                     dataset_name,model_name,
                                   "exp_01","rank","rank.joblib")
     
-    loss_rank_path = os.path.join(exp_data_root_dir,"Results","other_baselines","loss",dataset_name,"YOLOv7",
+    loss_rank_path = os.path.join(exp_data_root_dir,"Results","other_baselines","loss",
+                                  dataset_name,model_name,
                                   "exp_01","rank","rank.joblib")
     main()

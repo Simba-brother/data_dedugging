@@ -262,26 +262,3 @@ def get_all_gids(gt_json:dict) -> list[int]:
             all_g_box_id_list.append(g_box["box_id"])
     return all_g_box_id_list
 
-def get_all_error_gids(gt_json:dict) -> list[int]:
-    '''
-    得到所有的error_g_box_id_list
-    
-    参数
-    ----
-    gt_json : dict
-        数据格式：
-        {
-            image_name:[g_box_1,g_box_2],
-            ...
-        }
-    返回
-    ---
-    error_g_box_id_list : list[int]
-        提取出的所有的g_box_id_list
-    '''
-    error_g_box_id_list = []
-    for img_name, g_box_list in gt_json.items():
-        for g_box in g_box_list:
-            if g_box["fault_type"] != 0:
-                error_g_box_id_list.append(g_box["box_id"])
-    return error_g_box_id_list
