@@ -12,7 +12,7 @@ from ours.data_organization_tools import (get_all_errored_g_box_id_set,get_all_m
 from ours.rank_analyse.common import look_total_rank
 from ours.repair.repair_analyse import count_repair_rate
 
-def analyse_rank(gt_json_path:str, rank_res:list, annos_with_miss_json_path:str, vis:bool=False):
+def analyse_rank(dataset_name, gt_json_path:str, rank_res:list, annos_with_miss_json_path:str, vis:bool=False):
     '''
     rank_res: 我们方法获得的排序结果（idd:img_name or gid）
     '''
@@ -70,4 +70,4 @@ if __name__ == "__main__":
 
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
-    analyse_rank(gt_json_path,rank,annos_with_miss_json_path)
+    analyse_rank(dataset_name,gt_json_path,rank,annos_with_miss_json_path)

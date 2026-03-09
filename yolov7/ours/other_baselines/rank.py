@@ -9,7 +9,7 @@ from ours.small_utils import read_json
 from queue import PriorityQueue
 from ours.data_organization_tools import get_all_gids,get_all_errored_g_box_id_set
 from ours.base_data_manager import get_collected_gt_box_json_path,get_all_img_name,get_annotations_with_miss_json_path
-from ours.rank_analyse.other_baselines_analyse import analyse_rank
+from ours.rank_analyse.other_baselines_analyse import analyse_rank as other_baseline_analyse_rank
 
 def calcu_entropy(prob_list):
     entropy = 0.0
@@ -135,4 +135,4 @@ if __name__ == "__main__":
     print(f'rank结果保存在:{save_path}')
     
     # 对排序结果进行一个简单性能分析
-    analyse_rank(g_json_path,rank,annos_with_miss_json_path,vis=False)
+    other_baseline_analyse_rank(dataset_name,g_json_path,rank,annos_with_miss_json_path,vis=False)

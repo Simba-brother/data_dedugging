@@ -19,7 +19,6 @@ from ours.data_organization_tools import (get_gid_to_anno_id,get_error_annoid_se
 
 
 def count_repair_rate(rank:list,imgname_to_missed_annids:dict,all_error_annoids:list[int],annoId_to_anno:dict,cut_off_rate:float=0.4):
-    
     cut_off =  int(len(rank)*cut_off_rate)
     cut_off_rank = rank[:cut_off]
     # 修复的miss count
@@ -37,6 +36,7 @@ def count_repair_rate(rank:list,imgname_to_missed_annids:dict,all_error_annoids:
                 repaired_other_box_count += 1
     repaired_box_count = repaired_miss_box_count + repaired_other_box_count
     repair_rate = round(repaired_box_count/len(all_error_annoids),4)
+    print(f"全部错误的annids的数量(包括miss fault):{len(all_error_annoids)}")
     return repaired_box_count,repair_rate
     
 

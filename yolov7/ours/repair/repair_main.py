@@ -208,9 +208,9 @@ if __name__ == "__main__":
     exp_id = "01"
 
     _args = {
-        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7", # YOLOv7
-        "rank_method":"deepgini", # ours|datactive|entropy|loss|deepgini|margin| 排序法
+        "rank_method":"margin", # ours|datactive|entropy|loss|deepgini|margin| 排序法
         "is_save":True
     }
     dataset_name = _args["dataset_name"]
