@@ -556,7 +556,7 @@ def label_replace(dataset_name):
         shutil.rmtree(cur_val_labels_dir)
         print("删除了val labels")
 
-    if _args["trainset_stat"] in ["entropy", "loss"]:
+    if _args["trainset_stat"] in ["entropy", "loss", "deepgini", "margin"]:
         new_train_labels_dir = f"{exp_data_root}/Results/other_baselines/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_01/retrain/label_split/splitted_labels/train"
         new_val_labels_dir = f"{exp_data_root}/Results/other_baselines/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_01/retrain/label_split/splitted_labels/val"
     else:
@@ -577,16 +577,16 @@ if __name__ == '__main__':
     gpu_id = 1
 
     _args = {
-        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
-        "trainset_stat":"entropy", # clean|error|ours|datactive|entropy|loss|deepgini|margin
+        "trainset_stat":"deepgini", # clean|error|ours|datactive|entropy|loss|deepgini|margin
         "save_each_epoch":False
     }
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
     method_name = _args["trainset_stat"]
-    if _args["trainset_stat"] in ["entropy","loss"]:
+    if _args["trainset_stat"] in ["entropy","loss","deepgini","margin"]:
         _args["model_save_dir"] = os.path.join(exp_data_root,"Results","other_baselines", method_name,
                                    dataset_name,model_name,f"exp_{exp_id}","retrain","retrained_model")
     else:
@@ -674,6 +674,7 @@ if __name__ == '__main__':
         # 这两个参数要覆盖下opt_yaml
         opt.save_dir = _args["model_save_dir"] # resume train 结果保存路径
         opt.epochs = epochs # resume epoch 终点
+        opt.device = str(_args["gpu_id"]) # 恢复gpu_id设置
         logger.info('Resuming training from %s' % ckpt)
     else:
         # opt.hyp = opt.hyp or ('hyp.finetune.yaml' if opt.weights else 'hyp.scratch.yaml')
