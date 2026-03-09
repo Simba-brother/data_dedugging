@@ -1,13 +1,16 @@
 import os
 import joblib
 from ours.base_data_manager import (get_annotations_with_miss_json_path,
-                                    get_collected_gt_box_json_path
+                                    get_collected_gt_box_json_path,get_error_ann_file_path
                                     )
 from ours.small_utils import read_json
 from ours.rank_analyse.common import compute_apfd,calc_fpr_fnr_f1
-from ours.data_organization_tools import get_all_errored_g_box_id_set,get_all_miss_error_img_name_set
+from ours.data_organization_tools import (get_all_errored_g_box_id_set,get_all_miss_error_img_name_set,
+                                          get_img_name_to_missed_annids,get_all_error_annoids,get_annoId_to_anno,
+                                          conver_ours_rank)
 
 from ours.rank_analyse.common import look_total_rank
+from ours.repair.repair_analyse import count_repair_rate
 
 def analyse_rank(gt_json_path:str, rank_res:list, annos_with_miss_json_path:str, vis:bool=False):
     '''
@@ -23,8 +26,21 @@ def analyse_rank(gt_json_path:str, rank_res:list, annos_with_miss_json_path:str,
     error_set = all_errored_g_box_id_set | all_miss_error_img_name_set
     APFD = compute_apfd(error_set, rank_res)
     FPR,FNR,F1 =calc_fpr_fnr_f1(rank_res, error_set)
+
     print(f"排序总长度:{len(rank_res)}")
     print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR},F1:{F1}")
+
+    anno_with_miss_error = read_json(annos_with_miss_json_path)
+    imgname_to_missed_annids = get_img_name_to_missed_annids(anno_with_miss_error) 
+    all_error_annoids = get_all_error_annoids(anno_with_miss_error)
+    annoId_to_anno = get_annoId_to_anno(anno_with_miss_error)
+    imgname_to_missed_annids = get_img_name_to_missed_annids(anno_with_miss_error)
+    anno_error_path = get_error_ann_file_path(dataset_name)
+    anno_error = read_json(anno_error_path)
+    converted_rank = conver_ours_rank(rank_res, g_boxes_json, anno_error)
+    repaired_box_count,repair_rate = count_repair_rate(converted_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate=0.4)
+    print(f"预计修复数量: {repaired_box_count}, 预计修复率: {repair_rate}")
+
     if vis:
         vis_rank(rank_res,all_errored_g_box_id_set,all_miss_error_img_name_set)
 
@@ -40,22 +56,6 @@ def vis_rank(rank_res,errored_gid_set, miss_img_set):
     look_total_rank(rank_res,errored_gid_set,miss_img_set)
 
 
-def compare():
-    rank_entropy = joblib.load(os.path.join(exp_root_dir,"Results",
-                             "other_baselines","entropy",dataset_name,model_name,"exp_01","rank","rank.joblib"))
-    
-    rank_deepgini = joblib.load(os.path.join(exp_root_dir,"Results",
-                             "other_baselines","deepgini",dataset_name,model_name,"exp_01","rank","rank.joblib"))
-
-    rank_margin = joblib.load(os.path.join(exp_root_dir,"Results",
-                             "other_baselines","margin",dataset_name,model_name,"exp_01","rank","rank.joblib"))
-    
-    rank_loss = joblib.load(os.path.join(exp_root_dir,"Results",
-                             "other_baselines","loss",dataset_name,model_name,"exp_01","rank","rank.joblib"))
-    
-    for idd_e,idd_d,idd_m,idd_l in zip(rank_entropy,rank_deepgini,rank_margin,rank_loss):
-        print(f"idd_e:{idd_e},idd_d:{idd_d},idd_m:{idd_m},idd_l:{idd_l}")
-
 if __name__ == "__main__":
     
     exp_root_dir = "/data/mml/data_debugging_data"
@@ -69,4 +69,3 @@ if __name__ == "__main__":
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     analyse_rank(gt_json_path,rank,annos_with_miss_json_path)
-    # compare()

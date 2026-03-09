@@ -115,7 +115,7 @@ if __name__ == "__main__":
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "SSD" # YOLOv7|FRCNN|SSD
     exp_id = "01"
-    baseline_name = "loss" # entropy|loss|deepgini|margin|
+    baseline_name = "margin" # entropy|loss|deepgini|margin|
     g_json_path = get_collected_gt_box_json_path(dataset_name)
     match_json_path = os.path.join(exp_root_dir, "collection_indicator_bbox_level",
                               dataset_name,model_name,"other_baselines",
@@ -124,10 +124,8 @@ if __name__ == "__main__":
                                     "images", "origin")
     rank = main(g_json_path,match_json_path,baseline_name)
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
-    analyse_rank(g_json_path,rank,annos_with_miss_json_path,vis=False)
-    
-    # 保存rank数据
-    
+
+    # 保存rank数据    
     save_dir = os.path.join(exp_root_dir,"Results","other_baselines",baseline_name,
                             dataset_name,model_name,f"exp_{exp_id}","rank")
     save_file_name = "rank.joblib"
@@ -135,6 +133,10 @@ if __name__ == "__main__":
     joblib.dump(rank,save_path)
     print(f"rank长度为:{len(rank)}")
     print(f'rank结果保存在:{save_path}')
+    
+    # 对排序结果进行一个简单性能分析
+    analyse_rank(g_json_path,rank,annos_with_miss_json_path,vis=False)
 
+    
 
 

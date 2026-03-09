@@ -577,7 +577,7 @@ if __name__ == '__main__':
     gpu_id = 1
 
     _args = {
-        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
         "trainset_stat":"entropy", # clean|error|ours|datactive|entropy|loss

@@ -173,7 +173,7 @@ def main():
     anno_correct_json = read_json(anno_correct_path)
 
     # 排序数据转换
-    if _args['rank_method'] in ["ours","entropy","loss"]:
+    if _args['rank_method'] in ["ours","entropy","loss","deepgini","margin"]:
         g_boxes_json = read_json(gt_json_path)
         converted_rank = conver_ours_rank(rank,g_boxes_json,anno_error_json)
     elif _args['rank_method'] == "datactive":
@@ -208,14 +208,14 @@ if __name__ == "__main__":
     exp_id = "01"
 
     _args = {
-        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7", # YOLOv7
-        "rank_method":"loss", # ours|datactive|entropy|loss 排序法
+        "rank_method":"deepgini", # ours|datactive|entropy|loss|deepgini|margin| 排序法
         "is_save":True
     }
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
-    if _args["rank_method"] in ["entropy","loss"]:
+    if _args["rank_method"] in ["entropy","loss","deepgini","margin"]:
         _args["save_dir"] = os.path.join(exp_root_dir,"Results","other_baselines",
                                         _args["rank_method"],dataset_name,model_name,
                                         f"exp_{exp_id}", "repair")
