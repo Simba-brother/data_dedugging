@@ -234,7 +234,6 @@ def get_cluster_feaure(cluster,last_epoch):
     e_freq = epoch_freq(cluster,last_epoch) # [0,1]
     sign = [1,1,1,1]
     feature = [conf,stab,cls_consis,e_freq]
-    
     return feature, sign
 
 def get_img_to_topsis_score(img_to_clusters:dict,last_epoch:int):
@@ -763,7 +762,7 @@ def merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,rank
     return merged_rank
 
 
-def main():
+def rank()->list:
     # 读取gbox
     gt_json = read_json(gt_json_path)
     # 得到gid的排序
@@ -773,27 +772,32 @@ def main():
     # 合并排序
     alpha = _args["alpha"]
     total_rank = merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,ranked_img_score_list,alpha)
-    print(f"排序总长度:{len(total_rank)}")
-    save_path = os.path.join(_args["save_dir"], "rank.joblib")
-    joblib.dump(total_rank,save_path)
-    print(f"排序结果保存在:{save_path}")
+    return total_rank
+
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
     exp_id = "01"
     # 实验参数
     _args = {
-        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
-        "model_name":"SSD",# YOLOv7|FRCNN|SSD
+        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
+        "model_name":"YOLOv7",# YOLOv7|FRCNN|SSD
         "epochs":50,
-        "alpha":1.5,
+        "alpha":1.5, # discussion: [0.5,1.0,1.2,1.5,2]
     }
     
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
     epochs = _args["epochs"]
-    _args["save_dir"] = os.path.join(exp_data_root_dir,"Results","ours",
-                                     dataset_name,model_name,f"exp_{exp_id}","rank")
+    _args["save_dir"] = os.path.join(exp_data_root_dir,"Results",
+                                    dataset_name,model_name,f"exp_{exp_id}","rank")
+
+    # _args["save_dir"] = os.path.join(exp_data_root_dir,"Discussion_Results",
+    #                                 dataset_name,model_name,f"exp_{exp_id}","rank",f"alpha={_args['alpha']}")
+    
+    _args["save_dir"] = os.path.join(exp_data_root_dir,"Discussion_Results",
+                                    dataset_name,model_name,f"exp_{exp_id}","topsis_feature","img_level",
+                                    "e_freq")
 
     pprint.pprint(_args)
     # 创建出保存的目录
@@ -814,4 +818,8 @@ if __name__ == "__main__":
     imgs_dir = os.path.join(exp_data_root_dir,"retrain_dataset_split", dataset_name, "images", "origin")
 
     # 主函数
-    main()
+    total_rank = rank()
+    print(f"排序总长度:{len(total_rank)}")
+    save_path = os.path.join(_args["save_dir"], "rank.joblib")
+    joblib.dump(total_rank,save_path)
+    print(f"排序结果保存在:{save_path}")
