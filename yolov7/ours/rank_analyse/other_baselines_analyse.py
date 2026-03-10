@@ -12,6 +12,14 @@ from ours.data_organization_tools import (get_all_errored_g_box_id_set,get_all_m
 from ours.rank_analyse.common import look_total_rank
 from ours.repair.repair_analyse import count_repair_rate
 
+def get_gid_rank(rank_res):
+    gid_rank = []
+    for idd in rank_res:
+        if type(idd) is int:
+            gid_rank.append(idd)
+    return gid_rank
+
+
 def analyse_rank(dataset_name, gt_json_path:str, rank_res:list, annos_with_miss_json_path:str, vis:bool=False):
     '''
     rank_res: 我们方法获得的排序结果（idd:img_name or gid）
@@ -21,7 +29,7 @@ def analyse_rank(dataset_name, gt_json_path:str, rank_res:list, annos_with_miss_
     all_errored_g_box_id_set = get_all_errored_g_box_id_set(g_boxes_json)
     # 得到missed_error_img_name_set
     all_miss_error_img_name_set = get_all_miss_error_img_name_set(annos_with_miss_json_path)
-
+    # rank_res = get_gid_rank(rank_res)
     # 计算APFD,FPR和FNR
     error_set = all_errored_g_box_id_set | all_miss_error_img_name_set
     APFD = compute_apfd(error_set, rank_res)
@@ -39,6 +47,7 @@ def analyse_rank(dataset_name, gt_json_path:str, rank_res:list, annos_with_miss_
     imgname_to_missed_annids = get_img_name_to_missed_annids(anno_with_miss_error)
     anno_error_path = get_error_ann_file_path(dataset_name)
     anno_error = read_json(anno_error_path)
+    # idd的转换
     converted_rank = conver_ours_rank(rank_res, g_boxes_json, anno_error)
     repaired_box_count,repair_rate = count_repair_rate(converted_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate=0.4)
     print(f"预计修复数量: {repaired_box_count}, 预计修复率: {repair_rate}")
@@ -61,11 +70,12 @@ def vis_rank(rank_res,errored_gid_set, miss_img_set):
 if __name__ == "__main__":
     
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7"
-    baseline_name = "entropy" # entropy|loss|deepgini|margin
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    model_name = "SSD" # YOLOv7|FRCNN|SSD
+    baseline_name = "margin" # entropy|loss|deepgini|margin
     rank_path = os.path.join(exp_root_dir,"Results",
-                             "other_baselines",baseline_name,dataset_name,model_name,"exp_01","rank","rank.joblib")
+                             "other_baselines",baseline_name,dataset_name,model_name,
+                             "exp_01","rank","rank.joblib")
     rank = joblib.load(rank_path)
 
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
