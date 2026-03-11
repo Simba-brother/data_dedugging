@@ -1093,7 +1093,7 @@ def analyse_rank(gt_json_path:str, annos_with_miss_json_path:str, rank_res:list,
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
     epochs = 50
     predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
@@ -1103,11 +1103,12 @@ if __name__ == "__main__":
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     # 我们的序
 
-    rank_res = joblib.load(os.path.join(exp_data_root_dir,"Results","ours",dataset_name,model_name,
-                                        "exp_01","rank","rank.joblib"))
+    # rank_res = joblib.load(os.path.join(exp_data_root_dir,"Results","ours",dataset_name,model_name,
+    #                                     "exp_01","rank","rank.joblib"))
 
-    # rank_res = joblib.load(os.path.join(exp_data_root_dir,"Discussion_Results",dataset_name,model_name,
-    #                                     "exp_01","rank","alpha=2","rank.joblib"))
+    rank_res = joblib.load(os.path.join(exp_data_root_dir,"Discussion_Results",dataset_name,model_name,
+                                        "exp_01","rank","alpha=2","rank.joblib"))
+
     
     # rank_res = joblib.load(os.path.join(exp_data_root_dir,"Discussion_Results",dataset_name,model_name,
     #                                      "exp_01","topsis_feature","img_level","e_freq", "rank.joblib"))

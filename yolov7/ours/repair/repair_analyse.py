@@ -10,6 +10,7 @@ from ours.small_utils import read_json
 from pycocotools.coco import COCO
 from ours.data_organization_tools import (get_gid_to_anno_id,get_error_annoid_set,
                                           get_all_miss_img_name_list,
+                                          get_all_miss_error_img_name_set,
                                           get_imgid_to_imgname,get_all_error_clean_set, 
                                           conver_ours_rank, 
                                           conver_datactive_rank,
@@ -40,6 +41,73 @@ def count_repair_rate(rank:list,imgname_to_missed_annids:dict,all_error_annoids:
     return repaired_box_count,repair_rate
     
 
+def caclu_iou(list_1,list_2):
+    set_1 = set(list_1)
+    set_2 = set(list_2)
+    join = set_1 & set_2
+    union = set_1 | set_2
+    iou = round(len(join) / len(union),4)
+    return iou
+
+def overlap_analyse(ours_rank, datactive_rank, entropy_rank, loss_rank, deepgini_rank, margin_rank):
+    cut = int(len(ours_rank)*0.4)
+    ours_rank = ours_rank[:cut]
+    datactive_rank = datactive_rank[:cut]
+    entropy_rank = entropy_rank[:cut]
+    loss_rank = loss_rank[:cut]
+    deepgini_rank = deepgini_rank[:cut]
+    margin_rank = margin_rank[:cut]
+
+    ours_datactive_iou = caclu_iou(ours_rank,datactive_rank)
+    ours_entropy_iou = caclu_iou(ours_rank,entropy_rank)
+    ours_loss_iou = caclu_iou(ours_rank,loss_rank)
+    ours_deepgini_iou = caclu_iou(ours_rank,deepgini_rank)
+    ours_margin_iou = caclu_iou(ours_rank,margin_rank)
+
+    print("ours_datactive_iou:",ours_datactive_iou)
+    print("ours_entropy_iou:",ours_entropy_iou)
+    print("ours_loss_iou:",ours_loss_iou)
+    print("ours_deepgini_iou:",ours_deepgini_iou)
+    print("ours_margin_iou:",ours_margin_iou)
+
+def hard_case(converted_rank_res):
+    cut = int(len(converted_rank_res)*0.4)
+    rank = converted_rank_res[cut:]
+    anno_with_miss_error = read_json(anno_with_miss_error_path)
+    annos = anno_with_miss_error["annotations"]
+    cls_fault_gids = set()
+    loc_fault_gids = set()
+    red_fault_gids = set()
+    miss_fault_imgnames = get_all_miss_error_img_name_set(anno_with_miss_error_path)
+
+    for anno in annos:
+        if anno["fault_type"] == 1: # cls fault
+            cls_fault_gids.add(anno["id"])
+        elif anno["fault_type"] == 2: # loc fault
+            loc_fault_gids.add(anno["id"])
+        elif anno["fault_type"] == 3: # red fault
+            red_fault_gids.add(anno["id"])
+    
+    hard_cls_nums = 0
+    hard_loc_nums = 0
+    hard_red_nums = 0
+    hard_miss_nums = 0
+    for idd in rank:
+        if idd in cls_fault_gids:
+            hard_cls_nums += 1
+        elif idd in loc_fault_gids:
+            hard_loc_nums += 1
+        elif idd in red_fault_gids:
+            hard_red_nums += 1
+        elif idd in miss_fault_imgnames:
+            hard_miss_nums += 1
+    print("hard_cls_nums:",hard_cls_nums)
+    print("hard_loc_nums:",hard_loc_nums)
+    print("hard_red_nums:",hard_red_nums)
+    print("hard_miss_nums:",hard_miss_nums)
+
+
+
 
 
 def main():
@@ -67,39 +135,50 @@ def main():
     converted_loss_rank = conver_ours_rank(loss_rank, g_boxes_json, anno_error)
     print(f"loss rank数量:{len(converted_loss_rank)}")
 
-    anno_with_miss_error = read_json(anno_with_miss_error_path)
-    all_error_annoids = get_all_error_annoids(anno_with_miss_error)
-    annoId_to_anno = get_annoId_to_anno(anno_with_miss_error)
-    imgname_to_missed_annids = get_img_name_to_missed_annids(anno_with_miss_error) 
+    # 得到deepgini rank
+    deepgini_rank = joblib.load(deepgini_rank_path)
+    converted_deepgini_rank = conver_ours_rank(deepgini_rank, g_boxes_json, anno_error)
+    print(f"deepgini rank数量:{len(converted_deepgini_rank)}")
+
+    # 得到margin rank
+    margin_rank = joblib.load(margin_rank_path)
+    converted_margin_rank = conver_ours_rank(margin_rank, g_boxes_json, anno_error)
+    print(f"margin rank数量:{len(converted_margin_rank)}")
+
+    # anno_with_miss_error = read_json(anno_with_miss_error_path)
+    # all_error_annoids = get_all_error_annoids(anno_with_miss_error)
+    # annoId_to_anno = get_annoId_to_anno(anno_with_miss_error)
+    # imgname_to_missed_annids = get_img_name_to_missed_annids(anno_with_miss_error) 
     
-    print(f"总共有错误的box数量（包括miss error）:{len(all_error_annoids)}")
-    cut_off_rate = 0.4
+    # print(f"总共有错误的box数量（包括miss error）:{len(all_error_annoids)}")
+    # cut_off_rate = 0.4
 
-    repaired_box_count,repair_rate = count_repair_rate(converted_ours_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
-    print(f"ours修复数量: {repaired_box_count}, 修复率: {repair_rate}")
+    # repaired_box_count,repair_rate = count_repair_rate(converted_ours_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
+    # print(f"ours修复数量: {repaired_box_count}, 修复率: {repair_rate}")
 
-    repaired_box_count,repair_rate = count_repair_rate(converted_datactive_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
-    print(f"datactive修复数量: {repaired_box_count}, 修复率: {repair_rate}")
+    # repaired_box_count,repair_rate = count_repair_rate(converted_datactive_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
+    # print(f"datactive修复数量: {repaired_box_count}, 修复率: {repair_rate}")
 
-    repaired_box_count,repair_rate = count_repair_rate(converted_entropy_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
-    print(f"entropy修复数量: {repaired_box_count}, 修复率: {repair_rate}")
+    # repaired_box_count,repair_rate = count_repair_rate(converted_entropy_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
+    # print(f"entropy修复数量: {repaired_box_count}, 修复率: {repair_rate}")
 
-    repaired_box_count,repair_rate = count_repair_rate(converted_loss_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
-    print(f"loss修复数量: {repaired_box_count}, 修复率: {repair_rate}")
+    # repaired_box_count,repair_rate = count_repair_rate(converted_loss_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
+    # print(f"loss修复数量: {repaired_box_count}, 修复率: {repair_rate}")
 
     
-
-
+    # overlap_analyse(converted_ours_rank, converted_datactive_rank, converted_entropy_rank, 
+    #                 converted_loss_rank, converted_deepgini_rank, converted_margin_rank)
+    hard_case(converted_ours_rank)
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "SSD" # YOLOv7|FRCNN|SSD
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
+    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
 
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     anno_error_path = get_error_ann_file_path(dataset_name)
     anno_with_miss_error_path = get_annotations_with_miss_json_path(dataset_name)
-
+    
     
     ours_rank_path = os.path.join(exp_data_root_dir,"Results","ours",
                                   dataset_name,model_name,
@@ -117,4 +196,12 @@ if __name__ == "__main__":
     loss_rank_path = os.path.join(exp_data_root_dir,"Results","other_baselines","loss",
                                   dataset_name,model_name,
                                   "exp_01","rank","rank.joblib")
+    
+    deepgini_rank_path = os.path.join(exp_data_root_dir,"Results","other_baselines","deepgini",
+                                dataset_name,model_name,
+                                "exp_01","rank","rank.joblib")
+    
+    margin_rank_path = os.path.join(exp_data_root_dir,"Results","other_baselines","margin",
+                                dataset_name,model_name,
+                                "exp_01","rank","rank.joblib")
     main()

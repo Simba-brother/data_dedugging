@@ -49,7 +49,8 @@ def collect_one_epoch(model,dataloader,epoch, conf_thres=0.25,iou_thres=0.65):
                 # shapes[si][0]:si这个图像的原始h,w
                 # shapes[si][1]:si这个图像resize比例和padding信息
                 # img[si].shape[1:]:si这个增强后的图像的h,w
-                scale_coords(img[si].shape[1:], predn[:, :4], shapes[si][0], shapes[si][1])  # native-space pred
+                  # native-space pred
+                scale_coords(img[si].shape[1:], predn[:, :4], shapes[si][0], shapes[si][1])
                 # predn[:, :4]（即 xyxy）已经是原图坐标系中的像素坐标。
                 # 存每张图像的预测bbox
                 predicted_bbox_list = []

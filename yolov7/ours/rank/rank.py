@@ -272,6 +272,8 @@ def get_img_to_topsis_score(img_to_clusters:dict,last_epoch:int):
     data_array = np.array(clusters_features)
     n_features = data_array.shape[1]
     assert data_array.shape[1] == len(features_signs), "数据有误"
+    
+    weights = entropy_weight(data_array)
     weights = np.ones(n_features) / n_features
     # 基于topsis获得clusters的score
     best_cluster_id, score_array = tp.topsis(data_array, weights, features_signs)
@@ -672,6 +674,19 @@ def rank_gid_beta(g_id_to_features, feature_name_to_sign: dict):
 
     return ranked_gid_list, ranked_score_list
 
+def entropy_weight(data):
+    # 最小-最大标准化
+    data_normalized = (data - data.min(axis=0)) / (data.max(axis=0) - data.min(axis=0))
+    prob_matrix = data_normalized / data_normalized.sum(axis=0)
+    # 避免对0取对数，设置一个非常小的值epsilon
+    epsilon = 1e-9
+    entropy = -np.sum(prob_matrix * np.log(prob_matrix + epsilon), axis=0) / np.log(len(data))
+    diff_coeff = 1 - entropy / np.log(len(data))
+    weights = diff_coeff / diff_coeff.sum()
+    return weights
+
+
+
 def rank_gid_original(g_id_to_features,feature_name_to_sign:dict):
     '''
     g_id_to_features:{g_id:{attr:(value,flag),},}
@@ -701,6 +716,9 @@ def rank_gid_original(g_id_to_features,feature_name_to_sign:dict):
     data_array = np.array(data)
     n_features = data_array.shape[1]
     assert data_array.shape[1] == len(sign_list), "数据有误"
+
+    # 熵权法
+    # weights = entropy_weight(data_array)
     weights = np.ones(n_features) / n_features
     best_id, score_array = tp.topsis(data_array, weights, sign_list)
     # 从大到小排序并返回索引
@@ -789,15 +807,17 @@ if __name__ == "__main__":
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
     epochs = _args["epochs"]
+
+
     _args["save_dir"] = os.path.join(exp_data_root_dir,"Results",
                                     dataset_name,model_name,f"exp_{exp_id}","rank")
 
     # _args["save_dir"] = os.path.join(exp_data_root_dir,"Discussion_Results",
     #                                 dataset_name,model_name,f"exp_{exp_id}","rank",f"alpha={_args['alpha']}")
     
-    _args["save_dir"] = os.path.join(exp_data_root_dir,"Discussion_Results",
-                                    dataset_name,model_name,f"exp_{exp_id}","topsis_feature","img_level",
-                                    "e_freq")
+    # _args["save_dir"] = os.path.join(exp_data_root_dir,"Discussion_Results",
+    #                                 dataset_name,model_name,f"exp_{exp_id}","topsis_feature","img_level",
+    #                                 "e_freq")
 
     pprint.pprint(_args)
     # 创建出保存的目录
