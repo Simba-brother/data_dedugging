@@ -215,6 +215,19 @@ def get_all_errored_g_box_id_set(gt_json:dict) -> set[int]:
                 all_errored_g_box_id_set.add(g_box["box_id"])
     return all_errored_g_box_id_set
 
+def get_all_correct_g_box_id_set(gt_json:dict) -> set[int]:
+    '''
+    基于我们收集的g_boxs，获得fault g box id set
+    '''
+
+    all_correct_g_box_id_set = set()
+    for img_name,g_boxs in gt_json.items():
+        for g_box in g_boxs:
+            if g_box["fault_type"] == 0:
+                all_correct_g_box_id_set.add(g_box["box_id"])
+    return all_correct_g_box_id_set
+
+
 def get_image_id_to_image_name_for_coco(annos_with_miss_json:dict) -> dict:
     id2name = {}
     images = annos_with_miss_json["images"]
@@ -262,3 +275,22 @@ def get_all_gids(gt_json:dict) -> list[int]:
             all_g_box_id_list.append(g_box["box_id"])
     return all_g_box_id_list
 
+def get_g_id_to_metric(metric_json_path):
+    '''
+    提供每个gid对应的metric(conf_list和iou_list)
+    '''
+    with open(metric_json_path, "r", encoding="utf-8") as f:
+        gt_box_metric_collection_list = json.load(f)
+    print(f"matched gt_box数量:{len(gt_box_metric_collection_list)}")
+
+    g_box_id_to_metric = {}
+
+    for collection in gt_box_metric_collection_list:
+        g_box_id = collection["g_box_id"]
+        conf_list = collection["conf_list"]
+        iou_list = collection["iou_list"]
+        g_box_id_to_metric[g_box_id] = {
+            "conf_list":conf_list,
+            "iou_list":iou_list,
+        }
+    return g_box_id_to_metric
