@@ -264,6 +264,113 @@ def get_img_to_clusters(img_to_p_boxs:dict,iou_thre:float=0.6):
             img_to_clusters[img_name].append(cur_cluster_p_box_list)
     return img_to_clusters
 
+
+
+def get_img_to_feature(img_to_clusters: dict, last_epoch: int,
+                       persist_freq_threshold: float = 0.4):
+    '''
+    计算图像级特征并用 TOPSIS 排序。
+
+    思路：先用 get_img_to_scoreAndFeature 获得各簇的 TOPSIS 分（best_cluster_topsis），
+    再在图像粒度聚合多个判别力更强的指标，最终对图像级特征再跑一次 TOPSIS。
+
+    图像级特征（全部 sign=+1，越大越可疑）：
+    ┌─────────────────────────────┬──────────────────────────────────────────────────────┐
+    │ num_clusters                │ 未匹配高置信度簇总数，越多说明可疑区域越多           │
+    │ persistent_cluster_count    │ epoch_freq ≥ threshold 的簇数，最直接的判别信号      │
+    │ max_epoch_freq              │ 最持久簇的跨 epoch 覆盖率，真实漏标对象接近 1.0      │
+    │ max_conf                    │ 置信度最高的簇的均值置信度                           │
+    │ max_cluster_size_ratio      │ max(len(cluster)/last_epoch)，越大越稳定             │
+    │ best_cluster_topsis         │ 单簇 TOPSIS 分最大值（来自 get_img_to_scoreAndFeature）│
+    └─────────────────────────────┴──────────────────────────────────────────────────────┘
+
+    参数：
+    ---
+    img_to_clusters : dict  {img_name: [[pbox,...], ...]}
+    last_epoch : int
+    persist_freq_threshold : float, default=0.4
+
+    返回：
+    ---
+    img_name_to_feature : dict
+        {img_name: {"topsis_score": float, "img_features": {feature_name: value}}}
+    feature_names : list[str]
+    img_level_signs : list[int]
+    '''
+    # ── Step 1: 复用 get_img_to_scoreAndFeature 获取单簇 TOPSIS 分 ────────
+    img_name_to_cluster_score = get_img_to_scoreAndFeature(img_to_clusters, last_epoch)
+
+    # ── Step 2: 图像级特征聚合 ────────────────────────────────────────────
+    feature_names = [
+        "num_clusters",
+        "max_clusterConfi",
+        "min_clusterConfi",
+        "max_Confi",
+        "min_Confi",
+        "max_clusterSize",
+        "min_clusterSize",
+        "max_clusterTopsis",
+        "min_clusterTopsis",
+        "max_epoch_cross",
+        "min_epoch_cross",
+        "persistent_cluster_count"
+    ]
+    img_level_signs = [1]*len(feature_names)
+
+    img_names_ordered = list(img_to_clusters.keys())
+    img_level_feature_list = []
+
+    for img_name in img_names_ordered:
+        clusters = img_to_clusters[img_name]
+        e_freqs     = [epoch_freq(c, last_epoch) for c in clusters] # 每个cluster的epoch跨度(归一了)
+        confs       = [conf_score(c)             for c in clusters] # 每个cluster的平均conf
+        cluster_size_list = [len(c) for c in clusters] # 每个cluster中包含的p_box的数量
+        max_clusterTopsis = img_name_to_cluster_score[img_name]["max_score"]
+        min_clusterTopsis = img_name_to_cluster_score[img_name]["min_score"]
+
+
+        maxConfi = 0
+        minConfi = 10
+        for cluster in clusters:
+            for p_box in cluster:
+                if p_box["conf"] > maxConfi:
+                    maxConfi = p_box["conf"]
+                if p_box["conf"] < minConfi:
+                    minConfi = p_box["conf"]
+        
+        img_level_feature_list.append([
+            len(clusters),# num_clusters
+            max(confs), # max_clusterConfi
+            min(confs), # min_clusterConfi
+            maxConfi, # maxConfi
+            minConfi, # minConfi
+            max(cluster_size_list), # max_clusterSize
+            min(cluster_size_list), # min_clusterSize
+            max_clusterTopsis, # max_clusterTopsis
+            min_clusterTopsis, # min_clusterTopsis
+            max(e_freqs), # max_epoch_cross
+            min(e_freqs), # min_epoch_cross
+            sum(1 for ef in e_freqs if ef >= persist_freq_threshold)  # persistent_cluster_count
+        ])
+
+    # ── Step 3: 图像级 TOPSIS ────────────────────────────────────────────
+    img_data_array = np.array(img_level_feature_list)
+    n_img_feats = img_data_array.shape[1]
+    img_weights = np.ones(n_img_feats) / n_img_feats
+    _, img_score_array = tp.topsis(img_data_array, img_weights, img_level_signs)
+    img_score_array = np.nan_to_num(img_score_array, nan=0.0, posinf=1.0, neginf=0.0)
+
+    # ── Step 4: 构建返回结果 ──────────────────────────────────────────────
+    img_name_to_feature = {}
+    for idx, img_name in enumerate(img_names_ordered):
+        feats = img_level_feature_list[idx]
+        img_name_to_feature[img_name] = {
+            "topsis_score": float(img_score_array[idx]),
+            "img_features": {fname: feats[i] for i, fname in enumerate(feature_names)},
+        }
+    return img_name_to_feature, feature_names, img_level_signs
+
+
 def get_img_to_scoreAndFeature(img_to_clusters:dict,last_epoch:int):
     '''
     获得img_name -> topsis score
@@ -311,19 +418,25 @@ def get_img_to_scoreAndFeature(img_to_clusters:dict,last_epoch:int):
     for img_name,cluster_ids in img_name_to_cluster_ids.items():
         img_name_to_scoreAndFeature[img_name] = {
             "max_score":None,
-            "best_feature":{
-                
-            }
+            "avg_score":None,
+            "best_feature":{}
         }
         max_score = 0
+        min_score = 100
         best_feaure = None
+        score_list = []
         for cluster_id in cluster_ids:
-            if score_array[cluster_id] > max_score:
-                max_score = score_array[cluster_id]
+            cur_cluster_score = score_array[cluster_id]
+            if cur_cluster_score > max_score:
+                max_score = cur_cluster_score
                 best_feaure = data_array[cluster_id]
-
+            if cur_cluster_score < min_score:
+                min_score = cur_cluster_score
+            score_list.append(cur_cluster_score)
+        avg_score = np.mean(score_list) 
         img_name_to_scoreAndFeature[img_name]["max_score"] = float(max_score)
-        best_feaure
+        img_name_to_scoreAndFeature[img_name]["min_score"] = float(min_score)
+        img_name_to_scoreAndFeature[img_name]["avg_score"] = float(avg_score)
         img_name_to_scoreAndFeature[img_name]["best_feature"] = {
             "conf":float(best_feaure[0]),
             "stab":float(best_feaure[1]),
@@ -342,26 +455,61 @@ def build_img_feature(all_img_name_list:list[str], gt_match_json:dict, last_epoc
     img_name_to_no_matched_p_boxs  = get_img_name_to_no_matched_p_boxs(img_name_to_epoch_no_match_p_boxs)
     # 采用并查集算法将该img这些高置信度未匹配p_box进行分簇，一个簇其实就是一个统一的p_box
     img_to_clusters = get_img_to_clusters(img_name_to_no_matched_p_boxs,iou_thre=0.6)
-    img_name_to_scoreAndFeature = get_img_to_scoreAndFeature(img_to_clusters,last_epoch)
-    no_clusters_image_name_set = sorted(set(all_img_name_list) - set(img_name_to_scoreAndFeature.keys()))
+    img_name_to_feature, feature_names, img_level_signs = get_img_to_feature(img_to_clusters, last_epoch)
+    no_clusters_image_name_set = sorted(set(all_img_name_list) - set(img_name_to_feature.keys()))
     print(f"没有预测簇的图像数量:{len(no_clusters_image_name_set)}")
     for img_name in no_clusters_image_name_set:
-        img_name_to_scoreAndFeature[img_name]= {
-            "max_score":0.0,
-            "best_feature":{
-                "conf":0.0,
-                "stab":0.0,
-                "cls":0.0,
-                "epoch_cross":0.0
-            }
+        img_name_to_feature[img_name] = {
+            "topsis_score": 0.0,
+            "img_features": {fname: 0.0 for fname in feature_names},
         }
-    feature_to_sign = {
-        "conf":1,
-        "stab":1,
-        "cls":1,
-        "epoch_cross":1
-    }
-    return img_name_to_scoreAndFeature, feature_to_sign
+    feature_to_sign = {fname: sign for fname, sign in zip(feature_names, img_level_signs)}
+    return img_name_to_feature, feature_to_sign
+
+def hypothesis_testing(list_1:list[float],list_2:list[float],alternative:str="two-sided"):
+    def mannwhitneyu_effect_size(u_stat, n1, n2):
+        """
+        计算Mann-Whitney U检验的效应量r（正确版本）
+        参数：
+            u_stat: mannwhitneyu返回的U统计量
+            n1: 第一组数据的样本量
+            n2: 第二组数据的样本量
+        返回：
+            效应量r（绝对值），越大表示差异越明显
+        """
+        # 步骤1：计算U统计量的均值（零假设下的期望U值）
+        mean_u = (n1 * n2) / 2
+        # 步骤2：计算U统计量的标准差
+        std_u = np.sqrt((n1 * n2 * (n1 + n2 + 1)) / 12)
+        # 步骤3：将U值转换为Z分数（标准化）
+        z = (u_stat - mean_u) / std_u
+        # 步骤4：计算效应量r（Cohen's r）
+        r = abs(z) / np.sqrt(n1 + n2)
+        return r
+    
+    u_stat, u_p = stats.mannwhitneyu(list_1, list_2, alternative=alternative)
+    
+    print(f"Mann-Whitney U检验：U值={u_stat:.3f}, p值={u_p:.3f}")
+    # 计算效应量r
+    r = mannwhitneyu_effect_size(u_stat, len(list_1), len(list_2))
+    print(f"效应量r：{r:.3f}")
+
+def visualization(correct_list,error_list,save_file_name:str):
+    # 可视化
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    # 箱线图
+    ax1.boxplot([correct_list, error_list], labels=['correct', 'error'])
+    ax1.set_title('Box plot: Data distribution comparison')
+    ax1.set_ylabel('Numerical value')
+    # 直方图+核密度估计（KDE）
+    # 1. 可视化：箱线图（看分布位置、离散程度）+ 直方图（看分布形态）
+    
+    sns.histplot(correct_list, kde=True, ax=ax2, label='correct', alpha=0.5)
+    sns.histplot(error_list, kde=True, ax=ax2, label='error', alpha=0.5)
+    ax2.set_title('Histogram +KDE: Shape of distribution')
+    ax2.legend()
+    plt.savefig(f"/data/mml/data_debugging_data/temp/{save_file_name}.png")
+
 
 def main():
     all_img_name_list = get_all_img_name(imgs_dir)
@@ -369,20 +517,35 @@ def main():
     '''得到ours方法的img的排序'''
     img_to_feature,feature_to_sign = build_img_feature(all_img_name_list, gt_match_json)
     with_miss_fault_img_set,no_miss_fault_img_set = split_img_miss_no_miss()
+
+
+    correct_data_list = []
+    error_data_list = []
+    for img_name in no_miss_fault_img_set:
+        correct_data_list.append(img_to_feature[img_name]["topsis_score"])
+    for img_name in with_miss_fault_img_set:
+        error_data_list.append(img_to_feature[img_name]["topsis_score"])
+    
+    visualization(correct_data_list,error_data_list,"topsis_score")
+    hypothesis_testing(correct_data_list,error_data_list,"less")
+    
     for feature_name,sign in feature_to_sign.items():
         correct_data_list = []
         error_data_list = []
         for img_name in no_miss_fault_img_set:
-            correct_data_list.append(img_to_feature[img_name]["best_feature"][feature_name])
+            correct_data_list.append(img_to_feature[img_name]["img_features"][feature_name])
         for img_name in with_miss_fault_img_set:
-            error_data_list.append(img_to_feature[img_name]["best_feature"][feature_name])
-        
+            error_data_list.append(img_to_feature[img_name]["img_features"][feature_name])
 
-    
+        visualization(correct_data_list,error_data_list,feature_name)
+        if feature_to_sign[feature_name] == 1:
+            # 我们直觉认为 error data list > correct data list, 因为sign == -1, 说明越小topsis分数（可疑）越高，排名越靠前。
+            # 单侧检验是否 correct < error
+            hypothesis_testing(correct_data_list,error_data_list,"less")
     print()
 
 if __name__ == "__main__":
-    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
     epochs = 50
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
