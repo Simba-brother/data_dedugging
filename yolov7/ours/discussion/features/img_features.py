@@ -7,14 +7,14 @@ from ours.data_organization_tools import (get_all_gids,get_g_id_to_metric,
                                           get_all_errored_g_box_id_set,get_all_correct_g_box_id_set,
                                           get_all_miss_error_img_name_set)
 from ours.base_data_manager import (get_collected_gt_box_json_path,exp_data_root_dir,get_annotations_with_miss_json_path)
-from ours.small_utils import read_json
+from ours.small_utils import read_json,save_json_file
 import matplotlib.pyplot as plt
 import json
 from scipy import stats
 import seaborn as sns
 import topsispy as tp
 from collections import defaultdict
-
+from sklearn.metrics import roc_auc_score
 
 def split_img_miss_no_miss():
     all_img_name_list = get_all_img_name(imgs_dir)
@@ -445,6 +445,37 @@ def get_img_to_scoreAndFeature(img_to_clusters:dict,last_epoch:int):
         }
     return img_name_to_scoreAndFeature
 
+
+
+
+def get_img_to_no_matched_pboxs(all_img_name_list, gt_match_json:dict)->dict:
+    last_epoch_nums = 5
+    conf_threshold = 0.6
+    epoch_to_matched_p_ids = get_epoch_to_matched_p_boxs(gt_match_json)
+    # 获得每张图像在后面几个epoch中没被g_box匹配的高置信度p_box
+    img_name_to_epoch_to_no_match_p_boxs = get_img_name_to_epoch_to_unmatched_p_boxs(
+        epoch_to_matched_p_ids,last_epoch_nums,conf_threshold)
+    # 划分出带有miss fault的img set和不带有miss fault的img set
+    with_miss_fault_img_set,no_miss_fault_img_set = split_img_miss_no_miss()
+    # 展平epoch key
+    img_to_p_boxs = {}
+
+    for img_name in all_img_name_list:
+        img_to_p_boxs[img_name] = {}
+        if img_name in with_miss_fault_img_set:
+            img_to_p_boxs[img_name]["with_miss_fault_flag"] = 1
+        else:
+            img_to_p_boxs[img_name]["with_miss_fault_flag"] = 0
+
+        img_to_p_boxs[img_name]["No_matched_p_box_list"] = []
+        if img_name in img_name_to_epoch_to_no_match_p_boxs.keys():
+            for epoch in img_name_to_epoch_to_no_match_p_boxs[img_name].keys():
+                for p_box in img_name_to_epoch_to_no_match_p_boxs[img_name][epoch]:
+                    p_box["epoch"] = epoch
+                    img_to_p_boxs[img_name]["No_matched_p_box_list"].append(p_box)
+    return img_to_p_boxs
+
+
 def build_img_feature(all_img_name_list:list[str], gt_match_json:dict, last_epoch=5, conf_threshold=0.6):
     epoch_to_matched_p_ids = get_epoch_to_matched_p_boxs(gt_match_json)
 
@@ -453,6 +484,7 @@ def build_img_feature(all_img_name_list:list[str], gt_match_json:dict, last_epoc
         epoch_to_matched_p_ids,last_epoch,conf_threshold)
 
     img_name_to_no_matched_p_boxs  = get_img_name_to_no_matched_p_boxs(img_name_to_epoch_no_match_p_boxs)
+
     # 采用并查集算法将该img这些高置信度未匹配p_box进行分簇，一个簇其实就是一个统一的p_box
     img_to_clusters = get_img_to_clusters(img_name_to_no_matched_p_boxs,iou_thre=0.6)
     img_name_to_feature, feature_names, img_level_signs = get_img_to_feature(img_to_clusters, last_epoch)
@@ -527,16 +559,23 @@ def main():
         error_data_list.append(img_to_feature[img_name]["topsis_score"])
     
     visualization(correct_data_list,error_data_list,"topsis_score")
+    
     hypothesis_testing(correct_data_list,error_data_list,"less")
     
     for feature_name,sign in feature_to_sign.items():
+
+        img_to_feature[img_name]["img_features"][feature_name]
+    
+
         correct_data_list = []
         error_data_list = []
         for img_name in no_miss_fault_img_set:
             correct_data_list.append(img_to_feature[img_name]["img_features"][feature_name])
         for img_name in with_miss_fault_img_set:
             error_data_list.append(img_to_feature[img_name]["img_features"][feature_name])
-
+        
+        
+        
         visualization(correct_data_list,error_data_list,feature_name)
         if feature_to_sign[feature_name] == 1:
             # 我们直觉认为 error data list > correct data list, 因为sign == -1, 说明越小topsis分数（可疑）越高，排名越靠前。
@@ -545,8 +584,9 @@ def main():
     print()
 
 if __name__ == "__main__":
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7"
+    
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
     epochs = 50
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     match_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
@@ -557,4 +597,14 @@ if __name__ == "__main__":
     # 一定要是全量的trainset的imgsdir
     imgs_dir = os.path.join(exp_data_root_dir,"retrain_dataset_split", dataset_name,
                              "images", "origin")
-    main()
+    
+    all_img_name_list = get_all_img_name(imgs_dir)
+    gt_match_json = read_json(match_json_path)
+    img_to_p_boxs = get_img_to_no_matched_pboxs(all_img_name_list, gt_match_json)
+    
+    save_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
+                            dataset_name,model_name)
+    save_file_name = "img_to_nomatched_pboxs.json"
+    save_path = os.path.join(save_dir,save_file_name)
+    save_json_file(img_to_p_boxs,save_path)
+    

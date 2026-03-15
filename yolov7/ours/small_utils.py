@@ -28,6 +28,17 @@ def read_json(json_path:str):
         _json = json.load(f)
     return _json
 
+def save_json_file(data, file_path):
+    """
+    保存JSON数据到文件
+    
+    Args:
+        data (dict): 要保存的JSON数据
+        file_path (str): 目标文件路径
+    """
+    with open(file_path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
 def get_formatted_time():
     """返回当前时间的格式化字符串（YYYY-MM-DD_HH:MM:SS）"""
     now = datetime.now()
