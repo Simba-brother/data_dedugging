@@ -1,4 +1,5 @@
 
+from ours.base_data_manager import  get_all_img_name
 from collections import defaultdict
 from pycocotools.coco import COCO
 import json
@@ -227,7 +228,6 @@ def get_all_correct_g_box_id_set(gt_json:dict) -> set[int]:
                 all_correct_g_box_id_set.add(g_box["box_id"])
     return all_correct_g_box_id_set
 
-
 def get_image_id_to_image_name_for_coco(annos_with_miss_json:dict) -> dict:
     id2name = {}
     images = annos_with_miss_json["images"]
@@ -294,3 +294,9 @@ def get_g_id_to_metric(metric_json_path):
             "iou_list":iou_list,
         }
     return g_box_id_to_metric
+
+def split_img_miss_no_miss(imgs_dir,annos_with_miss_json_path:str):
+    all_img_name_list = get_all_img_name(imgs_dir)
+    with_miss_fault_img_set = get_all_miss_error_img_name_set(annos_with_miss_json_path)
+    no_miss_fault_img_set = set(all_img_name_list) - with_miss_fault_img_set
+    return with_miss_fault_img_set,no_miss_fault_img_set

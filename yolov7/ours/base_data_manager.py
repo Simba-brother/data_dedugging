@@ -129,7 +129,6 @@ def get_nc_by_datasetname(dataset_name) -> int:
     elif dataset_name == "VisDrone":
         return 10
 
-
 if __name__ == "__main__":
     pass
 

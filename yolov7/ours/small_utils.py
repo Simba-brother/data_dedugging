@@ -46,3 +46,13 @@ def get_formatted_time():
 
 def is_directory_exists(path):
     return os.path.exists(path) and os.path.isdir(path)
+
+def add_path_value(d:dict, keys:list, value):
+    '''
+    多层级字典，最后指向[]
+    '''
+    cur = d
+    # 遍历所有层级的key
+    for k in keys[:-1]:
+        cur = cur.setdefault(k, {})
+    cur.setdefault(keys[-1], []).append(value)

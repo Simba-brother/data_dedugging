@@ -15,6 +15,7 @@ from ours.base_data_manager import (exp_data_root_dir,
                                     get_collected_gt_box_json_path
                                     )
 from ours.small_utils import read_json
+from ours.rank.img_rank import img_rank
 
 
 def get_all_gids(gt_json:dict) -> list[int]:
@@ -364,7 +365,6 @@ def rank_img_name(all_img_name_list:list[str], gt_match_json:dict, last_epoch=5,
 
     # 获得每张图像在后面几个epoch中没被g_box匹配的高置信度p_box
     img_name_to_epoch_no_match_p_boxs = get_img_name_to_epoch_to_unmatched_p_boxs(epoch_to_matched_p_ids,last_epoch,conf_threshold)
-
     img_name_to_no_matched_p_boxs  = get_img_name_to_no_matched_p_boxs(img_name_to_epoch_no_match_p_boxs)
 
     # 采用并查集算法将该img这些高置信度未匹配p_box进行分簇，一个簇其实就是一个统一的p_box
@@ -381,6 +381,11 @@ def rank_img_name(all_img_name_list:list[str], gt_match_json:dict, last_epoch=5,
         ranked_image_name_list.append(image_name)
         ranked_score_list.append(score)
     return ranked_image_name_list, ranked_score_list
+
+
+
+
+
 
 def build_feature_beta(all_gids:list[int],g_box_id_to_metric:dict, K:float=0.2) -> tuple:
     """
@@ -786,22 +791,27 @@ def rank()->list:
     # 得到gid的排序
     ranked_gid_list,ranked_gid_score_list = get_gid_level_rank(gt_json,g_box_metrics_json_path)
     # 得到img的排序
-    ranked_image_name_list,ranked_img_score_list = get_img_level_rank(imgs_dir,match_json_path)
+    img_rank_res = img_rank(img_to_nomatched_pboxs_json_path)
+    ranked_image_name_list = img_rank_res["ranked_imgs"]
+    ranked_img_score_list = img_rank_res["ranked_scores"]
+    # ranked_image_name_list,ranked_img_score_list = get_img_level_rank(imgs_dir,match_json_path)
     # 合并排序
     alpha = _args["alpha"]
-    total_rank = merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,ranked_img_score_list,alpha)
+    total_rank = merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,
+                            ranked_img_score_list,alpha)
     return total_rank
 
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    exp_id = "01"
+    exp_id = "02"
     # 实验参数
     _args = {
-        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",# YOLOv7|FRCNN|SSD
         "epochs":50,
-        "alpha":1.5, # discussion: [0.5,1.0,1.2,1.5,2]
+        "alpha":5, # discussion: [0.5,1.0,1.2,1.5,2]
+        "img_rank": "图像级别的特征工程"
     }
     
     dataset_name = _args["dataset_name"]
@@ -809,7 +819,7 @@ if __name__ == "__main__":
     epochs = _args["epochs"]
 
 
-    _args["save_dir"] = os.path.join(exp_data_root_dir,"Results",
+    _args["save_dir"] = os.path.join(exp_data_root_dir,"Results","ours",
                                     dataset_name,model_name,f"exp_{exp_id}","rank")
 
     # _args["save_dir"] = os.path.join(exp_data_root_dir,"Discussion_Results",
@@ -836,7 +846,11 @@ if __name__ == "__main__":
     predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
                                        dataset_name,model_name,"collected_predicted_box","v2")
     imgs_dir = os.path.join(exp_data_root_dir,"retrain_dataset_split", dataset_name, "images", "origin")
-
+    
+    img_to_nomatched_pboxs_json_path = os.path.join(
+        exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,
+        "img_to_nomatched_pboxs.json"
+    )
     # 主函数
     total_rank = rank()
     print(f"排序总长度:{len(total_rank)}")

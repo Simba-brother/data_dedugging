@@ -128,8 +128,7 @@ def draw_total_rank(error_flag_list, save_path):
     plt.savefig(save_path, bbox_inches='tight', dpi=800)
     plt.close()
 
-def look_total_rank(total_rank,all_errored_g_box_id_set,all_miss_error_img_name_set):
-    pic_save_path = os.path.join(exp_data_root_dir,"temp","total_rank.png")
+def look_total_rank(total_rank,all_errored_g_box_id_set,all_miss_error_img_name_set, pic_save_path):
     total_error_set = all_errored_g_box_id_set | all_miss_error_img_name_set
     error_flags = []
     for idd in total_rank:

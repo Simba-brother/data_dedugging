@@ -5,7 +5,7 @@ import os
 import numpy as np
 from ours.data_organization_tools import (get_all_gids,get_g_id_to_metric,
                                           get_all_errored_g_box_id_set,get_all_correct_g_box_id_set,
-                                          get_all_miss_error_img_name_set)
+                                          get_all_miss_error_img_name_set,split_img_miss_no_miss)
 from ours.base_data_manager import (get_collected_gt_box_json_path,exp_data_root_dir,get_annotations_with_miss_json_path)
 from ours.small_utils import read_json,save_json_file
 import matplotlib.pyplot as plt
@@ -16,11 +16,6 @@ import topsispy as tp
 from collections import defaultdict
 from sklearn.metrics import roc_auc_score
 
-def split_img_miss_no_miss():
-    all_img_name_list = get_all_img_name(imgs_dir)
-    with_miss_fault_img_set = get_all_miss_error_img_name_set(annos_with_miss_json_path)
-    no_miss_fault_img_set = set(all_img_name_list) - with_miss_fault_img_set
-    return with_miss_fault_img_set,no_miss_fault_img_set
 
 
 def calu_iou(gt_bbox,predicted_bbox):

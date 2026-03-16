@@ -456,6 +456,7 @@ def main():
                     if iou > iou_threshold:
                         missed_box["success_loc_flag"] = True
                         missed_box["loc_p_box_list"].append(p_box)
+                        break
 
     total_missed_box_nums = 0
     loced_nums = 0
@@ -477,8 +478,8 @@ if __name__ == "__main__":
 
     # 实验参数
     _args = {
-        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
-        "model_name":"SSD",# YOLOv7|FRCNN|SSD
+        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
+        "model_name":"YOLOv7",# YOLOv7|FRCNN|SSD
         "epochs":50,
         "loc_iou_threshold": iou_threshold
     }

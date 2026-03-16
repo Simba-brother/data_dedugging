@@ -1052,6 +1052,17 @@ def extract_img(rank_res)->list[str]:
             img_rank.append(idd)
     return img_rank
 
+def vis_rank(rank_res,errored_gid_set, miss_img_set, pic_save_path):
+    ranked_gid_list = []
+    ranked_image_name_list = []
+    for idd in rank_res:
+        if type(idd) == str:
+            ranked_image_name_list.append(idd)
+        else:
+            ranked_gid_list.append(idd)
+    assert len(ranked_gid_list) + len(ranked_image_name_list) == len(rank_res), "数量不对"
+    look_total_rank(rank_res,errored_gid_set,miss_img_set,pic_save_path)
+
 def analyse_rank(gt_json_path:str, annos_with_miss_json_path:str, rank_res:list, only_gid:bool=False, only_img:bool=False):
     '''
     rank_res: 我们方法获得的排序结果（idd:img_name or gid）
@@ -1089,6 +1100,12 @@ def analyse_rank(gt_json_path:str, annos_with_miss_json_path:str, rank_res:list,
     repaired_box_count,repair_rate = count_repair_rate(converted_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate=0.4)
     print(f"预计修复数量: {repaired_box_count}, 预计修复率: {repair_rate}")
 
+    # 可视化全排序
+    pic_save_dir = os.path.join(exp_data_root_dir,"temp","total_rank")
+    os.makedirs(pic_save_dir,exist_ok=True)
+    pic_save_file_name = "2.png"
+    pic_save_path = os.path.join(pic_save_dir,pic_save_file_name)
+    vis_rank(rank_res,all_errored_g_box_id_set, all_miss_error_img_name_set, pic_save_path)
 
 
 if __name__ == "__main__":
@@ -1103,11 +1120,11 @@ if __name__ == "__main__":
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     # 我们的序
 
-    # rank_res = joblib.load(os.path.join(exp_data_root_dir,"Results","ours",dataset_name,model_name,
-    #                                     "exp_01","rank","rank.joblib"))
+    rank_res = joblib.load(os.path.join(exp_data_root_dir,"Results","ours",dataset_name,model_name,
+                                        "exp_03","rank","rank.joblib"))
 
-    rank_res = joblib.load(os.path.join(exp_data_root_dir,"Discussion_Results",dataset_name,model_name,
-                                        "exp_01","rank","alpha=2","rank.joblib"))
+    # rank_res = joblib.load(os.path.join(exp_data_root_dir,"Discussion_Results",dataset_name,model_name,
+    #                                     "exp_01","rank","alpha=2","rank.joblib"))
 
     
     # rank_res = joblib.load(os.path.join(exp_data_root_dir,"Discussion_Results",dataset_name,model_name,

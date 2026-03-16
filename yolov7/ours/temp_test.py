@@ -2,7 +2,7 @@
 import os
 import numpy as np
 from pprint import pprint,pformat
-
+from collections import defaultdict
 
 from queue import PriorityQueue
 
@@ -127,10 +127,12 @@ def test10():
         priority, task = priority_queue.get()
         print(f"处理任务: {task}")
 
-
+def test11():
+    clusters = defaultdict(list)
+    print(list(clusters.values()))
 if __name__ == "__main__":
     # test_2()
-    test10()
+    test11()
     # bbox = [0.499,0.4866666666666667,0.106,0.14666666666666667]
     # W = 500
     # H = 375
