@@ -56,7 +56,6 @@ if __name__ == "__main__":
     # 切分出用于验证的比例
     val_rate = 0.2
 
-
     # origin trainset imgs
     source_imgs_dir = os.path.join(exp_root_dir, "retrain_dataset_split", dataset_name, "images", "origin")
     target_train_imgs_dir = os.path.join(exp_root_dir, "retrain_dataset_split", dataset_name, 
@@ -71,12 +70,20 @@ if __name__ == "__main__":
     
     # 2.抽取label
     # origin train的labels dir(yolo style)
-    method_name = "margin" # entropy|loss|deepgini|margin
-    source_labels_dir = f"/data/mml/data_debugging_data/Results/other_baselines/{method_name}/{dataset_name}/YOLOv7/exp_01/repair/yolo_format/labels"
-    # 切出的train labels dir
-    target_train_labels_dir = f"/data/mml/data_debugging_data/Results/other_baselines/{method_name}/{dataset_name}/YOLOv7/exp_01/retrain/label_split/splitted_labels/train"
-    # 切出的val labels dir
-    target_val_labels_dir = f"/data/mml/data_debugging_data/Results/other_baselines/{method_name}/{dataset_name}/YOLOv7/exp_01/retrain/label_split/splitted_labels/val"
+    method_name = "datactive" # ours|datactive|entropy|loss|deepgini|margin
+    exp_id = "exp_02"
+    if method_name in ["entropy","loss","deepgini","margin"]:
+        source_labels_dir = f"{exp_root_dir}/Results/other_baselines/{method_name}/{dataset_name}/YOLOv7/{exp_id}/repair/yolo_format/labels"
+        # 切出的train labels dir
+        target_train_labels_dir = f"{exp_root_dir}/Results/other_baselines/{method_name}/{dataset_name}/YOLOv7/{exp_id}/retrain/label_split/splitted_labels/train"
+        # 切出的val labels dir
+        target_val_labels_dir = f"{exp_root_dir}/Results/other_baselines/{method_name}/{dataset_name}/YOLOv7/{exp_id}/retrain/label_split/splitted_labels/val"
+    else:
+        source_labels_dir = f"{exp_root_dir}/Results/{method_name}/{dataset_name}/YOLOv7/{exp_id}/repair/yolo_format/labels"
+        # 切出的train labels dir
+        target_train_labels_dir = f"{exp_root_dir}/Results/{method_name}/{dataset_name}/YOLOv7/{exp_id}/retrain/label_split/splitted_labels/train"
+        # 切出的val labels dir
+        target_val_labels_dir = f"{exp_root_dir}/Results/{method_name}/{dataset_name}/YOLOv7/{exp_id}/retrain/label_split/splitted_labels/val"
     extract_labels()
 
 

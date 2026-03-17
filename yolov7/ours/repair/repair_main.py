@@ -165,10 +165,13 @@ def repair_kit(converted_rank:list, anno_correct_json:dict, anno_error_json:dict
     return new_annos
     
 
-def repair_kit_2(converted_rank:list, anno_correct_json:dict, anno_error_json:dict, cut_off_rate:float=0.4):
-    # 获得imgnums + gidnums(错误标注)
+def repair_kit_2(converted_rank:list, anno_correct_json:dict, anno_error_json:dict,
+                 cut_off_rate:float=0.4):
+    # 获得annonums
+    total_imgnums = len(anno_error_json["images"])
     total_annoLen = len(anno_error_json["annotations"])
-    cost = int(total_annoLen * cut_off_rate)
+    total_len  = total_imgnums + total_annoLen
+    cost = int(total_len * cut_off_rate)
 
     print(f"cost:{cost}")
     repair_info = {
@@ -188,7 +191,6 @@ def repair_kit_2(converted_rank:list, anno_correct_json:dict, anno_error_json:di
         if cost <= 0: # 在取下个元素前先看看你还有没有cost
             # cost <= 0, 直接结束取取循环中的元素了
             break
-
         # 取出一个元素
         if type(idd) is str:
             # 遇到img
@@ -231,14 +233,13 @@ def repair_kit_2(converted_rank:list, anno_correct_json:dict, anno_error_json:di
             elif cur_anno["fault_type"] == 3:
                 # 如果该anno 是 redunc fault
                 repair_info["redun"].append(anno_id)
-
+    print(f"remain cost:{cost}")
     # 统计一下修复信息
     anno_with_miss_error_json = read_json(anno_with_miss_error_path)
     count_info = count_repair_info(repair_info,anno_with_miss_error_json)
     pprint.pprint(count_info,indent=4)
     # 修复anno
-    # new_annos = repair_anno_json(anno_error_json,repair_info)
-    new_annos = None
+    new_annos = repair_anno_json(anno_error_json,repair_info)
     return new_annos
 
 
@@ -265,7 +266,7 @@ def main():
     # anno_repaired_json = repair_kit(converted_rank, anno_correct_json, anno_error_json, 
     #                                 cut_off_rate=0.4)
     anno_repaired_json = repair_kit_2(converted_rank, anno_correct_json, anno_error_json, 
-                                    cut_off_rate=0.4)
+                                    cut_off_rate=_args["cut_off_rate"])
 
     # 结果保存与计时
     if _args["is_save"]:
@@ -286,13 +287,14 @@ if __name__ == "__main__":
     PID = os.getpid()
     print("PID:",PID)
     exp_root_dir = "/data/mml/data_debugging_data"
-    exp_id = "01"
+    exp_id = "02"
 
     _args = {
         "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
-        "model_name":"YOLOv7", # YOLOv7
-        "rank_method":"ours", # ours|datactive|entropy|loss|deepgini|margin| 排序法
-        "is_save":False
+        "model_name":"YOLOv7", # YOLOv7|FRCNN|SSD
+        "rank_method":"datactive", # ours|datactive|entropy|loss|deepgini|margin| 排序法
+        "cut_off_rate": 0.5,
+        "is_save":True
     }
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
@@ -323,6 +325,7 @@ if __name__ == "__main__":
     # rank = joblib.load(get_datactive_rank_res_path(dataset_name))
     rank = joblib.load(_args["rank_data_path"])
     if _args["is_save"]:
+        os.makedirs(_args["save_dir"],exist_ok=True)
         repair_anno_save_path = os.path.join(_args["save_dir"],"_annotations.coco_repair.json")
     main()
 

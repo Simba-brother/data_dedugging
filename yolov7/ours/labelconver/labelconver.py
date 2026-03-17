@@ -2,6 +2,7 @@
 '''
 coco格式数据标注转yolo格式
 '''
+import os
 from pathlib import Path
 from labelformat.formats import (YOLOv7ObjectDetectionInput, COCOObjectDetectionOutput, 
                                  COCOObjectDetectionInput, PascalVOCObjectDetectionOutput, 
@@ -25,12 +26,36 @@ def coco2yolo(coco_anno_json_path:Path,yolo_output_dir:Path,tvt:str):
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    method_name = "margin" # entropy|loss|deepgini|margin
-    coco_anno_json_path = Path(f"/data/mml/data_debugging_data/Results/other_baselines/{method_name}/{dataset_name}/YOLOv7/exp_01/repair/_annotations.coco_repair.json")
-    yolo_output_dir = Path(f"/data/mml/data_debugging_data/Results/other_baselines/{method_name}/{dataset_name}/YOLOv7/exp_01/repair/yolo_format")
+    method_name = "datactive" # ours|datactive|entropy|loss|deepgini|margin
+    exp_id = "02"
+    
+    if method_name in ["entropy","loss","deepgini","margin"]:
+        coco_anno_json_path = Path(
+            os.path.join(
+                exp_data_root,"Results","other_baselines",method_name,dataset_name,
+                "YOLOv7",f"exp_{exp_id}","repair","_annotations.coco_repair.json"
+            )
+        )
+        yolo_output_dir = Path(
+            os.path.join(
+                exp_data_root,"Results","other_baselines",method_name,dataset_name,
+                "YOLOv7",f"exp_{exp_id}","repair","yolo_format"
+            )
+        )
+    else:
+        coco_anno_json_path = Path(
+            os.path.join(
+                exp_data_root,"Results",method_name,dataset_name,
+                "YOLOv7",f"exp_{exp_id}","repair","_annotations.coco_repair.json"
+            )
+        )
+        yolo_output_dir = Path(
+            os.path.join(
+                exp_data_root,"Results",method_name,dataset_name,
+                "YOLOv7",f"exp_{exp_id}","repair","yolo_format"
+            )
+        )
     coco2yolo(coco_anno_json_path,yolo_output_dir,tvt="train")
-
-
 
 
 

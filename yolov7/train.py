@@ -557,11 +557,11 @@ def label_replace(dataset_name):
         print("删除了val labels")
 
     if _args["trainset_stat"] in ["entropy", "loss", "deepgini", "margin"]:
-        new_train_labels_dir = f"{exp_data_root}/Results/other_baselines/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_01/retrain/label_split/splitted_labels/train"
-        new_val_labels_dir = f"{exp_data_root}/Results/other_baselines/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_01/retrain/label_split/splitted_labels/val"
+        new_train_labels_dir = f"{exp_data_root}/Results/other_baselines/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_{exp_id}/retrain/label_split/splitted_labels/train"
+        new_val_labels_dir = f"{exp_data_root}/Results/other_baselines/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_{exp_id}/retrain/label_split/splitted_labels/val"
     else:
-        new_train_labels_dir = f"{exp_data_root}/Results/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_01/retrain/label_split/splitted_labels/train"
-        new_val_labels_dir = f"{exp_data_root}/Results/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_01/retrain/label_split/splitted_labels/val"
+        new_train_labels_dir = f"{exp_data_root}/Results/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_{exp_id}/retrain/label_split/splitted_labels/train"
+        new_val_labels_dir = f"{exp_data_root}/Results/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_{exp_id}/retrain/label_split/splitted_labels/val"
 
     # 复制目录
     shutil.copytree(new_train_labels_dir, cur_train_labels_dir)
@@ -573,14 +573,14 @@ if __name__ == '__main__':
     PID = os.getpid()
     print("PID:",PID)
     exp_data_root = "/data/mml/data_debugging_data"
-    exp_id = "01"
-    gpu_id = 0
+    exp_id = "02"
+    gpu_id = 1
 
     _args = {
         "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
-        "trainset_stat":"margin", # clean|error|ours|datactive|entropy|loss|deepgini|margin
+        "trainset_stat":"ours", # clean|error|ours|datactive|entropy|loss|deepgini|margin
         "save_each_epoch":False
     }
     dataset_name = _args["dataset_name"]
