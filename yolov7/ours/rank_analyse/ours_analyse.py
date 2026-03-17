@@ -1103,7 +1103,7 @@ def analyse_rank(gt_json_path:str, annos_with_miss_json_path:str, rank_res:list,
     # 可视化全排序
     pic_save_dir = os.path.join(exp_data_root_dir,"temp","total_rank")
     os.makedirs(pic_save_dir,exist_ok=True)
-    pic_save_file_name = "2.png"
+    pic_save_file_name = "1.png"
     pic_save_path = os.path.join(pic_save_dir,pic_save_file_name)
     vis_rank(rank_res,all_errored_g_box_id_set, all_miss_error_img_name_set, pic_save_path)
 
@@ -1121,7 +1121,7 @@ if __name__ == "__main__":
     # 我们的序
 
     rank_res = joblib.load(os.path.join(exp_data_root_dir,"Results","ours",dataset_name,model_name,
-                                        "exp_03","rank","rank.joblib"))
+                                        "exp_01","rank","rank.joblib"))
 
     # rank_res = joblib.load(os.path.join(exp_data_root_dir,"Discussion_Results",dataset_name,model_name,
     #                                     "exp_01","rank","alpha=2","rank.joblib"))

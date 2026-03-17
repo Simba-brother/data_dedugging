@@ -165,6 +165,84 @@ def repair_kit(converted_rank:list, anno_correct_json:dict, anno_error_json:dict
     return new_annos
     
 
+def repair_kit_2(converted_rank:list, anno_correct_json:dict, anno_error_json:dict, cut_off_rate:float=0.4):
+    # 获得imgnums + gidnums(错误标注)
+    total_annoLen = len(anno_error_json["annotations"])
+    cost = int(total_annoLen * cut_off_rate)
+
+    print(f"cost:{cost}")
+    repair_info = {
+        "miss":{}, # {imgname:[missed_annos]}
+        "cls":{}, # {anno_id:correct_anno}
+        "loc":{}, # {anno_id:correct_anno}
+        "redun":[] # [redun_anno_ids]
+    }
+
+    correct_imgname_to_annoids = get_img_name_to_ann_ids(anno_correct_json)
+    error_imgname_to_annoids = get_img_name_to_ann_ids(anno_error_json)
+    correct_annoId_to_anno = get_annoId_to_anno(anno_correct_json)
+    error_annoId_to_anno = get_annoId_to_anno(anno_error_json)
+
+
+    for idd in converted_rank:
+        if cost <= 0: # 在取下个元素前先看看你还有没有cost
+            # cost <= 0, 直接结束取取循环中的元素了
+            break
+
+        # 取出一个元素
+        if type(idd) is str:
+            # 遇到img
+            image_name = idd
+            correct_anno_ids = correct_imgname_to_annoids[image_name] # 该图像正确标注情况下所有的anno ids
+            cur_anno_ids = error_imgname_to_annoids[image_name] # # 该图像含错标注情况下的所有正确的anno ids
+            # 正确的有，当前没有
+            missed_anno_id_set = set(correct_anno_ids) - set(cur_anno_ids)
+            missed_anno_id_list = list(missed_anno_id_set)
+
+            if len(missed_anno_id_list) == 0:
+                # 这张图像不含miss fault
+                cost -= 1
+            else:
+                missd_annos = [] # 用于存放该image的真正missed annos
+                # 这张图像含miss fault
+                for missed_anno_id in missed_anno_id_list:
+                    if cost <= 0: # 在取下个元素前先看看你还有没有cost
+                        break # # cost <= 0, 直接结束取取循环中的元素了
+                    missed_anno = correct_annoId_to_anno[missed_anno_id]
+                    missd_annos.append(missed_anno)
+                    cost -= 1 # 每修复一个miss fault cost -= 1
+                repair_info["miss"][image_name] = missd_annos
+        else:
+            # 遇到 anno id
+            anno_id = idd
+            cost -= 1
+            cur_anno = error_annoId_to_anno[anno_id]
+            if cur_anno["fault_type"] == 1:
+                 # 如果该anno 是 cls fault
+                 correct_anno = correct_annoId_to_anno[anno_id]
+                 correct_anno["repair_ops"] = "repair_cls"
+                 repair_info["cls"][anno_id] = correct_anno
+            elif cur_anno["fault_type"] == 2:
+                # 如果该anno 是 loc fault
+                correct_anno = correct_annoId_to_anno[anno_id]
+                correct_anno["repair_ops"] = "repair_loc"
+                repair_info["loc"][anno_id] = correct_anno
+                
+            elif cur_anno["fault_type"] == 3:
+                # 如果该anno 是 redunc fault
+                repair_info["redun"].append(anno_id)
+
+    # 统计一下修复信息
+    anno_with_miss_error_json = read_json(anno_with_miss_error_path)
+    count_info = count_repair_info(repair_info,anno_with_miss_error_json)
+    pprint.pprint(count_info,indent=4)
+    # 修复anno
+    # new_annos = repair_anno_json(anno_error_json,repair_info)
+    new_annos = None
+    return new_annos
+
+
+
 def main():
     start_time = time.time()  # 记录开始时间
 
@@ -184,7 +262,10 @@ def main():
         raise Exception("rank method 参数错误")
 
     # 修复的标注json
-    anno_repaired_json = repair_kit(converted_rank, anno_correct_json, anno_error_json, cut_off_rate=0.4)
+    # anno_repaired_json = repair_kit(converted_rank, anno_correct_json, anno_error_json, 
+    #                                 cut_off_rate=0.4)
+    anno_repaired_json = repair_kit_2(converted_rank, anno_correct_json, anno_error_json, 
+                                    cut_off_rate=0.4)
 
     # 结果保存与计时
     if _args["is_save"]:
@@ -210,8 +291,8 @@ if __name__ == "__main__":
     _args = {
         "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7", # YOLOv7
-        "rank_method":"margin", # ours|datactive|entropy|loss|deepgini|margin| 排序法
-        "is_save":True
+        "rank_method":"ours", # ours|datactive|entropy|loss|deepgini|margin| 排序法
+        "is_save":False
     }
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
@@ -244,3 +325,4 @@ if __name__ == "__main__":
     if _args["is_save"]:
         repair_anno_save_path = os.path.join(_args["save_dir"],"_annotations.coco_repair.json")
     main()
+

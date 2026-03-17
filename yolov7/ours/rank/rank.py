@@ -791,7 +791,7 @@ def rank()->list:
     # 得到gid的排序
     ranked_gid_list,ranked_gid_score_list = get_gid_level_rank(gt_json,g_box_metrics_json_path)
     # 得到img的排序
-    img_rank_res = img_rank(img_to_nomatched_pboxs_json_path)
+    img_rank_res = img_rank(img_to_nomatched_pboxs_json_path) # img level feature
     ranked_image_name_list = img_rank_res["ranked_imgs"]
     ranked_img_score_list = img_rank_res["ranked_scores"]
     # ranked_image_name_list,ranked_img_score_list = get_img_level_rank(imgs_dir,match_json_path)
