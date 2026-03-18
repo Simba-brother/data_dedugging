@@ -290,9 +290,9 @@ if __name__ == "__main__":
     exp_id = "02"
 
     _args = {
-        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7", # YOLOv7|FRCNN|SSD
-        "rank_method":"datactive", # ours|datactive|entropy|loss|deepgini|margin| 排序法
+        "rank_method":"margin", # ours|datactive|entropy|loss|deepgini|margin| 排序法
         "cut_off_rate": 0.5,
         "is_save":True
     }
