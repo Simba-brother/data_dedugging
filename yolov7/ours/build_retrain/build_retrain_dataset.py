@@ -51,7 +51,7 @@ def extract_labels():
 
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     random_seed = 42
     # 切分出用于验证的比例
     val_rate = 0.2
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     
     # 2.抽取label
     # origin train的labels dir(yolo style)
-    method_name = "datactive" # ours|datactive|entropy|loss|deepgini|margin
+    method_name = "margin" # ours|datactive|entropy|loss|deepgini|margin
     exp_id = "exp_02"
     if method_name in ["entropy","loss","deepgini","margin"]:
         source_labels_dir = f"{exp_root_dir}/Results/other_baselines/{method_name}/{dataset_name}/YOLOv7/{exp_id}/repair/yolo_format/labels"

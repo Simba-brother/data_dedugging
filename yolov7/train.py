@@ -580,7 +580,7 @@ if __name__ == '__main__':
         "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
-        "trainset_stat":"datactive", # clean|error|ours|datactive|entropy|loss|deepgini|margin
+        "trainset_stat":"entropy", # clean|error|ours|datactive|entropy|loss|deepgini|margin
         "save_each_epoch":False
     }
     dataset_name = _args["dataset_name"]

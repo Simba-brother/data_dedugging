@@ -11,12 +11,16 @@ import matplotlib.pyplot as plt
 
 from scipy import stats
 import seaborn as sns
+import topsispy as tp
 
 
 def split_gid_clean_error(gt_json):
     error_gid_set = get_all_errored_g_box_id_set(gt_json)
     correct_gid_set = get_all_correct_g_box_id_set(gt_json)
     return correct_gid_set,error_gid_set
+
+
+
 
 def build_gid_feature(all_gids:list[int],g_box_id_to_metric:dict, K:float=0.2) -> tuple:
     g_id_to_features = {}

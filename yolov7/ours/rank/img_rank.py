@@ -436,7 +436,8 @@ def img_rank_2(img_to_nomatched_pboxs_json_path):
         img_to_p_boxs[img_name] = info["No_matched_p_box_list"]
     # 采用并查集算法将该img这些高置信度未匹配p_box进行分簇，一个簇其实就是一个统一的p_box
     img_to_clusters = get_img_to_clusters_by_unifind(img_to_p_boxs,iou_thre=0.6)
-    img_name_to_features_and_score,feature_names = get_img_to_features_and_score(img_to_clusters,no_clusters_image_name_set,last_epoch=5,)
+    img_name_to_features_and_score,feature_names = get_img_to_features_and_score(img_to_clusters,
+                                                    no_clusters_image_name_set,last_epoch=5)
     ranked_img_names = sorted(img_name_to_features_and_score.keys(), 
                               key=lambda x: img_name_to_features_and_score[x]["max_topsis_score"], 
                               reverse=True)
@@ -578,6 +579,8 @@ def analyze_feature_importance(X, y, feature_names):
         # AUC
         try:
             auc = roc_auc_score(y, x)
+            if auc < 0.5:
+                auc = 1-auc
         except:
             auc = 0.5
 
@@ -591,10 +594,10 @@ def analyze_feature_importance(X, y, feature_names):
 
         results.append({
             "feature": name,
-            "AUC": auc,
-            "AUC_importance": auc_importance,
-            "KS": ks_stat,
-            "Cohen_d": d
+            "AUC": round(auc,3),
+            "AUC_importance": round(auc_importance,3),
+            "KS": round(ks_stat,3),
+            "Cohen_d": round(d,3)
         })
 
     df = pd.DataFrame(results)
@@ -667,18 +670,15 @@ def compare():
 
 def main():
     # 数据
-    rank_res = img_rank(img_to_nomatched_pboxs_json_path) # img level feature
-    # rank_res = img_rank_2(img_to_nomatched_pboxs_json_path) # cluster level feature
+    # rank_res = img_rank(img_to_nomatched_pboxs_json_path) # img level feature
+    rank_res = img_rank_2(img_to_nomatched_pboxs_json_path) # cluster level feature
     # 分析
     rank_analyse(rank_res)
     # 可视化
-    pic_save_dir = os.path.join(exp_root_dir,"img_rank","max")
-    pic_save_file_name = "rank.png"
-    pic_save_path = os.path.join(pic_save_dir,pic_save_file_name)
-    rank_vis(rank_res,pic_save_path)
-
-    
-    
+    # pic_save_dir = os.path.join(exp_root_dir,"img_rank","max")
+    # pic_save_file_name = "rank.png"
+    # pic_save_path = os.path.join(pic_save_dir,pic_save_file_name)
+    # rank_vis(rank_res,pic_save_path)
 
 
 
@@ -688,7 +688,8 @@ if __name__ == "__main__":
     model_name = "YOLOv7"
     epochs = 50
     img_to_nomatched_pboxs_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",
-                                                    dataset_name,model_name,"img_to_nomatched_pboxs.json")
-    compare()
+                    dataset_name,model_name,"img_to_nomatched_pboxs.json")
+    main()
+    # compare()
     
     
