@@ -41,34 +41,9 @@ def count_repair_rate(rank:list,imgname_to_missed_annids:dict,all_error_annoids:
     return repaired_box_count,repair_rate
     
 
-def caclu_iou(list_1,list_2):
-    set_1 = set(list_1)
-    set_2 = set(list_2)
-    join = set_1 & set_2
-    union = set_1 | set_2
-    iou = round(len(join) / len(union),4)
-    return iou
 
-def overlap_analyse(ours_rank, datactive_rank, entropy_rank, loss_rank, deepgini_rank, margin_rank):
-    cut = int(len(ours_rank)*0.4)
-    ours_rank = ours_rank[:cut]
-    datactive_rank = datactive_rank[:cut]
-    entropy_rank = entropy_rank[:cut]
-    loss_rank = loss_rank[:cut]
-    deepgini_rank = deepgini_rank[:cut]
-    margin_rank = margin_rank[:cut]
 
-    ours_datactive_iou = caclu_iou(ours_rank,datactive_rank)
-    ours_entropy_iou = caclu_iou(ours_rank,entropy_rank)
-    ours_loss_iou = caclu_iou(ours_rank,loss_rank)
-    ours_deepgini_iou = caclu_iou(ours_rank,deepgini_rank)
-    ours_margin_iou = caclu_iou(ours_rank,margin_rank)
 
-    print("ours_datactive_iou:",ours_datactive_iou)
-    print("ours_entropy_iou:",ours_entropy_iou)
-    print("ours_loss_iou:",ours_loss_iou)
-    print("ours_deepgini_iou:",ours_deepgini_iou)
-    print("ours_margin_iou:",ours_margin_iou)
 
 def hard_case(converted_rank_res):
     cut = int(len(converted_rank_res)*0.4)
@@ -105,8 +80,6 @@ def hard_case(converted_rank_res):
     print("hard_loc_nums:",hard_loc_nums)
     print("hard_red_nums:",hard_red_nums)
     print("hard_miss_nums:",hard_miss_nums)
-
-
 
 
 

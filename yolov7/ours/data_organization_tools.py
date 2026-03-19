@@ -126,6 +126,30 @@ def get_all_error_annoids(anno_error_with_miss:dict) -> list:
             all_error_annoids.append(anno["id"])
     return all_error_annoids
 
+def get_all_annoids_detail(anno_error_with_miss:dict) -> list:
+    all_annoids_detail = {
+        "class_fault":[],
+        "loc_fault":[],
+        "redun_fault":[],
+        "miss_fault":[],
+        "clean":[]
+    }
+    annos = anno_error_with_miss["annotations"]
+    for anno in annos:
+        if anno["fault_type"] == 0:
+            all_annoids_detail["clean"].append(anno["id"])
+        elif anno["fault_type"] == 1:
+            all_annoids_detail["class_fault"].append(anno["id"])
+        elif anno["fault_type"] == 2:
+            all_annoids_detail["loc_fault"].append(anno["id"])
+        elif anno["fault_type"] == 3:
+            all_annoids_detail["redun_fault"].append(anno["id"])
+        elif anno["fault_type"] == 4:
+            all_annoids_detail["miss_fault"].append(anno["id"])
+        else:
+            raise Exception("fault_type异常")
+    return all_annoids_detail
+
 def get_all_error_clean_set(anno_error_with_miss:dict) -> dict:
     all_miss_img_name_set = set()
     cls_error_annoid_set = set()
@@ -251,6 +275,7 @@ def get_all_miss_error_img_name_set(annos_with_miss_json_path:str) -> set[str]:
             all_miss_error_img_name_set.add(image_name)
     print(f"miss error 图像数量:{len(all_miss_error_img_name_set)}")
     return all_miss_error_img_name_set
+
 
 def get_all_gids(gt_json:dict) -> list[int]:
     '''

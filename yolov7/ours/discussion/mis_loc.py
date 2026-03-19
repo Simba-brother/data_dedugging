@@ -474,11 +474,11 @@ def main():
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    iou_threshold = 0.5 # [0.5,0.6,0.7,0.8,0.9]
+    iou_threshold = 0.9 # [0.5,0.6,0.7,0.8,0.9]
 
     # 实验参数
     _args = {
-        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",# YOLOv7|FRCNN|SSD
         "epochs":50,
         "loc_iou_threshold": iou_threshold
