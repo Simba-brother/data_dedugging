@@ -13,32 +13,6 @@ from ours.data_organization_tools import (conver_ours_rank, conver_datactive_ran
 from ours.small_utils import read_json
 
 
-
-
-def caclu_setiou(list_1,list_2,fault_type):
-    attention_set = set()
-    if fault_type == "miss_fault":
-        miss_fault_imgset = get_all_miss_error_img_name_set(anno_with_miss_error_path)
-        attention_set = set(miss_fault_imgset)
-    elif fault_type in ["class_fault","loc_fault","redun_fault"]:
-        detail = get_all_annoids_detail(anno_error_with_miss)
-        attention_set = set(detail[fault_type])
-    elif fault_type == "clean":
-        all_imgname_list = get_all_img_name(imgs_dir)
-        miss_fault_imgset = get_all_miss_error_img_name_set(anno_with_miss_error_path)
-        no_miss_fault_imgset = set(all_imgname_list) - miss_fault_imgset
-        detail = get_all_annoids_detail(anno_error_with_miss)
-        attention_set = set(detail[fault_type]) | set(no_miss_fault_imgset)
-    else:
-        raise Exception("fault type 错误")
-
-    set_1 = set(list_1)
-    set_2 = set(list_2)
-    attention_join = set_1 & set_2 & attention_set
-    join = set_1 & set_2
-    iou = round(len(attention_join) / len(join),4)
-    return iou
-
 def _analyse(ours_rank,falut_type):
 
     def caclu_recall(fault_set, positive_set, negative_set):
@@ -104,6 +78,5 @@ if __name__ == "__main__":
     ours_rank_path = os.path.join(exp_data_root_dir,"Results","ours",
                                   dataset_name,model_name,
                                   "exp_01","rank","rank.joblib")
-    
-    
+
     main()

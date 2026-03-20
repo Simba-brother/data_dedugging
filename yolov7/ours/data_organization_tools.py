@@ -72,7 +72,7 @@ def get_gid_to_img_and_line(g_boxes_json:dict):
             line_no += 1
     return res
 
-def get_gid_to_anno_id(g_boxes_json:dict,anno:dict):
+def get_gid_to_anno_id(g_boxes_json:dict,anno:dict)->dict:
     '''我们收集的gboxs和coco风格的anno json的box进行对应，即gid to annoid'''
     gid_to_anno_id = {}
     gid_to_img_and_line =get_gid_to_img_and_line(g_boxes_json)
@@ -83,6 +83,8 @@ def get_gid_to_anno_id(g_boxes_json:dict,anno:dict):
         anno_id = img_name_to_ann_ids[img_name][line_no]
         gid_to_anno_id[gid] = anno_id
     return gid_to_anno_id
+
+
 
 def get_annoid_to_imgname(anno_json:dict) -> dict:
     imgid_to_imgname = get_imgid_to_imgname(anno_json)

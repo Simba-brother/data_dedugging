@@ -1060,7 +1060,7 @@ if __name__ == "__main__":
     print("PID:",PID)
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "SSD" # YOLOv7|FRCNN|SSD
+    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
     epochs = 50
 
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
@@ -1076,7 +1076,7 @@ if __name__ == "__main__":
     match_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",
                                   dataset_name,model_name, "gp_box_match")
     os.makedirs(match_save_dir,exist_ok=True)
-    match_json_save_path = os.path.join(match_save_dir,"match_v2.json")
+    match_json_save_path = os.path.join(match_save_dir,"match_v21.json")
     offset = (model_name != "YOLOv7") # model不是YOLOv7时，会对预测标签进行offset(-1)
     match(match_json_save_path,offset=offset)
 
@@ -1084,7 +1084,7 @@ if __name__ == "__main__":
     collection_metric_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",
                                               dataset_name,model_name, "collection_metric")
     os.makedirs(collection_metric_save_dir,exist_ok=True)
-    metric_save_path = os.path.join(collection_metric_save_dir,"collection_metrics_v2.json")
+    metric_save_path = os.path.join(collection_metric_save_dir,"collection_metrics_v21.json")
     gt_box_metric_collection(match_json_save_path,metric_save_path)
     
     # 3: 绘制metric line
