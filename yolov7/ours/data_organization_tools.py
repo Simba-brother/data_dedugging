@@ -84,8 +84,6 @@ def get_gid_to_anno_id(g_boxes_json:dict,anno:dict)->dict:
         gid_to_anno_id[gid] = anno_id
     return gid_to_anno_id
 
-
-
 def get_annoid_to_imgname(anno_json:dict) -> dict:
     imgid_to_imgname = get_imgid_to_imgname(anno_json)
     annoid_to_imgname = {}

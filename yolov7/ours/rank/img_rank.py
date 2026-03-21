@@ -425,6 +425,9 @@ def get_img_to_features_and_score(img_to_clusters:dict,no_clusters_image_name_se
 
 
 def img_rank_2(img_to_nomatched_pboxs_json_path):
+    '''
+    对img的unmatched pboxs进行聚类后，提取各个簇的特征并将最大的那个簇的特征作为该img的特征
+    '''
     json_data = read_json(img_to_nomatched_pboxs_json_path)
     img_to_p_boxs = defaultdict(list)
     all_img_name_set = set()
@@ -474,6 +477,9 @@ def img_rank_2(img_to_nomatched_pboxs_json_path):
 
 
 def img_rank(img_to_nomatched_pboxs_json_path):
+    '''
+    对img的unmatched pboxs进行聚类后，直接提取图像层面的特征
+    '''
     json_data = read_json(img_to_nomatched_pboxs_json_path)
     img_names = []
     X = []
