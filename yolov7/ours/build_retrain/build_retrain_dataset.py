@@ -70,7 +70,7 @@ if __name__ == "__main__":
     
     # 2.抽取label
     # origin train的labels dir(yolo style)
-    method_name = "margin" # ours|datactive|entropy|loss|deepgini|margin
+    method_name = "ours" # ours|datactive|entropy|loss|deepgini|margin
     exp_id = "exp_02"
     if method_name in ["entropy","loss","deepgini","margin"]:
         source_labels_dir = f"{exp_root_dir}/Results/other_baselines/{method_name}/{dataset_name}/YOLOv7/{exp_id}/repair/yolo_format/labels"

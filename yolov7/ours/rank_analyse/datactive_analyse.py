@@ -120,8 +120,9 @@ def xiufu_rank_res():
 
 if __name__ == "__main__":
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    exp_id = "exp_02"
     # datactive 排序的idd
-    ranked_list = joblib.load(f"{exp_data_root_dir}/Results/datactive/{dataset_name}/YOLOv7/exp_01/rank/rank.joblib")
+    ranked_list = joblib.load(f"{exp_data_root_dir}/Results/datactive/{dataset_name}/YOLOv7/{exp_id}/rank/rank.joblib")
     anno_coco_error_json_path = get_error_ann_file_path(dataset_name)
     annotations_with_miss_json_path =get_annotations_with_miss_json_path(dataset_name)
     main()

@@ -118,34 +118,34 @@ def main():
     converted_margin_rank = conver_ours_rank(margin_rank, g_boxes_json, anno_error)
     print(f"margin rank数量:{len(converted_margin_rank)}")
 
-    # anno_with_miss_error = read_json(anno_with_miss_error_path)
-    # all_error_annoids = get_all_error_annoids(anno_with_miss_error)
-    # annoId_to_anno = get_annoId_to_anno(anno_with_miss_error)
-    # imgname_to_missed_annids = get_img_name_to_missed_annids(anno_with_miss_error) 
+    anno_with_miss_error = read_json(anno_with_miss_error_path)
+    all_error_annoids = get_all_error_annoids(anno_with_miss_error)
+    annoId_to_anno = get_annoId_to_anno(anno_with_miss_error)
+    imgname_to_missed_annids = get_img_name_to_missed_annids(anno_with_miss_error) 
     
-    # print(f"总共有错误的box数量（包括miss error）:{len(all_error_annoids)}")
-    # cut_off_rate = 0.4
+    print(f"总共有错误的box数量（包括miss error）:{len(all_error_annoids)}")
+    cut_off_rate = 0.4
 
-    # repaired_box_count,repair_rate = count_repair_rate(converted_ours_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
-    # print(f"ours修复数量: {repaired_box_count}, 修复率: {repair_rate}")
+    repaired_box_count,repair_rate = count_repair_rate(converted_ours_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
+    print(f"ours修复数量: {repaired_box_count}, 修复率: {repair_rate}")
 
-    # repaired_box_count,repair_rate = count_repair_rate(converted_datactive_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
-    # print(f"datactive修复数量: {repaired_box_count}, 修复率: {repair_rate}")
+    repaired_box_count,repair_rate = count_repair_rate(converted_datactive_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
+    print(f"datactive修复数量: {repaired_box_count}, 修复率: {repair_rate}")
 
-    # repaired_box_count,repair_rate = count_repair_rate(converted_entropy_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
-    # print(f"entropy修复数量: {repaired_box_count}, 修复率: {repair_rate}")
+    repaired_box_count,repair_rate = count_repair_rate(converted_entropy_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
+    print(f"entropy修复数量: {repaired_box_count}, 修复率: {repair_rate}")
 
-    # repaired_box_count,repair_rate = count_repair_rate(converted_loss_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
-    # print(f"loss修复数量: {repaired_box_count}, 修复率: {repair_rate}")
+    repaired_box_count,repair_rate = count_repair_rate(converted_loss_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate)
+    print(f"loss修复数量: {repaired_box_count}, 修复率: {repair_rate}")
 
     
     # overlap_analyse(converted_ours_rank, converted_datactive_rank, converted_entropy_rank, 
     #                 converted_loss_rank, converted_deepgini_rank, converted_margin_rank)
-    hard_case(converted_ours_rank)
+    # hard_case(converted_ours_rank)
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
 
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
@@ -159,7 +159,7 @@ if __name__ == "__main__":
     
     datactive_rank_path = os.path.join(exp_data_root_dir,"Results","datactive",
                                        dataset_name,"YOLOv7", # 与模型无关
-                                  "exp_01","rank","rank.joblib")
+                                  "exp_02","rank","rank.joblib")
 
     
     entropy_rank_path = os.path.join(exp_data_root_dir,"Results","other_baselines","entropy",

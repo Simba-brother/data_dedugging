@@ -14,7 +14,7 @@ from ours.base_data_manager import (get_ours_rank_res_path,get_collected_gt_box_
                                     get_annotations_with_miss_json_path,get_datactive_rank_res_path)
 from ours.data_organization_tools import (conver_ours_rank,conver_datactive_rank,
                                           get_img_name_to_ann_ids,get_annoId_to_anno,
-                                          get_all_error_annoids)
+                                          get_all_error_annoids,get_annoid_to_imgname)
 from ours.small_utils import read_json
 import pprint
 from pycocotools.coco import COCO
@@ -39,7 +39,7 @@ def get_repair_info(converted_rank:list,anno_correct_json:dict, anno_error_json:
         "miss":{}, # {imgname:[missed_annos]}
         "cls":{}, # {anno_id:correct_anno}
         "loc":{}, # {anno_id:correct_anno}
-        "redun":[] # [redun_anno_ids]
+        "redun":{} # {redun_anno_id:anno}
     }
 
 
@@ -48,8 +48,10 @@ def get_repair_info(converted_rank:list,anno_correct_json:dict, anno_error_json:
 
     correct_imgname_to_annoids = get_img_name_to_ann_ids(anno_correct_json)
     error_imgname_to_annoids = get_img_name_to_ann_ids(anno_error_json)
+    
     correct_annoId_to_anno = get_annoId_to_anno(anno_correct_json)
     error_annoId_to_anno = get_annoId_to_anno(anno_error_json)
+    
 
     for idd in cutted_converted_rank:
         if type(idd) is str:
@@ -96,7 +98,7 @@ def repair_anno_json(cur_anno_json:dict,repair_info:dict)->dict:
     miss_info = repair_info["miss"]
     cls_info = repair_info["cls"]
     loc_info = repair_info["loc"]
-    redun_anno_id_list = repair_info["redun"]
+    redun_anno_id_list = list(repair_info["redun"].keys())
 
     annos = cur_anno_json["annotations"]
     # 修复 cls
@@ -121,17 +123,42 @@ def repair_anno_json(cur_anno_json:dict,repair_info:dict)->dict:
     cur_anno_json["annotations"] = new_annos
     return cur_anno_json
 
-def count_repair_info(repair_info:dict,anno_with_miss_error_json:dict):
+def count_repair_info(repair_info:dict,anno_with_miss_error_json:dict,anno_error_json:dict):
     all_error_annoids = get_all_error_annoids(anno_with_miss_error_json) # 包括 miss fault
-
+    annoid_to_imgname = get_annoid_to_imgname(anno_error_json)
     miss_info = repair_info["miss"]
     cls_info = repair_info["cls"]
     loc_info = repair_info["loc"]
-    redun_anno_id_list = repair_info["redun"]
+    redun_info = repair_info["redun"]
+
+    repaired_miss_img_name_set = set()
+    repaired_cls_img_name_set = set()
+    repaired_loc_img_name_set = set()
+    repaired_redun_img_name_set = set()
+
+    
+    redun_anno_id_list = list(repair_info["redun"].keys())
 
     repaired_miss_box_count = 0 # 修复的miss fault box数量
+
+    repaired_miss_img_name_set = set()
     for img_name, missed_annos in miss_info.items():
         repaired_miss_box_count += len(missed_annos)
+        repaired_miss_img_name_set.add()
+
+    for annid,anno in cls_info.items():
+        img_name = annoid_to_imgname(annid)
+        repaired_cls_img_name_set.add(img_name)
+
+    for annid,anno in loc_info.items():
+        img_name = annoid_to_imgname(annid)
+        repaired_loc_img_name_set.add(img_name)
+
+    for annid,anno in redun_info.items():
+        img_name = annoid_to_imgname(annid)
+        repaired_redun_img_name_set.add(img_name)
+
+    repaired_imgname_set = repaired_miss_img_name_set & repaired_cls_img_name_set & repaired_loc_img_name_set& repaired_redun_img_name_set
     
     repaired_cls_count = len(cls_info)
     repaired_loc_count = len(loc_info)
@@ -140,10 +167,23 @@ def count_repair_info(repair_info:dict,anno_with_miss_error_json:dict):
     total_repair_num = repaired_miss_box_count + repaired_cls_count + repaired_loc_count + repaired_redun_count
     repair_rate = round(total_repair_num / len(all_error_annoids),4)
 
+    detail_info = {
+        "repaired_cls_count":repaired_cls_count,
+        "repaired_loc_count":repaired_loc_count,
+        "repaired_redun_count":repaired_redun_count,
+        "repaired_miss_box_count":repaired_miss_box_count,
+        "repaired_cls_imgcount": len(repaired_cls_img_name_set),
+        "repaired_loc_imgcount": len(repaired_loc_img_name_set),
+        "repaired_redun_imgcount": len(repaired_redun_img_name_set),
+        "repaired_miss_imgcount": len(repaired_miss_img_name_set),
+        "repaired_imgcount": len(repaired_imgname_set)
+    }
+
     count_info = {
         "all_fault_num": len(all_error_annoids),
         "total_repair_num": total_repair_num,
-        "repair_rate": repair_rate
+        "repair_rate": repair_rate,
+        "detail_info":detail_info
     }
     return count_info
 
@@ -178,7 +218,7 @@ def repair_kit_2(converted_rank:list, anno_correct_json:dict, anno_error_json:di
         "miss":{}, # {imgname:[missed_annos]}
         "cls":{}, # {anno_id:correct_anno}
         "loc":{}, # {anno_id:correct_anno}
-        "redun":[] # [redun_anno_ids]
+        "redun":{} # {anno_id:anno}
     }
 
     correct_imgname_to_annoids = get_img_name_to_ann_ids(anno_correct_json)
@@ -232,15 +272,15 @@ def repair_kit_2(converted_rank:list, anno_correct_json:dict, anno_error_json:di
                 
             elif cur_anno["fault_type"] == 3:
                 # 如果该anno 是 redunc fault
-                repair_info["redun"].append(anno_id)
+                repair_info["redun"][anno_id] = cur_anno
     print(f"remain cost:{cost}")
     # 统计一下修复信息
     anno_with_miss_error_json = read_json(anno_with_miss_error_path)
-    count_info = count_repair_info(repair_info,anno_with_miss_error_json)
+    count_info = count_repair_info(repair_info,anno_with_miss_error_json,anno_error_json)
     pprint.pprint(count_info,indent=4)
     # 修复anno
-    new_annos = repair_anno_json(anno_error_json,repair_info)
-    return new_annos
+    # new_annos = repair_anno_json(anno_error_json,repair_info)
+    return None
 
 
 
@@ -292,9 +332,9 @@ if __name__ == "__main__":
     _args = {
         "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7", # YOLOv7|FRCNN|SSD
-        "rank_method":"margin", # ours|datactive|entropy|loss|deepgini|margin| 排序法
+        "rank_method":"ours", # ours|datactive|entropy|loss|deepgini|margin| 排序法
         "cut_off_rate": 0.5,
-        "is_save":True
+        "is_save":False
     }
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]

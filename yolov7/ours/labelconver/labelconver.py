@@ -26,7 +26,7 @@ def coco2yolo(coco_anno_json_path:Path,yolo_output_dir:Path,tvt:str):
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
     dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
-    method_name = "margin" # ours|datactive|entropy|loss|deepgini|margin
+    method_name = "ours" # ours|datactive|entropy|loss|deepgini|margin
     exp_id = "02"
     
     if method_name in ["entropy","loss","deepgini","margin"]:
