@@ -144,21 +144,21 @@ def count_repair_info(repair_info:dict,anno_with_miss_error_json:dict,anno_error
     repaired_miss_img_name_set = set()
     for img_name, missed_annos in miss_info.items():
         repaired_miss_box_count += len(missed_annos)
-        repaired_miss_img_name_set.add()
+        repaired_miss_img_name_set.add(img_name)
 
     for annid,anno in cls_info.items():
-        img_name = annoid_to_imgname(annid)
+        img_name = annoid_to_imgname[annid]
         repaired_cls_img_name_set.add(img_name)
 
     for annid,anno in loc_info.items():
-        img_name = annoid_to_imgname(annid)
+        img_name = annoid_to_imgname[annid]
         repaired_loc_img_name_set.add(img_name)
 
     for annid,anno in redun_info.items():
-        img_name = annoid_to_imgname(annid)
+        img_name = annoid_to_imgname[annid]
         repaired_redun_img_name_set.add(img_name)
 
-    repaired_imgname_set = repaired_miss_img_name_set & repaired_cls_img_name_set & repaired_loc_img_name_set& repaired_redun_img_name_set
+    repaired_imgname_set = repaired_miss_img_name_set | repaired_cls_img_name_set | repaired_loc_img_name_set | repaired_redun_img_name_set
     
     repaired_cls_count = len(cls_info)
     repaired_loc_count = len(loc_info)
@@ -198,7 +198,7 @@ def repair_kit(converted_rank:list, anno_correct_json:dict, anno_error_json:dict
     # 统计一下修复信息
     anno_with_miss_error_json = read_json(anno_with_miss_error_path)
     count_info = count_repair_info(repair_info,anno_with_miss_error_json)
-    pprint.pprint(count_info,indent=4)
+    pprint.pprint(count_info,indent=4,sort_dicts=False)
     # 修复anno
     new_annos = repair_anno_json(anno_error_json,repair_info)
 
@@ -277,11 +277,10 @@ def repair_kit_2(converted_rank:list, anno_correct_json:dict, anno_error_json:di
     # 统计一下修复信息
     anno_with_miss_error_json = read_json(anno_with_miss_error_path)
     count_info = count_repair_info(repair_info,anno_with_miss_error_json,anno_error_json)
-    pprint.pprint(count_info,indent=4)
+    pprint.pprint(count_info,indent=4,sort_dicts=False)
     # 修复anno
     # new_annos = repair_anno_json(anno_error_json,repair_info)
     return None
-
 
 
 def main():
@@ -332,7 +331,7 @@ if __name__ == "__main__":
     _args = {
         "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7", # YOLOv7|FRCNN|SSD
-        "rank_method":"ours", # ours|datactive|entropy|loss|deepgini|margin| 排序法
+        "rank_method":"datactive", # ours|datactive|entropy|loss|deepgini|margin| 排序法
         "cut_off_rate": 0.5,
         "is_save":False
     }

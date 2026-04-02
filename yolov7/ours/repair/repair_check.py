@@ -12,7 +12,7 @@ from ours.small_utils import read_json
 from ours.data_organization_tools import (get_g_id_to_g_box, get_gid_to_anno_id,
                                           get_imgname_to_imgid, get_cls_id_to_name, get_annoid_to_imgname,
                                           get_all_miss_img_name_list,conver_ours_rank,conver_datactive_rank,
-                                          get_img_name_to_missed_annids,get_img_name_to_ann_ids)
+                                          get_img_name_to_missed_annids,get_img_name_to_ann_ids,get_annoId_to_anno)
 
 
 
@@ -335,44 +335,99 @@ def check_miss(gt_missed_annoids, repairAnnids, errorAnnids, correctAnnids):
 
 
 def detail_check():
-    anno_with_miss_json = read_json(anno_with_miss_json_path)
-    anno_error_json = read_json(anno_error_json_path)
+    '''
+    仔细比对repair anno json与correct anno json异同
+    '''
     anno_correct_json = read_json(anno_correct_json_path)
     anno_repair_json = read_json(anno_repair_json_path)
-    converted_rank = conver_ours_rank(rank_res)
-    cutted_rank = converted_rank[:int(len(converted_rank)*0.4)]
+    anno_error_json = read_json(anno_error_json_path)
 
-    miss_imgname_list = get_all_miss_img_name_list(anno_with_miss_json)
-    imgname_to_missed_annids = get_img_name_to_missed_annids(anno_with_miss_json)
-    imgname_to_errorAnnids = get_img_name_to_ann_ids(anno_error_json)
-    imgname_to_correctAnnids = get_img_name_to_ann_ids(anno_correct_json)
-    imgname_to_repairAnnids = get_img_name_to_ann_ids(anno_repair_json)
-    for idd in cutted_rank:
-        if type(idd) is str:
-            img_name = idd
-            if img_name in miss_imgname_list:
-                missed_annoids = imgname_to_missed_annids[img_name]
-                errorAnnids = imgname_to_errorAnnids[img_name]
-                correctAnnids = imgname_to_correctAnnids[img_name]
-                repairAnnids = imgname_to_repairAnnids[img_name]
-                check_miss(missed_annoids,repairAnnids,errorAnnids,correctAnnids)
+    repair_annoId_to_anno = get_annoId_to_anno(anno_repair_json)
+    correct_annoId_to_anno =  get_annoId_to_anno(anno_correct_json)
+    correct_id_list = []
+    repair_id_list = []
+    for anno in anno_correct_json["annotations"]:
+        correct_id_list.append(anno["id"])
+    for anno in anno_repair_json["annotations"]:
+        repair_id_list.append(anno["id"])
+    common_id_set = set(correct_id_list) & set(repair_id_list)
+
+    residue_miss_id_set = set(correct_id_list) - set(repair_id_list) # 残留的miss fault anno id set
+    repaired_miss_id_set = set() # 修复的miss fault anno id set
+
+    repaired_cls_id_set = set() # 修复的cls fault anno id set
+    residue_cls_id_set = set() # 残留的cls fault anno id set
+
+    repaired_loc_id_set = set() # 修复的loc fault anno id set
+    residue_loc_id_set = set() # 残留的loc fault anno id set
+
+    residue_redunc_id_set = set(repair_id_list) - set(correct_id_list) # 残留的redunc fault anno id set
+    redunc_fault_id_set = set()
+    for error_anno in anno_error_json["annotations"]:
+        if error_anno["fault_type"] == 3:
+            redunc_fault_id_set.add(error_anno["id"])
+    repaired_redunc_id_set = redunc_fault_id_set - residue_redunc_id_set # 修复的redunc fault anno id set
 
 
+    irrelevant_id_set = set() # 无关的anno id set
+    for c_id in common_id_set:
+        repair_anno = repair_annoId_to_anno[c_id]
+        correct_anno = correct_annoId_to_anno[c_id]
+        if "fault_type" in repair_anno:
+            fault_type = repair_anno["fault_type"]
+            if fault_type == 0:
+                # 没被篡改过的anno
+                irrelevant_id_set.add(c_id)
+            elif fault_type == 1:
+                # cls fault anno, 接着判断是否修复
+                correct_label = correct_anno["category_id"]
+                repair_label = repair_anno["category_id"]
+                if repair_label == correct_label:
+                    # cls 被修复了
+                    repaired_cls_id_set.add(c_id)
+                else:
+                    residue_cls_id_set.add(c_id)
+            elif fault_type == 2:
+                # loc fault anno, 接着判断是否修复
+                correct_bbox = correct_anno["bbox"]
+                repair_bbox = repair_anno["bbox"]
+                if correct_bbox == repair_bbox:
+                    # loc 被修复了
+                    repaired_loc_id_set.add(c_id)
+                else:
+                    residue_loc_id_set.add(c_id)
+        else:
+            # 从 correct anno json迁移过来的anno,即修复了的miss fault anno
+            repaired_miss_id_set.add(c_id)
+
+    print("无关的anno数量:", len(irrelevant_id_set))
+    print("修复的cls fault数量:", len(repaired_cls_id_set))
+    print("残留的cls fault数量:", len(residue_cls_id_set))
+    print("修复的loc fault数量:", len(repaired_loc_id_set))
+    print("残留的loc fault数量:", len(residue_loc_id_set))
+    print("修复的redunc fault数量:", len(repaired_redunc_id_set))
+    print("残留的redunc fault数量:", len(residue_redunc_id_set))
+    print("修复的miss fault数量:", len(repaired_miss_id_set))
+    print("残留的miss fault数量:", len(residue_miss_id_set))
+    
 if __name__ == '__main__':
     exp_data_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
+    method_name = "datactive" # ours|datactive
+    exp_id = "exp_02"
 
     anno_correct_json_path = get_correct_ann_file_path(dataset_name,"train")
     anno_error_json_path = get_error_ann_file_path(dataset_name)
     anno_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     
     # repaired anno json path
-    anno_repair_json_path = os.path.join(exp_data_root_dir,"Results",dataset_name,model_name,"exp_01",
+    anno_repair_json_path = os.path.join(exp_data_root_dir,"Results",method_name,dataset_name,model_name,exp_id,
                                          "repair","_annotations.coco_repair.json")
+    
     # 排序结果
-    rank_res = joblib.load(os.path.join(exp_data_root_dir,"Results",dataset_name,model_name,"exp_01",
+    rank_res = joblib.load(os.path.join(exp_data_root_dir,"Results",method_name,dataset_name,model_name,exp_id,
                                         "rank","rank.joblib"))
     # 收集的gboxs
     g_boxes_json_path = get_collected_gt_box_json_path(dataset_name)
-    main()
+    detail_check()
