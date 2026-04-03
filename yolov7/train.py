@@ -566,7 +566,7 @@ def label_replace(dataset_name):
     # 复制目录
     shutil.copytree(new_train_labels_dir, cur_train_labels_dir)
     shutil.copytree(new_val_labels_dir, cur_val_labels_dir)
-    print("便签目录替换完成")
+    print("训练标签目录替换完成")
 
 
 if __name__ == '__main__':
@@ -580,8 +580,8 @@ if __name__ == '__main__':
         "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
-        "trainset_stat":"ours", # clean|error|ours|datactive|entropy|loss|deepgini|margin
-        "save_each_epoch":False
+        "trainset_stat":"datactive", # clean|error|ours|datactive|entropy|loss|deepgini|margin
+        "save_each_epoch":False # 恢复训练时不需要保存每个epoch的ckpt
     }
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
@@ -593,7 +593,7 @@ if __name__ == '__main__':
         _args["model_save_dir"] = os.path.join(exp_data_root,"Results",method_name,
                                    dataset_name,model_name,f"exp_{exp_id}","retrain","retrained_model")
 
-    pprint.pprint(_args)
+    pprint.pprint(_args, sort_dicts=False)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', type=str, default='yolov7.pt', help='initial weights path')
@@ -649,7 +649,6 @@ if __name__ == '__main__':
         opt.opt_yaml_path = f"trained_models/{dataset_name.lower()}/error_resume_opt.yaml"
         # 设置结束的训练轮次点
         epochs = 75
-        # 恢复训练时不需要保存每个epoch的ckpt
         label_replace(dataset_name)
     save_each_epoch = _args["save_each_epoch"]
 
