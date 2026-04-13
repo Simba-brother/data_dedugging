@@ -409,7 +409,8 @@ def detail_check():
     print("残留的redunc fault数量:", len(residue_redunc_id_set))
     print("修复的miss fault数量:", len(repaired_miss_id_set))
     print("残留的miss fault数量:", len(residue_miss_id_set))
-    
+
+
 if __name__ == '__main__':
     exp_data_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
@@ -424,6 +425,8 @@ if __name__ == '__main__':
     # repaired anno json path
     anno_repair_json_path = os.path.join(exp_data_root_dir,"Results",method_name,dataset_name,model_name,exp_id,
                                          "repair","_annotations.coco_repair.json")
+    
+
     
     # 排序结果
     rank_res = joblib.load(os.path.join(exp_data_root_dir,"Results",method_name,dataset_name,model_name,exp_id,

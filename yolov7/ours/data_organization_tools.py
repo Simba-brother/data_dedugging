@@ -325,3 +325,13 @@ def split_img_miss_no_miss(imgs_dir,annos_with_miss_json_path:str):
     with_miss_fault_img_set = get_all_miss_error_img_name_set(annos_with_miss_json_path)
     no_miss_fault_img_set = set(all_img_name_list) - with_miss_fault_img_set
     return with_miss_fault_img_set,no_miss_fault_img_set
+
+def get_annos_by_img_name(anno_json:dict,img_name)->list:
+    anno_list = []
+    imgname_to_imgid = get_imgname_to_imgid(anno_json)
+    imgid = imgname_to_imgid[img_name]
+    annos = anno_json["annotations"]
+    for anno in annos:
+        if anno["image_id"] == imgid:
+            anno_list.append(anno)
+    return anno_list
