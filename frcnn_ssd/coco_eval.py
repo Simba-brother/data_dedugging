@@ -74,7 +74,6 @@ class CocoEvaluator:
             boxes = convert_to_xywh(boxes).tolist()
             scores = prediction["scores"].tolist()
             labels = prediction["labels"].tolist()
-
             coco_results.extend(
                 [
                     {

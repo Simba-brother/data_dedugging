@@ -145,7 +145,7 @@ def eval_performance():
         annotation_path=ANN_FILE,
         transforms=get_transform()
     )
-    train_loader = DataLoader(dataset, batch_size=16, shuffle=False, collate_fn=lambda x: tuple(zip(*x)))
+    dataset_loader = DataLoader(dataset, batch_size=16, shuffle=False, collate_fn=lambda x: tuple(zip(*x)))
 
     # 加载模型
     num_classes = len(dataset.coco.getCatIds()) + 1
@@ -162,6 +162,7 @@ def eval_performance():
     # model = set_nms(model, model_name, conf_threshold=0.25,iou_threshold=0.5)
     
     model.eval()
+    '''
     for images, targets in train_loader:
         all_labels = torch.cat([t["labels"] for t in targets])
         # print("num_classes in model:", model.roi_heads.box_predictor.cls_score.out_features)
@@ -170,12 +171,13 @@ def eval_performance():
         images = list(img.to(device) for img in images)
         outputs = model(images)
         print()
+    '''
 
-    evaluate(model, train_loader, device=device)  # Using val_loader for evaluation
+    evaluate(model, dataset_loader, device=device)
 
     '''
     # 开始评估
-    coco_results = get_coco_results(model, train_loader, device, score_thresh=0.0)
+    coco_results = get_coco_results(model, dataset_loader, device, score_thresh=0.0)
     # 加载ground truth data
     cocoGt = COCO(ANN_FILE)
     cocoGt = offset_category_id(cocoGt)
@@ -187,11 +189,10 @@ def eval_performance():
     return coco_eval
     '''
 
-
 if __name__ == "__main__":
-    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
-    model_name = "FRCNN" # FRCNN, SSD
-    model_state = "clean" # clean|error|repair_ours|repair_datactive
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    model_name = "SSD" # FRCNN|SSD
+    model_state = "error" # clean|error|repair_ours|repair_datactive
     gpu_id = 0
     train_or_val = "val" # train|val
     ANN_FILE = get_correct_ann_file_path(dataset_name,train_or_val)

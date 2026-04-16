@@ -15,12 +15,12 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, sc
     metric_logger.add_meter("lr", utils.SmoothedValue(window_size=1, fmt="{value:.6f}"))
     header = f"Epoch: [{epoch}]"
 
-    lr_scheduler = None
+    warm_lr_scheduler = None
     if epoch == 0:
         warmup_factor = 1.0 / 1000
         warmup_iters = min(1000, len(data_loader) - 1)
 
-        lr_scheduler = torch.optim.lr_scheduler.LinearLR(
+        warm_lr_scheduler = torch.optim.lr_scheduler.LinearLR(
             optimizer, start_factor=warmup_factor, total_iters=warmup_iters
         )
 
@@ -51,8 +51,8 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, sc
             losses.backward()
             optimizer.step()
 
-        if lr_scheduler is not None:
-            lr_scheduler.step()
+        if warm_lr_scheduler is not None:
+            warm_lr_scheduler.step()
 
         metric_logger.update(loss=losses_reduced, **loss_dict_reduced)
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])

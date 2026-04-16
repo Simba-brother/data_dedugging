@@ -40,6 +40,8 @@ def get_error_train_model_weight_file_path(dataset_name,model_name,epoch):
         model_weight_file_path = os.path.join(exp_data_root_dir,"models",dataset_name.lower(), model_name.lower(), "error", "weights", f"epoch_{epoch}.pt")
     elif model_name == "FRCNN":
         model_weight_file_path = os.path.join(exp_data_root_dir,"models",dataset_name.lower(), model_name.lower(), "error", f"epoch_{epoch}.pth")
+    elif model_name == "SSD":
+        model_weight_file_path = os.path.join(exp_data_root_dir,"models",dataset_name.lower(),model_name.lower(), "error_bak", f"epoch_{epoch}.pth")
     return model_weight_file_path
 
 def get_repair_train_model_weight_file_path(dataset_name,model_name, method_name):

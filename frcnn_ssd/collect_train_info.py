@@ -135,7 +135,7 @@ def collect_predicted_box():
     num_classes = len(train_dataset.coco.getCatIds()) + 1
     # 构建模型
     model = get_model(num_classes)
-    if _args["custom_nums"] is True:
+    if _args["custom_nms"] is True:
         model = set_nms(model,model_name=model_name)
     # 得到设备
     device = torch.device(f"cuda:{gpu_id}")
@@ -161,9 +161,9 @@ if __name__ == "__main__":
     print("PID:",PID)
     _args = {
         "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
-        "model_name":"SSD", # FRCNN|SSD
+        "model_name":"FRCNN", # FRCNN|SSD
         "num_epochs":50,
-        "custom_nums":False
+        "custom_nms":False
     }
     pprint.pprint(_args)
     

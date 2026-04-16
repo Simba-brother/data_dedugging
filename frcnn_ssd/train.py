@@ -1,41 +1,53 @@
 
 import pprint
 from torch.utils.data import DataLoader
-from torchvision.transforms import ToTensor
+from torchvision.transforms import ToTensor,Normalize
 from datasets import CocoDetectionDataset
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor,FasterRCNN_ResNet50_FPN_Weights
-from torchvision.models.detection import ssd300_vgg16, SSD300_VGG16_Weights
+from torchvision.models.detection import (ssd300_vgg16, SSD300_VGG16_Weights, 
+                                          ssdlite320_mobilenet_v3_large, SSDLite320_MobileNet_V3_Large_Weights)
 
 from torchvision.models.detection.ssd import SSDClassificationHead
+from torchvision.models.detection.ssdlite import SSDLiteClassificationHead
 import torch,torchvision
 from engine import train_one_epoch, evaluate
+from small_utils import timestamp_to_hms
 from torchvision import models, transforms
 import cv2
 import matplotlib.pyplot as plt
 from PIL import Image
 import pandas as pd
 import os
-from base_data_manager import (get_correct_ann_file_path,get_error_ann_file_path, get_imgs_dir, 
+from base_data_manager import (get_correct_ann_file_path,get_error_ann_file_path, get_imgs_dir,
                                get_error_train_model_weight_file_path, get_repair_ann_file_path)
 import time
-# conf_threshold = 0.8
+
 # Transform PIL image --> PyTorch tensor
-def get_transform():
-    return ToTensor()
+def get_transform(train=False): 
+    t = [ToTensor()]
+    if train:
+        if _args["ColorJitter"]:
+            t.insert(0,transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1))
+        if _args["Normal"]:
+            t.append(Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]))
+    else:
+        if _args["Normal"]:
+            t.append(Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]))
+    return transforms.Compose(t)
 
 def get_train_and_val_dataset():
     # Load training dataset
     train_dataset = CocoDetectionDataset(
         image_dir=train_imgs_dir,
         annotation_path=train_annotation_path,
-        transforms=get_transform()
+        transforms=get_transform(train=True)
     )
 
     # Load validation dataset
     val_dataset = CocoDetectionDataset(
         image_dir=val_imgs_dir,
         annotation_path=val_annotation_path,
-        transforms=get_transform()
+        transforms=get_transform(train=False)
     )
     return train_dataset, val_dataset
 
@@ -124,12 +136,25 @@ def build_model(model_name,nc):
         num_anchors=model.anchor_generator.num_anchors_per_location()
         # # 用新的头部替换预先训练好的头部
         model.head.classification_head=SSDClassificationHead(in_channels=c_in_features,num_anchors=num_anchors,num_classes=nc)
+    elif model_name == "ssdlite320_mobilenet_v3_large":
+        model = ssdlite320_mobilenet_v3_large(weights=SSDLite320_MobileNet_V3_Large_Weights.DEFAULT)
+        # module_list[i] 是 Sequential(depthwise Conv2dNormActivation, pointwise Conv2d)
+        # in_channels 取 pointwise Conv2d（index=1）的输入通道数
+        c_in_features = [model.head.classification_head.module_list[i][1].in_channels
+                         for i in range(len(model.head.classification_head.module_list))]
+        num_anchors = model.anchor_generator.num_anchors_per_location()
+        model.head.classification_head = SSDLiteClassificationHead(
+            in_channels=c_in_features,
+            num_anchors=num_anchors,
+            num_classes=nc,
+            norm_layer=torch.nn.BatchNorm2d
+        )
 
     else:
         raise Exception("模型名称传入错误")
     return model
 
-
+'''
 def custom_train_one_epoch(model,train_loader,epoch,NUM_EPOCHS,DEVICE,optimizer):
     model.train()
     epoch_loss = 0
@@ -149,7 +174,7 @@ def custom_train_one_epoch(model,train_loader,epoch,NUM_EPOCHS,DEVICE,optimizer)
 
         epoch_loss += losses.item()
         print(f"  Batch {batch_idx+1}/{total_batches} | Loss: {losses.item():.4f}")
-
+'''
 def save_epoch(model,epoch):
     save_file_name = f"epoch_{epoch}.pth"
     save_path = os.path.join(epoch_save_dir,save_file_name)
@@ -175,8 +200,8 @@ def train(model_weight_path=None):
     # 加载数据集
     train_dataset, val_dataset = get_train_and_val_dataset()
     # Load dataset with DataLoaders, you can change batch_size 
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, collate_fn=lambda x: tuple(zip(*x)))
-    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False, collate_fn=lambda x: tuple(zip(*x)))
+    train_loader = DataLoader(train_dataset, batch_size=_args["batch_sze"], shuffle=True, collate_fn=lambda x: tuple(zip(*x)))
+    val_loader = DataLoader(val_dataset, batch_size=_args["batch_sze"], shuffle=False, collate_fn=lambda x: tuple(zip(*x)))
     # train_t_loader = DataLoader(train_dataset, batch_size=1, shuffle=False, collate_fn=lambda x: tuple(zip(*x)))
 
     # 构建模型
@@ -189,35 +214,32 @@ def train(model_weight_path=None):
     if model_weight_path is not None:
         model_load_weight(model,model_weight_path)
     # 训练参数
+
     '''
     # 锁住Backbone params
     for param in model.backbone.parameters():
         param.requires_grad = False
-    '''
     params = [p for p in model.parameters() if p.requires_grad]
+    '''
     
     # 参数优化器
-
+    
     # optimizer = torch.optim.Adam(params, lr=1e-4)
-    optimizer = torch.optim.SGD(params,lr=init_lr,momentum=0.9,weight_decay=0.0005)
+    optimizer = torch.optim.SGD(params=model.parameters(),lr=init_lr,
+                                momentum=0.9,weight_decay=0.0005)
 
-    # lr 调度器
-    '''
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(
+    # lr 调度器：在 60%/80% epoch 处各衰减一次，适合 SSD 和 FRCNN
+    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
         optimizer,
-        step_size=10,
+        milestones=[int(num_epochs * 0.6), int(num_epochs * 0.8)],
         gamma=0.1
     )
-    '''
     # train loop
     for epoch in range(num_epochs):
         print(f"\nEpoch {epoch}/{num_epochs}")
-        # Train the model for one epoch, printing status every 25 iterations
-        train_one_epoch(model, optimizer, train_loader, device, epoch, print_freq=25)  # Using train_loader for training
-        # lr_scheduler.step()
-        # custom_train_one_epoch(model,train_loader,epoch,num_epochs,device,optimizer)
-        # Evaluate the model only on the validation dataset, not training
-        evaluate(model, val_loader, device=device)  # Using val_loader for evaluation
+        train_one_epoch(model, optimizer, train_loader, device, epoch, print_freq=25)
+        lr_scheduler.step()
+        evaluate(model, val_loader, device=device)
         epoch_save_path = save_epoch(model,epoch)
         print(f"model pth is saved in: {epoch_save_path}")
         '''
@@ -227,11 +249,9 @@ def train(model_weight_path=None):
             collection_SSD_indicator(model,device,train_t_loader,epoch)
         '''
     end_time = time.time()  # 记录结束时间
-    elapsed_time = end_time - start_time  # 计算运行时间（秒）
-    hours = int(elapsed_time // 3600)  # 计算小时数
-    minutes = int((elapsed_time % 3600) // 60)  # 计算分钟数
-    seconds = elapsed_time % 60  # 计算剩余的秒数
-    print(f"运行时间：{hours:02d}:{minutes:02d}:{seconds:02.0f}")
+    cost_time = end_time - start_time  # 计算运行时间（秒）
+    run_time = timestamp_to_hms(cost_time)
+    print(f"运行时间: {run_time}")
 
 def collection_SSD_indicator(model,device,dataloader,epoch):
     item_list = []
@@ -290,7 +310,6 @@ def collection_SSD_indicator(model,device,dataloader,epoch):
     save_path = os.path.join(save_dir,f"epoch_{epoch}.csv")
     df.to_csv(save_path, index=False)
     print(f"保存在：{save_path}")
-
 
 def collection_FRCNN_indicator(model,device,dataloader,epoch):
     item_list = []
@@ -360,10 +379,12 @@ if __name__ == "__main__":
     PID = os.getpid()
     print("PID:",PID)
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    gpu_id = 1
+    exp_id = "1"
+    gpu_id = 0
+    print("gpu_id:",gpu_id)
     _args = {
-        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
-        "model_name":"SSD",# FRCNN|SSD
+        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
+        "model_name":"SSD",# FRCNN|SSD|ssdlite320_mobilenet_v3_large
         "trainset_status":"error", # clean|error|ours|datactive
     }
     
@@ -377,16 +398,21 @@ if __name__ == "__main__":
         model_weight_path = None
         num_epochs = 50
     
-    if _args["model_name"] == "SSD":
+    if _args["model_name"] in ["SSD", "ssdlite320_mobilenet_v3_large"] :
         init_lr = 1e-3
     else:
         init_lr = 5e-3
     _args["model_weight_path"] = model_weight_path
+
+    # 训练超参数
     _args["init_lr"] = init_lr
     _args["num_epochs"] = num_epochs
+    _args["batch_sze"] = 64
+    _args["ColorJitter"] = True
+    _args["Normal"] = False
 
     epoch_save_dir = os.path.join(exp_data_root_dir,"models",dataset_name.lower(),
-                                  model_name.lower(), _args["trainset_status"])
+                                  model_name.lower(), _args["trainset_status"]+"_"+exp_id)
     os.makedirs(epoch_save_dir,exist_ok=True)
     _args["epoch_save_dir"] = epoch_save_dir
     pprint.pprint(_args)
