@@ -22,8 +22,41 @@ def coco2yolo(coco_anno_json_path:Path,yolo_output_dir:Path,tvt:str):
     yolo_output.save(label_input=coco_input)
     print("Conversion from COCO to YOLOv7 completed successfully!")
 
+def coco2voc(coco_anno_json_path:Path,voc_output_dir:Path):
+    '''
+    coco -> voc
+    tvt:"train"|"test"|"val"
+    '''
+    coco_input = COCOObjectDetectionInput(input_file=coco_anno_json_path)
+    voc_output = PascalVOCObjectDetectionOutput(
+        output_folder=voc_output_dir
+    )
+    voc_output.save(label_input=coco_input)
+    print(f"Conversion from COCO to VOC completed successfully! XML 已保存到: {voc_output_dir}")
+
 
 if __name__ == "__main__":
+    exp_data_root = "/data/mml/data_debugging_data"
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    dataset_mode = "correct"
+    tvt = "train"
+    
+    if tvt == "train":
+        coco_anno_json_path = Path(
+            os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco",tvt,f"_annotations.coco_{dataset_mode}.json")
+        )
+    elif tvt == "val":
+        coco_anno_json_path = Path(
+            os.path.join(exp_data_root,"datasets",f"{dataset_name}-coco",tvt,f"_annotations.coco.json")
+        )
+    if dataset_mode ==  "correct":
+        dataset_mode = "clean"
+    voc_output_dir = Path(
+        os.path.join(exp_data_root,"Results",dataset_mode,dataset_name,"labels","voc_format",tvt)
+    )
+    coco2voc(coco_anno_json_path,voc_output_dir)
+    
+    '''
     exp_data_root = "/data/mml/data_debugging_data"
     dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     method_name = "ours" # ours|datactive|entropy|loss|deepgini|margin
@@ -56,6 +89,7 @@ if __name__ == "__main__":
             )
         )
     coco2yolo(coco_anno_json_path,yolo_output_dir,tvt="train")
+    '''
 
 
 

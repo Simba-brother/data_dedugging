@@ -143,20 +143,29 @@ def remove_miss_fault_anno(anno_list):
         
 
 if __name__ == "__main__":
-
+    # 设置随机数种子
     random.seed(42)
+    # 设置实验数据保存目录
     exp_data_root = "/data/mml/data_debugging_data"
+    # 设置数据集名称
     dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    # 设置数据集correct anno path
+    correct_anno_json_path = os.path.join(exp_data_root,"datasets", f"{dataset_name}-coco","train","_annotations.coco_correct.json")
+    # 转换为COCO实例
+    coco = COCO(correct_anno_json_path)
+    # 设置每种fault的错误率
     fault_rate = 0.1 # 每种错误比例为10%
-    
-    anno_json_path = os.path.join(exp_data_root,"datasets", f"{dataset_name}-coco","train","_annotations.coco_correct.json")
-    coco = COCO(anno_json_path)
+    # 保存为annotation json文件
+    save_dir = os.path.join(exp_data_root,"fault_anno",f"{fault_rate}",dataset_name,"coco_format")
+    os.makedirs(save_dir,exist_ok=True)
 
     # 数据集中anno的ids
     ann_ids = coco.getAnnIds()
     # 根据 annoIds 载入所有 annotation
     annotations = coco.loadAnns(ann_ids)
+    # 获得anno json中目标的类别idx
     catIds = coco.getCatIds()
+    # 错误类型编码映射
     fault_type = {
             'no_fault': 0,
             'cls_fault': 1,
@@ -164,8 +173,11 @@ if __name__ == "__main__":
             'redundancy_fault': 3,
             'missing_fault': 4,
     }
-    fault_recorder = []  # 不是必须的
+    # 错误记录者，非必须
+    fault_recorder = []
+
     # 准备注入错误
+    # 总共的objs数量
     total_object_num = len(ann_ids)
     sample_num = int(total_object_num*fault_rate)
     # missing fault id 采样
@@ -211,9 +223,7 @@ if __name__ == "__main__":
         "categories":categories,
         "annotations":annotations
     }
-    # 保存为annotation json文件
-    save_dir = os.path.join(exp_data_root,"error_anno",dataset_name,"coco_format")
-    os.makedirs(save_dir,exist_ok=True)
+    
     anno_save_path = os.path.join(save_dir,"annotations_with_miss.json")
     with open(anno_save_path, "w", encoding="utf-8") as f:
         json.dump(_json, f, ensure_ascii=False, indent=4)

@@ -407,7 +407,7 @@ if __name__ == "__main__":
     # 训练超参数
     _args["init_lr"] = init_lr
     _args["num_epochs"] = num_epochs
-    _args["batch_sze"] = 64
+    _args["batch_sze"] = 32
     _args["ColorJitter"] = True
     _args["Normal"] = False
 
