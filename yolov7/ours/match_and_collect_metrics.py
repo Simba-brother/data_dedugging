@@ -17,8 +17,6 @@ from ours.base_data_manager import (
     get_collected_gt_box_json_path
     )
 
-
-
 def get_json(json_path:str) -> dict:
     with open(json_path,"r") as file:
         _json = json.load(file)

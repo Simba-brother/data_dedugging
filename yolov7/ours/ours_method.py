@@ -3,6 +3,7 @@
 import joblib
 import math
 from datetime import datetime
+
 import os
 import json
 from PIL import Image
@@ -16,6 +17,8 @@ from ours.base_data_manager import (get_ours_gt_box_metric_path,
                                     get_ours_match_path,get_annotations_with_miss_json_path,
                                     get_collected_gt_box_json_path
                                     )
+from ours.small_utils import get_formatted_time
+from ours.data_organization_tools import get_all_img_name
 
 def calu_iou(gt_bbox,predicted_bbox):
     x1_min, y1_min, x1_max, y1_max = gt_bbox
@@ -274,7 +277,7 @@ def match(match_save_path, offset):
     hours = int(elapsed_time // 3600)  # 计算小时数
     minutes = int((elapsed_time % 3600) // 60)  # 计算分钟数
     seconds = elapsed_time % 60  # 计算剩余的秒数
-    print(f"运行时间：{hours:02d}:{minutes:02d}:{seconds:02.0f}")
+    print(f"耗时: {hours:02d}:{minutes:02d}:{seconds:02.0f}")
 
 def gt_box_metric_collection(match_json_path, metric_save_path):
     '''
@@ -334,7 +337,7 @@ def gt_box_metric_collection(match_json_path, metric_save_path):
     minutes = int((elapsed_time % 3600) // 60)  # 计算分钟数
     seconds = elapsed_time % 60  # 计算剩余的秒数
 
-    print(f"运行时间：{hours:02d}:{minutes:02d}:{seconds:02.0f}")
+    print(f"耗时: {hours:02d}:{minutes:02d}:{seconds:02.0f}")
 
 def get_all_gids():
     g_boxs_dict = get_gt_boxs()
@@ -362,11 +365,6 @@ def get_g_id_to_metric(metric_json_path):
             "iou_list":iou_list,
         }
     return g_box_id_to_metric
-
-def get_formatted_time():
-    """返回当前时间的格式化字符串（YYYY-MM-DD HH:MM:SS）"""
-    now = datetime.now()
-    return now.strftime("%Y-%m-%d_%H:%M:%S")
 
 
 def draw_scatter(data_correct,data_cls_fault,data_loc_fault,data_redun_fault,metric_name:str):
@@ -631,8 +629,8 @@ def epoch_freq(boxes,last_epoch):
     return len(epoch_cover) / last_epoch
 
 
-def caclu_cluster_score(cluster,last_epoch):
-    
+def caclu_cluster_score(cluster,last_epoch): 
+    '''簇权分'''
     conf = conf_score(cluster) # [0,1]
     stab = stability_pairwise_mean_iou(cluster) # [0,1]
     cls_consis = cls_consis_score(cluster) # [0,1]
@@ -663,8 +661,6 @@ def get_img_to_topsis_score(img_to_clusters,last_epoch):
             feature_sign = sign
             img_name_to_c_ids[img_name].append(c_id)
             c_id += 1
-
-    
     data_array = np.array(clusters_feature)
     n_features = data_array.shape[1]
     assert data_array.shape[1] == len(feature_sign), "数据有误"
@@ -755,20 +751,12 @@ def get_fault_imgs_by_type(fault_type_list):
             fault_img_name_set.add(img_name)
     return fault_img_name_set
 
-def get_all_img_name():
-    img_dir = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-yolo","train","images")
-    img_name_list = []
-    for filename in sorted(os.listdir(img_dir)):
-        filepath = os.path.join(img_dir, filename)
-        if os.path.isfile(filepath):
-            img_name_list.append(filename)
-    return img_name_list
+
 
 def misimg_detect_by_topsis(match_json_path, last_epoch=5):
-    all_img_name_list = get_all_img_name()
+    all_img_name_list = get_all_img_name(imgs_dir)
     # 读取所有gt_box的匹配信息
-    
-    with open(match_json_path,mode="r") as f:
+    with open(match_json_path,"r") as f:
         gt_match_dict = json.load(f)
     epoch_to_matched_p_boxs = get_epoch_to_matched_p_boxs(gt_match_dict)
 
@@ -790,7 +778,7 @@ def misimg_detect_by_topsis(match_json_path, last_epoch=5):
     return img_name_to_topsis_score
 
 def misimg_detect_by_weight_score(match_json_path, last_epoch=5):
-    all_img_name_list = get_all_img_name()
+    all_img_name_list = get_all_img_name(imgs_dir)
     # 读取所有gt_box的匹配信息
     
     with open(match_json_path,mode="r") as f:
@@ -989,7 +977,7 @@ def total_rank_by_topsis_score(ranked_gid_list,topsis_score_list,img_name_to_top
 def total_rank_by_loc(ranked_gid_list,ranked_img_list):
     gid_num = len(ranked_gid_list)
     img_num = len(ranked_img_list)
-    all_img_name_list = get_all_img_name()
+    all_img_name_list = get_all_img_name(imgs_dir)
     all_gid_list = get_all_gids()
     assert gid_num == len(all_gid_list), "gid数量错误"
     assert img_num == len(all_img_name_list), "img数量错误"
@@ -1058,68 +1046,93 @@ def eval_apfd(rank_res):
 if __name__ == "__main__":
     PID = os.getpid()
     print("PID:",PID)
+    '''
+    mode: 0:全流程;1:match操作;2:metric操作
+    '''
+    start_time = get_formatted_time()
+
+    mode = 0
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
-    epochs = 50
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    model_name = "SSD" # YOLOv7|FRCNN|SSD
+    label_offset = False # 是否包含bg class idx,包含的话 1 label => 0 classname
+    epochs = 200 # 200,新SSD设置成200
+    save_dir = os.path.join(exp_root_dir,"collection_bbox_level",
+                                    dataset_name,model_name)
+    imgs_dir = os.path.join(exp_root_dir,"datasets",dataset_name,"images","train")
+    
+    os.makedirs(save_dir,exist_ok=True)
+    settings_info = {
+        "mode":0,
+        "start_time":start_time,
+        "dataset_name":dataset_name,
+        "model_name":model_name,
+        "label_offset": label_offset,
+        "epochs":epochs,
+        "save_dir":save_dir
+    }
 
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
-    
+    '''
+    弃用(2026/05/04 09:15)
     predicted_bboxs_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",
-                                       dataset_name,model_name,"collected_predicted_box","v2")
+                                        dataset_name,model_name,"collected_predicted_box","v2")
+    '''
+    predicted_bboxs_dir = os.path.join(save_dir,"predicted_bbox")
+
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
 
     with open(annos_with_miss_json_path, 'r') as f:
         annos_with_miss_json = json.load(f)
 
-    # 1:match
-    match_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",
-                                  dataset_name,model_name, "gp_box_match")
-    os.makedirs(match_save_dir,exist_ok=True)
-    match_json_save_path = os.path.join(match_save_dir,"match_v21.json")
-    offset = (model_name != "YOLOv7") # model不是YOLOv7时，会对预测标签进行offset(-1)
-    match(match_json_save_path,offset=offset)
+    if mode == 0 or mode == 1:
+        # match 操作
+        print("matching...")
+        # 弃用(2026/05/04 09:15) match_json_save_path = os.path.join(match_save_dir,"match_v21.json")
+        match_json_save_path = os.path.join(save_dir,"match.json")
+        match(match_json_save_path,offset=label_offset)
+        print("match END")
+    if mode == 0 or mode == 2:
+        if mode == 2:
+            match_json_save_path = os.path.join(save_dir,"match.json")
+        # metirc 操作
+        print("metirc...")
+        collection_metric_save_dir = os.path.join(exp_root_dir,"collection_bbox_level",
+                                                dataset_name,model_name)
+        os.makedirs(collection_metric_save_dir,exist_ok=True)
+        # 弃用(2026/05/04 09:15) metric_save_path = os.path.join(collection_metric_save_dir,"collection_metrics_v21.json")
+        metric_save_path = os.path.join(save_dir,"metrics.json")
+        gt_box_metric_collection(match_json_save_path,metric_save_path)
+        print("metric END")
+    if mode == 0 or mode == 3:
+        # 排序
+        print("Ranking...")
+        if mode == 3:
+            match_json_save_path = os.path.join(save_dir,"match.json") # mode=1
+            metric_save_path = os.path.join(save_dir,"metrics.json") # mode=2
+        g_id_to_features,feature_name_to_sign = gt_box_features_build(metric_save_path)
+        print("gid ranking...")
+        ranked_gid_list, topsis_score_list = rank_gid(g_id_to_features,feature_name_to_sign)
+        print("image ranking...")
+        img_name_to_topsis_score = misimg_detect_by_topsis(match_json_save_path)
 
-    # 2:metirc
-    collection_metric_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",
-                                              dataset_name,model_name, "collection_metric")
-    os.makedirs(collection_metric_save_dir,exist_ok=True)
-    metric_save_path = os.path.join(collection_metric_save_dir,"collection_metrics_v21.json")
-    gt_box_metric_collection(match_json_save_path,metric_save_path)
-    
+        alpha = 1.5 # img_score = alpha * img_score, default=1.5
+        rank_res = total_rank_by_topsis_score(ranked_gid_list,topsis_score_list,
+                                            img_name_to_topsis_score,alpha)
+        print(f"rank的长度:{len(rank_res)}")
+        eval_apfd(rank_res)
+        # 保存排序结果
+        rank_res_save_file_name = "rank.joblib"
+        rank_res_save_path = os.path.join(save_dir, rank_res_save_file_name)
+        joblib.dump(rank_res, rank_res_save_path)
+        print(f"rank is saved in {rank_res_save_path}")
     # 3: 绘制metric line
     # correct_vs_fault(metric_save_path)
     
 
-    # 4: 得到并保存排序结果
-    # gid排序
     '''
-    g_id_to_features,feature_name_to_sign = gt_box_features_build(metric_save_path)
-    ranked_gid_list, topsis_score_list = rank_gid(g_id_to_features,feature_name_to_sign)
-    # img name to topsis score
-    img_name_to_topsis_score = misimg_detect_by_topsis(match_json_save_path)
-    # gid与img name topsis score合并
-    alpha = 1
-    rank_res = total_rank_by_topsis_score(ranked_gid_list,topsis_score_list,
-                                          img_name_to_topsis_score,alpha)
-    print(f"rank_res的长度:{len(rank_res)}") 
-    eval_apfd(rank_res)
-    '''
-    '''
-    # img排序
+    # 权排序
     ranked_img_list,detected_mis_img_name_list = misimg_detect_by_weight_score(match_json_save_path)
     # gid与img name两个序列合并成一个序列
     rank_res = total_rank_by_loc(ranked_gid_list,ranked_img_list)
-    '''
-
-
-    '''
-    # 保存排序结果
-    rank_res_save_dir = os.path.join(exp_root_dir, "final_res", "ours",
-                                      dataset_name, model_name, "rank_res")
-    os.makedirs(rank_res_save_dir,exist_ok=True)
-    rank_res_save_file_name = "rank_topsis_new.joblib"
-    rank_res_save_path = os.path.join(rank_res_save_dir, rank_res_save_file_name)
-    joblib.dump(rank_res, rank_res_save_path)
-    print(f"rank res is saved in {rank_res_save_path}")
     '''

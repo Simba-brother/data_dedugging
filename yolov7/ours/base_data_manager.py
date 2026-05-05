@@ -85,7 +85,9 @@ def get_all_img_name(imgs_dir:str) -> list[str]:
         if os.path.isfile(filepath):
             img_name_list.append(filename)
     return img_name_list
-    
+
+
+
 def get_ours_rank_res_path(dataset_name,model_name,istopsis:bool):
     if istopsis:
         return os.path.join(exp_data_root_dir,"final_res","ours",dataset_name,model_name,"rank_res","rank_topsis.joblib")
@@ -101,8 +103,7 @@ def get_collected_gt_box_json_path(dataset_name):
     '''
     得到收集上来的数据集trainset的bboxs(不含miss falut,因为miss是无法收集到bbox的)
     '''
-    return os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,
-                        "YOLOv7","gt_bboxs.json")
+    return os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,"gt_bboxs.json")
 
 def get_annotations_with_miss_json_path(dataset_name):
     '''

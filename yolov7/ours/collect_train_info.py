@@ -191,5 +191,3 @@ if __name__ == "__main__":
     error_annotations_path = get_error_ann_file_path(dataset_name)
     collect_gt_box_dir = os.path.join(exp_data_root,"collection_indicator_bbox_level",dataset_name,model_name)
     collect_gt_box()
-    
-    

@@ -41,7 +41,7 @@ def get_error_train_model_weight_file_path(dataset_name,model_name,epoch):
     elif model_name == "FRCNN":
         model_weight_file_path = os.path.join(exp_data_root_dir,"models",dataset_name.lower(), model_name.lower(), "error", f"epoch_{epoch}.pth")
     elif model_name == "SSD":
-        model_weight_file_path = os.path.join(exp_data_root_dir,"models",dataset_name.lower(),model_name.lower(), "error_bak", f"epoch_{epoch}.pth")
+        model_weight_file_path = os.path.join(exp_data_root_dir,"models",dataset_name.lower(),model_name.lower(), "error", f"epoch_{epoch}.pth")
     return model_weight_file_path
 
 def get_repair_train_model_weight_file_path(dataset_name,model_name, method_name):
@@ -58,6 +58,10 @@ def get_clean_train_model_weight_file_path(dataset_name,model_name):
         model_weight_file_path = os.path.join(exp_data_root_dir,"models",dataset_name.lower(), model_name.lower(),"clean","weights","last.pt")
     elif model_name == "FRCNN":
         model_weight_file_path = os.path.join(exp_data_root_dir,"models",dataset_name.lower(), model_name.lower(),"clean", "epoch_49.pth")
+    elif model_name == "SSD":
+        model_weight_file_path = os.path.join(exp_data_root_dir,"models",dataset_name.lower(), model_name.lower(),"clean", "epoch_49.pth")
+    else:
+        raise Exception("model name 指定错误")
     return model_weight_file_path
 
 def get_imgs_dir(dataset_name,train_or_val,style):
