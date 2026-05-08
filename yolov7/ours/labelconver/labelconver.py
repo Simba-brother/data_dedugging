@@ -37,9 +37,9 @@ def coco2voc(coco_anno_json_path:Path,voc_output_dir:Path):
 
 if __name__ == "__main__":
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     dataset_mode = "correct"
-    tvt = "train"
+    tvt = "val"
     
     if tvt == "train":
         coco_anno_json_path = Path(
@@ -51,11 +51,13 @@ if __name__ == "__main__":
         )
     if dataset_mode ==  "correct":
         dataset_mode = "clean"
+    if tvt == "val":
+        tvt = "test"
     voc_output_dir = Path(
         os.path.join(exp_data_root,"Results",dataset_mode,dataset_name,"labels","voc_format",tvt)
     )
     coco2voc(coco_anno_json_path,voc_output_dir)
-    
+
     '''
     exp_data_root = "/data/mml/data_debugging_data"
     dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
