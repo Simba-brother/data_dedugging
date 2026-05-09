@@ -7,7 +7,7 @@ import json
 import time
 from datetime import datetime
 from collections import defaultdict
-
+from ours.small_utils import get_cost_time,get_formatted_time
 import numpy as np
 from tqdm import tqdm
 from PIL import Image
@@ -296,13 +296,10 @@ def match(gt_json:dict, epoch_to_p_boxs:dict, offset:bool, save_path):
         json.dump(matched_gbox, f, indent=4)
     print(f"matched gbox is saved in {save_path}")
     end_time = time.time()  # 记录结束时间
-    elapsed_time = end_time - start_time  # 计算运行时间（秒）
-    hours = int(elapsed_time // 3600)  # 计算小时数
-    minutes = int((elapsed_time % 3600) // 60)  # 计算分钟数
-    seconds = elapsed_time % 60  # 计算剩余的秒数
-    print(f"运行时间：{hours:02d}:{minutes:02d}:{seconds:02.0f}")
-    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"实验结束时刻: {now_str}")
+    elapsed_timestamp = end_time - start_time  # 计算运行时间（秒）
+    cost_time = get_cost_time(elapsed_timestamp)
+    print(f"运行时间:{cost_time}")
+    print(f"实验结束时刻:{get_formatted_time()}")
     return matched_gbox
 
 def collect_metrics_for_gboxs(match_json:dict, save_path:str):
@@ -367,25 +364,32 @@ def collect_metrics_for_gboxs(match_json:dict, save_path:str):
     print(f"实验结束时刻: {now_str}")
 
 def main():
+    mode = 0
     gt_json = get_json(gt_json_path)
     epoch_to_p_boxs = get_epoch_to_pboxs(predicted_bboxs_dir)
     offset = False
-    if model_name != "YOLOv7":
+    if model_name not in ["YOLOv7","rtdetr"]:
         offset = True
-    # PG match
-    save_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"gp_box_match","match_v3.json")
-    matched_gbox = match(gt_json, epoch_to_p_boxs, offset, save_path)
-    
-    # collect metrics
-    # with open("/data/mml/data_debugging_data/temp/match/iou=0.4_PG/match.json", "r") as f:
-    #      matched_gbox = json.load(f)
-    save_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",dataset_name,model_name,"collection_metric","collection_metrics_v3.json")
-    collect_metrics_for_gboxs(matched_gbox, save_path)
-    
+    if mode == 0 or mode == 1:
+        print("match START")
+        # PG match
+        save_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,"match.json")
+        matched_gbox = match(gt_json, epoch_to_p_boxs, offset, save_path)
+        print("match END")
+    if mode == 0 or mode == 2:
+        print("metrics START")
+        # collect metrics
+        if mode == 2:
+            match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,"match.json")
+            with open(match_json_path, "r") as f:
+                matched_gbox = json.load(f)
+        save_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,"metrics.json")
+        collect_metrics_for_gboxs(matched_gbox, save_path)
+        print("metrics END")
 
 if __name__ == "__main__":
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
+    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD|rtdetr
     epochs = 50
     # 需要的数据文件路径
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
