@@ -389,12 +389,11 @@ def main():
 
 if __name__ == "__main__":
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD|rtdetr
+    model_name = "rtdetr" # YOLOv7|FRCNN|SSD|rtdetr
     epochs = 50
     # 需要的数据文件路径
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
-    predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
+    predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_bbox_level",
                                        dataset_name,model_name,
-                                       "collected_predicted_box",
-                                       "v3")
+                                       "predicted_bbox")
     main()
