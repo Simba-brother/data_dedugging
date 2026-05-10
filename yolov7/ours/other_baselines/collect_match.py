@@ -363,14 +363,16 @@ def collect_p():
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "SSD" # YOLOv7|FRCNN|SSD
+    model_name = "rtdetr" # YOLOv7|FRCNN|SSD|rtdetr
     epoch = 49
+    if model_name == "rtdetr":
+        epoch = 99
     gpu_id = 0
     device = torch.device(f"cuda:{gpu_id}")
     error_anno_file_path = get_error_ann_file_path(dataset_name)
-    collect_p_box_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
+    collect_p_box_dir = os.path.join(exp_data_root_dir,"collection_bbox_level",
                                      dataset_name,model_name,"other_baselines",
-                                     "collected_predicted_box_withprobs")
+                                     "predicted_bbox_withprobs")
     os.makedirs(collect_p_box_dir,exist_ok=True)
     # collect_p()
 
@@ -378,9 +380,9 @@ if __name__ == "__main__":
     p_json_path = os.path.join(collect_p_box_dir,
         f"epoch_{epoch}_predicted_bboxs.json"
     )
-    offset = (model_name != "YOLOv7") # model不是YOLOv7时，会对预测标签进行offset(-1)
-    match_save_dir = os.path.join(exp_root_dir,"collection_indicator_bbox_level",
-                                  dataset_name,model_name,"other_baselines","gp_box_match")
+    offset = (model_name not in ["YOLOv7","rtdetr"] ) # 是否会对预测标签进行offset(-1)
+    match_save_dir = os.path.join(exp_root_dir,"collection_bbox_level",
+                                  dataset_name,model_name,"other_baselines")
     os.makedirs(match_save_dir,exist_ok=True)
     match_save_path = os.path.join(match_save_dir,"match.json")
     match(g_json_path,p_json_path,offset)

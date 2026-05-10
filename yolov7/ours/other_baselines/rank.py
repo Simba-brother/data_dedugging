@@ -113,13 +113,12 @@ if __name__ == "__main__":
     print("PID:",PID)
     exp_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "SSD" # YOLOv7|FRCNN|SSD
+    model_name = "rtdetr" # YOLOv7|FRCNN|SSD|rtdetr
     exp_id = "01"
     baseline_name = "margin" # entropy|loss|deepgini|margin|
     g_json_path = get_collected_gt_box_json_path(dataset_name)
-    match_json_path = os.path.join(exp_root_dir, "collection_indicator_bbox_level",
-                              dataset_name,model_name,"other_baselines",
-                              "gp_box_match","match.json")
+    match_json_path = os.path.join(exp_root_dir, "collection_bbox_level",
+                              dataset_name,model_name,"other_baselines","match.json")
     all_train_img_dir = os.path.join(exp_root_dir,"retrain_dataset_split", dataset_name,
                                     "images", "origin")
     rank = main(g_json_path,match_json_path,baseline_name)
@@ -128,6 +127,7 @@ if __name__ == "__main__":
     # 保存rank数据    
     save_dir = os.path.join(exp_root_dir,"Results","other_baselines",baseline_name,
                             dataset_name,model_name,f"exp_{exp_id}","rank")
+    os.makedirs(save_dir,exist_ok=True)
     save_file_name = "rank.joblib"
     save_path = os.path.join(save_dir,save_file_name)
     joblib.dump(rank,save_path)
