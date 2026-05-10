@@ -807,7 +807,7 @@ if __name__ == "__main__":
     exp_id = "01"
     # 实验参数
     _args = {
-        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
         "model_name":"rtdetr",# YOLOv7|FRCNN|SSD|rtdetr
         "alpha":1.5, # discussion: [0.5,1.0,1.2,1.5,2]
         "img_rank": "图像级别的特征工程"

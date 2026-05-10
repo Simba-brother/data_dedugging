@@ -392,7 +392,7 @@ def main():
 if __name__ == "__main__":
     pid = os.getpid()
     print(f"pid:{pid}")
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     model_name = "rtdetr" # YOLOv7|FRCNN|SSD|rtdetr
     epochs = 50
     if model_name == "rtdetr":

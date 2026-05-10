@@ -119,12 +119,11 @@ def main():
 
 if __name__ == "__main__":
 
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     model_name = "rtdetr" # YOLOv7|FRCNN|SSD|rtdetr
     epochs = 50
     if model_name == "rtdetr":
         epochs = 100
-
     # 一定要是全量的trainset的imgsdir
     imgs_dir = os.path.join(exp_data_root_dir,"retrain_dataset_split", dataset_name,
                              "images", "origin")

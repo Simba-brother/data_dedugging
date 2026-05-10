@@ -112,7 +112,7 @@ if __name__ == "__main__":
     PID = os.getpid()
     print("PID:",PID)
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     model_name = "rtdetr" # YOLOv7|FRCNN|SSD|rtdetr
     exp_id = "01"
     baseline_name = "margin" # entropy|loss|deepgini|margin|
