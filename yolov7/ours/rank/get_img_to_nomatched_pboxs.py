@@ -8,7 +8,6 @@ from ours.data_organization_tools import get_all_miss_error_img_name_set
 from ours.small_utils import read_json,save_json_file,add_path_value
 
 
-
 def get_epoch_to_matched_p_boxs(gt_match_dict):
     # 每个epoch中所有被匹配上的p_box
     epoch_to_match_info = {}
@@ -109,7 +108,7 @@ def main():
     gt_match_json = read_json(match_json_path)
     img_to_p_boxs = get_img_to_no_matched_pboxs(all_img_name_list, gt_match_json)
 
-    save_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
+    save_dir = os.path.join(exp_data_root_dir,"collection_bbox_level",
                             dataset_name,model_name)
     save_file_name = "img_to_nomatched_pboxs.json"
     save_path = os.path.join(save_dir,save_file_name)
@@ -121,15 +120,17 @@ def main():
 if __name__ == "__main__":
 
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "SSD" # YOLOv7|FRCNN|SSD
+    model_name = "rtdetr" # YOLOv7|FRCNN|SSD|rtdetr
     epochs = 50
+    if model_name == "rtdetr":
+        epochs = 100
 
     # 一定要是全量的trainset的imgsdir
     imgs_dir = os.path.join(exp_data_root_dir,"retrain_dataset_split", dataset_name,
                              "images", "origin")
-    match_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
-                                dataset_name,model_name,"gp_box_match","match_v2.json")
+    match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",
+                                dataset_name,model_name,"match.json")
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
-    predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
-                                    dataset_name,model_name,"collected_predicted_box","v2")
+    predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_bbox_level",
+                                    dataset_name,model_name,"predicted_bbox")
     main()

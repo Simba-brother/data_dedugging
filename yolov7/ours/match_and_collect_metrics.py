@@ -39,7 +39,7 @@ def pretty_print(content,count,col_nums=10):
 
 def get_img_path_by_img_name(img_name,style):
     if style == "yolo":
-        image_path = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-yolo","train","images",img_name)
+        image_path = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-yolo","origin","train","images",img_name)
     elif style == "coco":
         image_path = os.path.join(exp_data_root_dir,"datasets",f"{dataset_name}-coco","train",img_name)
     return image_path
@@ -365,7 +365,9 @@ def collect_metrics_for_gboxs(match_json:dict, save_path:str):
 
 def main():
     mode = 0
+    print("装载gt框json数据...")
     gt_json = get_json(gt_json_path)
+    print("装载每个epoch的预测框json数据...")
     epoch_to_p_boxs = get_epoch_to_pboxs(predicted_bboxs_dir)
     offset = False
     if model_name not in ["YOLOv7","rtdetr"]:
@@ -388,11 +390,17 @@ def main():
         print("metrics END")
 
 if __name__ == "__main__":
+    pid = os.getpid()
+    print(f"pid:{pid}")
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "rtdetr" # YOLOv7|FRCNN|SSD|rtdetr
     epochs = 50
+    if model_name == "rtdetr":
+        epochs = 100
     # 需要的数据文件路径
+    # gt box数据
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
+    # 预测 box数据
     predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_bbox_level",
                                        dataset_name,model_name,
                                        "predicted_bbox")

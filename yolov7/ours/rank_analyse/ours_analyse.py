@@ -1111,10 +1111,12 @@ def analyse_rank(gt_json_path:str, annos_with_miss_json_path:str, rank_res:list,
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
+    model_name = "rtdetr" # YOLOv7|FRCNN|SSD|rtdetr
     epochs = 50
-    predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
-                                       dataset_name,model_name,"collected_predicted_box","v2")
+    if model_name == "rtdetr":
+        epochs = 100
+    predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_bbox_level",
+                                       dataset_name,model_name,"predicted_bbox")
     # 收集的gboxs
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
