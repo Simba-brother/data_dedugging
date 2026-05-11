@@ -20,7 +20,7 @@ from ours.base_data_manager import (exp_data_root_dir,
 
 from ours.data_organization_tools import (get_all_errored_g_box_id_set,get_all_miss_error_img_name_set,
                                           get_img_name_to_missed_annids,get_all_error_annoids,get_annoId_to_anno,
-                                          conver_ours_rank)
+                                          conver_ours_rank,get_all_error_idd_set,get_all_error_imgset)
 from ours.small_utils import read_json
 from ours.repair.repair_analyse import count_repair_rate
 
@@ -1083,35 +1083,44 @@ def analyse_rank(gt_json_path:str, annos_with_miss_json_path:str, rank_res:list,
         error_set = all_errored_g_box_id_set | all_miss_error_img_name_set
     # 计算APFD,FPR和FNR
     APFD = compute_apfd(error_set, rank_res)
-    FPR,FNR,F1 =calc_fpr_fnr_f1(rank_res, error_set)
+    FPR,FNR,F1 =calc_fpr_fnr_f1(rank_res, error_set, cut_off=0.5)
     print(f"排序总长度:{len(rank_res)}")
     print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR},F1:{F1}")
+    anno_error_json = read_json(anno_error_json_path)
+    converted_rank_list = conver_ours_rank(rank_res,g_boxes_json,anno_error_json)
+    annos_with_miss_json = read_json(annos_with_miss_json_path)
+    error_idd_set = get_all_error_idd_set(annos_with_miss_json)
+    error_imgset = get_all_error_imgset(annos_with_miss_json)
+    top1 = calc_top1(annos_with_miss_json,converted_rank_list,error_idd_set,error_imgset)
+    exam=calc_exam(annos_with_miss_json,converted_rank_list)
+    print(f"top1:{top1},exam:{exam}")
+    
 
     # 统计该rank的修复率
-    anno_with_miss_error = read_json(annos_with_miss_json_path)
-    imgname_to_missed_annids = get_img_name_to_missed_annids(anno_with_miss_error) 
-    all_error_annoids = get_all_error_annoids(anno_with_miss_error)
-    annoId_to_anno = get_annoId_to_anno(anno_with_miss_error)
-    imgname_to_missed_annids = get_img_name_to_missed_annids(anno_with_miss_error)
-    anno_error_path = get_error_ann_file_path(dataset_name)
-    anno_error = read_json(anno_error_path)
-    # idd的转换
-    converted_rank = conver_ours_rank(rank_res, g_boxes_json, anno_error)
-    repaired_box_count,repair_rate = count_repair_rate(converted_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate=0.4)
-    print(f"预计修复数量: {repaired_box_count}, 预计修复率: {repair_rate}")
+    # anno_with_miss_error = read_json(annos_with_miss_json_path)
+    # imgname_to_missed_annids = get_img_name_to_missed_annids(anno_with_miss_error) 
+    # all_error_annoids = get_all_error_annoids(anno_with_miss_error)
+    # annoId_to_anno = get_annoId_to_anno(anno_with_miss_error)
+    # imgname_to_missed_annids = get_img_name_to_missed_annids(anno_with_miss_error)
+    # anno_error_path = get_error_ann_file_path(dataset_name)
+    # anno_error = read_json(anno_error_path)
+    # # idd的转换
+    # converted_rank = conver_ours_rank(rank_res, g_boxes_json, anno_error)
+    # repaired_box_count,repair_rate = count_repair_rate(converted_rank,imgname_to_missed_annids,all_error_annoids,annoId_to_anno,cut_off_rate=0.4)
+    # print(f"预计修复数量: {repaired_box_count}, 预计修复率: {repair_rate}")
 
     # 可视化全排序
-    pic_save_dir = os.path.join(exp_data_root_dir,"temp","total_rank")
-    os.makedirs(pic_save_dir,exist_ok=True)
-    pic_save_file_name = "1.png"
-    pic_save_path = os.path.join(pic_save_dir,pic_save_file_name)
-    vis_rank(rank_res,all_errored_g_box_id_set, all_miss_error_img_name_set, pic_save_path)
+    # pic_save_dir = os.path.join(exp_data_root_dir,"temp","total_rank")
+    # os.makedirs(pic_save_dir,exist_ok=True)
+    # pic_save_file_name = "1.png"
+    # pic_save_path = os.path.join(pic_save_dir,pic_save_file_name)
+    # vis_rank(rank_res,all_errored_g_box_id_set, all_miss_error_img_name_set, pic_save_path)
 
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
-    model_name = "rtdetr" # YOLOv7|FRCNN|SSD|rtdetr
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
+    model_name = "YOLOv7" # YOLOv7|FRCNN|rtdetr|SSD
     epochs = 50
     if model_name == "rtdetr":
         epochs = 100
@@ -1120,6 +1129,7 @@ if __name__ == "__main__":
     # 收集的gboxs
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
+    anno_error_json_path = get_error_ann_file_path(dataset_name)
     # 我们的序
 
     rank_res = joblib.load(os.path.join(exp_data_root_dir,"Results","ours",dataset_name,model_name,
@@ -1133,4 +1143,4 @@ if __name__ == "__main__":
     #                                      "exp_01","topsis_feature","img_level","e_freq", "rank.joblib"))
 
     # 序分析
-    analyse_rank(gt_json_path, annos_with_miss_json_path, rank_res)
+    analyse_rank(gt_json_path, annos_with_miss_json_path,rank_res)

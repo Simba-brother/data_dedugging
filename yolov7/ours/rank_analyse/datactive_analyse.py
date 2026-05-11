@@ -8,7 +8,9 @@ from pycocotools.coco import COCO
 from ours.base_data_manager import (exp_data_root_dir, get_datactive_rank_res_path,
                                     get_error_ann_file_path,get_annotations_with_miss_json_path)
 from common import *
-from ours.data_organization_tools import conver_datactive_rank
+from ours.data_organization_tools import conver_datactive_rank,get_all_error_imgset,get_all_error_idd_set
+
+from ours.small_utils import read_json
 
 def get_image_id_to_image_name_for_coco(annos_with_miss_json:dict) -> dict:
     id2name = {}
@@ -85,16 +87,21 @@ def main():
 
     # 计算APFD,FPR和FNR
     APFD = compute_apfd(total_error_set, converted_rank_list)
-    FPR,FNR,F1 =calc_fpr_fnr_f1(converted_rank_list, total_error_set)
+    FPR,FNR,F1 =calc_fpr_fnr_f1(converted_rank_list, total_error_set, cut_off=0.5)
     print(f"APFD:{APFD},FPR:{FPR},FNR:{FNR},F1:{F1}")
+    annos_with_miss_json = read_json(annotations_with_miss_json_path)
+    error_idd_set = get_all_error_idd_set(annos_with_miss_json)
+    error_imgset = get_all_error_imgset(annos_with_miss_json)
+    top1 = calc_top1(annos_with_miss_json,converted_rank_list,error_idd_set,error_imgset)
+    exam=calc_exam(annos_with_miss_json,converted_rank_list)
+    print(f"top1:{top1},exam:{exam}")
+    # 可视化全排序
+    # pic_save_dir = os.path.join(exp_data_root_dir,"temp","total_rank")
+    # os.makedirs(pic_save_dir,exist_ok=True)
+    # pic_save_file_name = "datactive.png"
+    # pic_save_path = os.path.join(pic_save_dir,pic_save_file_name)
 
-     # 可视化全排序
-    pic_save_dir = os.path.join(exp_data_root_dir,"temp","total_rank")
-    os.makedirs(pic_save_dir,exist_ok=True)
-    pic_save_file_name = "datactive.png"
-    pic_save_path = os.path.join(pic_save_dir,pic_save_file_name)
-
-    vis_rank(converted_rank_list,error_ann_id_set, missed_img_name_set, pic_save_path)
+    # vis_rank(converted_rank_list,error_ann_id_set, missed_img_name_set, pic_save_path)
 
 
 
@@ -106,7 +113,7 @@ def xiufu_rank_res():
     catIds = coco.getCatIds()
     bg_id = catIds[-1]+1
     converted_rank = conver_datactive_rank(ranked_list, bg_id)
-    assert 129286 in converted_rank, "不通过"
+    # assert 129286 in converted_rank, "不通过"
     assert 61921 in converted_rank, "不通过"
     removed_idx_list = []
     for idx, instance in enumerate(ranked_list):
@@ -116,7 +123,7 @@ def xiufu_rank_res():
             removed_idx_list.append(idx)
     for idx in removed_idx_list:
         del ranked_list[idx]
-    # joblib.dump(ranked_list,"/data/mml/data_debugging_data/final_res/datactive/VisDrone/ranked_result/new/ranked_list.joblib")
+    # joblib.dump(ranked_list,f"{exp_data_root_dir}/Results/datactive/{dataset_name}/YOLOv7/{exp_id}/rank/rank_new.joblib")
 
 if __name__ == "__main__":
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone

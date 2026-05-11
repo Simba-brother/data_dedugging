@@ -2,9 +2,13 @@
 import os
 import scienceplots # sci绘图包
 import matplotlib
+import numpy as np
+from collections import defaultdict
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from ours.base_data_manager import exp_data_root_dir
+from ours.data_organization_tools import (get_imgid_to_imgname,get_annoid_to_imgname,
+                                          get_all_miss_error_img_name_set,get_all_annoids_detail)
 
 def draw_rank_hot(isError_list,save_path):
     # 话图看一下中毒样本在序中的分布
@@ -57,8 +61,7 @@ def compute_apfd(fault_set:set, rankded_list):
     apfd = round(apfd,4)
     return apfd
 
-def calc_fpr_fnr_f1(rank_list,error_set):
-    cut_off = 0.4
+def calc_fpr_fnr_f1(rank_list,error_set,cut_off=0.4):
     cut_point = int(len(rank_list) * cut_off)
     P_list = rank_list[:cut_point] # 预测为P
     N_list = rank_list[cut_point:] # 预测为N
@@ -83,6 +86,104 @@ def calc_fpr_fnr_f1(rank_list,error_set):
     f1 = 2*precision*recall / (precision + recall)
     f1 = round(f1,4)
     return fpr,fnr,f1
+
+
+def calc_top1(annos_with_miss_json:dict,rank_list,error_set,error_imageset):
+    annoid2imgname = get_annoid_to_imgname(annos_with_miss_json)
+    imgname2rankedcompoents = get_imgname_to_ranked_components(rank_list,annoid2imgname)
+
+    mingzhong_count = 0
+    img_nums = 0
+    for imgname,rankedcomponents in imgname2rankedcompoents.items():
+        if imgname not in error_imageset:
+            continue
+        img_nums += 1
+        if len(rankedcomponents) == 0:
+            # 这张图像没有排序组件
+            continue
+        if rankedcomponents[0] in error_set:
+            mingzhong_count+=1 
+    return round(mingzhong_count/img_nums,4)
+
+
+
+def calc_exam(annos_with_miss_json:dict,rank_list):
+    imgs_group = get_imgs_group_by_fault(annos_with_miss_json)
+    annoid2imgname = get_annoid_to_imgname(annos_with_miss_json)
+    imgname2rankedcompoents = get_imgname_to_ranked_components(rank_list,annoid2imgname)
+
+    '''
+    fault2annoids = {
+        "class_fault":[],
+        "loc_fault":[],
+        "redun_fault":[],
+        "miss_fault":[],
+        "clean":[]
+    }
+    '''
+    fault2annoids = get_all_annoids_detail(annos_with_miss_json)
+    missfault_imgname_set = get_all_miss_error_img_name_set(annos_with_miss_json)
+    faultid2faultname = {
+        0:"clean",
+        1:"class_fault",
+        2:"loc_fault",
+        3:"redun_fault",
+        4:"miss_fault"
+    }
+    exam_list = []
+    for fault_id,imgset in imgs_group.items(): # fault_id:[1,2,3,4]
+        faultset = None
+        if fault_id != 4:
+            fault_name = faultid2faultname[fault_id]
+            annoids = fault2annoids[fault_name]
+            faultset = set(annoids)
+        else:
+            faultset = missfault_imgname_set
+        exam_one_fault = exam_by_one_fault(imgset,imgname2rankedcompoents,faultset)
+        exam_list.append(exam_one_fault)
+    exam = round(sum(exam_list)/len(exam_list),4)
+    return exam
+
+def get_imgs_group_by_fault(annos_with_miss_json):
+    imgid2imgname = get_imgid_to_imgname(annos_with_miss_json)
+    group = defaultdict(set[str])
+    annos = annos_with_miss_json["annotations"]
+    for anno in annos:
+        imgname = imgid2imgname[anno["image_id"]]
+        if anno["fault_type"] != 0:
+            group[anno["fault_type"]].add(imgname)
+    return group
+
+def get_imgname_to_ranked_components(rank_list,annoid2imgname:dict):
+    imgname_to_ranked_components = defaultdict(list)
+    for idd in rank_list:
+        imgname = None
+        if type(idd) is str:
+            imgname = idd
+        else:
+            annoid = idd
+            imgname = annoid2imgname[annoid]
+        imgname_to_ranked_components[imgname].append(idd)
+    return imgname_to_ranked_components
+
+def exam_by_one_fault(imgname_set:set,imgname2rankedcompoents,faultset):
+    exam_list = []
+    for imgname in imgname_set:
+        ranked_components = imgname2rankedcompoents[imgname]
+        if len(ranked_components) == 0:
+            exam_list.append(0)
+            continue
+        exam_count = len(ranked_components)
+        for idx,component in enumerate(ranked_components):
+            if component in faultset:
+                exam_count = idx+1
+                break
+        exam_list.append(exam_count/len(ranked_components))
+    return sum(exam_list)/len(exam_list)
+
+
+
+
 
 def draw_total_rank(error_flag_list, save_path):
     # error_flag_list: 包含 0/1/2 的列表

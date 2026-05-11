@@ -126,6 +126,26 @@ def get_all_error_annoids(anno_error_with_miss:dict) -> list:
             all_error_annoids.append(anno["id"])
     return all_error_annoids
 
+def get_all_error_imgset(anno_error_with_miss:dict)->set:
+    error_imgset = set()
+    all_error_annoids = get_all_error_annoids(anno_error_with_miss)
+    annoid2imgname = get_annoid_to_imgname(anno_error_with_miss)
+    for error_annoid in all_error_annoids:
+        imgname = annoid2imgname[error_annoid]
+        error_imgset.add(imgname)
+    return error_imgset
+
+
+def get_all_error_idd_set(anno_error_with_miss:dict)->set:
+    error_annoid_set = set()
+    annos = anno_error_with_miss["annotations"]
+    for anno in annos:
+         if anno["fault_type"] in [1,2,3]:
+            error_annoid_set.add(anno["id"])
+    missfault_imgname_set = get_all_miss_error_img_name_set(anno_error_with_miss)
+    error_idd_set = error_annoid_set | missfault_imgname_set
+    return error_idd_set
+
 def get_all_annoids_detail(anno_error_with_miss:dict) -> list:
     all_annoids_detail = {
         "class_fault":[],
@@ -263,17 +283,21 @@ def get_all_miss_error_img_name_set(annos_with_miss_json_path:str) -> set[str]:
     '''
     获得所有具有miss fault的 img name set
     '''
-    with open(annos_with_miss_json_path, "r") as f:
-        annos_with_miss_json = json.load(f)
+    if type(annos_with_miss_json_path) is str:
+        with open(annos_with_miss_json_path, "r") as f:
+            annos_with_miss_json = json.load(f)
+    elif type(annos_with_miss_json_path) is dict:
+        annos_with_miss_json = annos_with_miss_json_path
+    else:
+        raise Exception("参数类型错误")
+    
     imageid_2_imagename = get_image_id_to_image_name_for_coco(annos_with_miss_json)
-    print(f"总图像数:{len(list(imageid_2_imagename.keys()))}")
     anns = annos_with_miss_json["annotations"]
     all_miss_error_img_name_set = set()
     for ann in anns:
         if ann["fault_type"] == 4:
             image_name = imageid_2_imagename[ann["image_id"]]
             all_miss_error_img_name_set.add(image_name)
-    print(f"miss error 图像数量:{len(all_miss_error_img_name_set)}")
     return all_miss_error_img_name_set
 
 
