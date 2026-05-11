@@ -1,7 +1,7 @@
 
 
 '''
-基于方法(ours/datactive)的排序结果，对label进行修复(repair) coco_style
+基于方法(ours/datactive/other baselines)的排序结果，对label进行修复(repair) coco_style
 '''
 import os
 import joblib
@@ -331,7 +331,7 @@ if __name__ == "__main__":
     _args = {
         "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7", # YOLOv7|FRCNN|SSD
-        "rank_method":"datactive", # ours|datactive|entropy|loss|deepgini|margin| 排序法
+        "rank_method":"datactive", # ours|datactive|entropy|loss|deepgini|margin|
         "cut_off_rate": 0.5,
         "is_save":False
     }

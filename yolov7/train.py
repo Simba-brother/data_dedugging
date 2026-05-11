@@ -577,10 +577,10 @@ if __name__ == '__main__':
     gpu_id = 1
 
     _args = {
-        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
-        "trainset_stat":"datactive", # clean|error|ours|datactive|entropy|loss|deepgini|margin
+        "trainset_stat":"margin", # clean|error|ours|datactive|entropy|loss|deepgini|margin
         "save_each_epoch":False # 恢复训练时不需要保存每个epoch的ckpt
     }
     dataset_name = _args["dataset_name"]
