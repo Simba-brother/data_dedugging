@@ -94,18 +94,15 @@ def calc_top1(annos_with_miss_json:dict,rank_list,error_set,error_imageset):
 
     mingzhong_count = 0
     img_nums = 0
-    for imgname,rankedcomponents in imgname2rankedcompoents.items():
-        if imgname not in error_imageset:
-            continue
+    for imgname in error_imageset:
+        rankedcomponents = imgname2rankedcompoents[imgname]
         img_nums += 1
         if len(rankedcomponents) == 0:
             # 这张图像没有排序组件
             continue
         if rankedcomponents[0] in error_set:
-            mingzhong_count+=1 
+            mingzhong_count+=1         
     return round(mingzhong_count/img_nums,4)
-
-
 
 def calc_exam(annos_with_miss_json:dict,rank_list):
     imgs_group = get_imgs_group_by_fault(annos_with_miss_json)
@@ -180,10 +177,6 @@ def exam_by_one_fault(imgname_set:set,imgname2rankedcompoents,faultset):
                 break
         exam_list.append(exam_count/len(ranked_components))
     return sum(exam_list)/len(exam_list)
-
-
-
-
 
 def draw_total_rank(error_flag_list, save_path):
     # error_flag_list: 包含 0/1/2 的列表
