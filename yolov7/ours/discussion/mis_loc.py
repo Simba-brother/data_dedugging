@@ -493,12 +493,12 @@ if __name__ == "__main__":
 
     # 需要的数据文件路径
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
-    match_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
+    match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",
                                    dataset_name,model_name,"gp_box_match","match_v2.json")
     
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     annos_with_miss_json = read_json(annos_with_miss_json_path)
-    predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
+    predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_bbox_level",
                                        dataset_name,model_name,"collected_predicted_box","v2")
     # 一定要是全量的trainset的imgsdir
     imgs_dir = os.path.join(exp_data_root_dir,"retrain_dataset_split", dataset_name,
