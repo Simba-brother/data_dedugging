@@ -106,8 +106,8 @@ def build_gid_feature(all_gids:list[int],g_box_id_to_metric:dict, K:float=0.2) -
         conf_threshold = 0.5*lastly_conf_mean
         iou_threshold = 0.5*lastly_iou_mean
 
-        min_e_conf = 0
-        min_e_iou = 0
+        min_e_conf = 0 # epochs
+        min_e_iou = 0 # epochs
         for e in range(epochs):
             if conf_list[e] > conf_threshold:
                 min_e_conf = e

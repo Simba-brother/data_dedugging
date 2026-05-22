@@ -10,6 +10,7 @@ from ours.small_utils import read_json
 import matplotlib.pyplot as plt
 
 from scipy import stats
+from sklearn.metrics import roc_curve, auc
 import seaborn as sns
 import topsispy as tp
 
@@ -18,9 +19,6 @@ def split_gid_clean_error(gt_json):
     error_gid_set = get_all_errored_g_box_id_set(gt_json)
     correct_gid_set = get_all_correct_g_box_id_set(gt_json)
     return correct_gid_set,error_gid_set
-
-
-
 
 def build_gid_feature(all_gids:list[int],g_box_id_to_metric:dict, K:float=0.2) -> tuple:
     g_id_to_features = {}
@@ -46,8 +44,8 @@ def build_gid_feature(all_gids:list[int],g_box_id_to_metric:dict, K:float=0.2) -
         conf_threshold = 0.5*lastly_conf_mean
         iou_threshold = 0.5*lastly_iou_mean
 
-        min_e_conf = 0
-        min_e_iou = 0
+        min_e_conf = epochs
+        min_e_iou = epochs
         for e in range(epochs):
             if conf_list[e] > conf_threshold:
                 min_e_conf = e
@@ -137,12 +135,52 @@ def visualization(correct_list,error_list,save_file_name:str):
     ax1.set_ylabel('Numerical value')
     # 直方图+核密度估计（KDE）
     # 1. 可视化：箱线图（看分布位置、离散程度）+ 直方图（看分布形态）
-    
+
     sns.histplot(correct_list, kde=True, ax=ax2, label='correct', alpha=0.5)
     sns.histplot(error_list, kde=True, ax=ax2, label='error', alpha=0.5)
     ax2.set_title('Histogram +KDE: Shape of distribution')
     ax2.legend()
     plt.savefig(f"/data/mml/data_debugging_data/temp/{save_file_name}.png")
+
+def plot_roc_auc(g_id_to_features, feature_name_to_sign, correct_gid_set, error_gid_set, save_file_name:str="roc_auc"):
+    """
+    把所有 feature 的 ROC 画在同一张图上。
+    label: error=1, correct=0
+    score: 把 feature 转成"越大越可疑"。sign==1 直接用；sign==-1 取相反数。
+    """
+    plt.figure(figsize=(8, 7))
+    feature_to_auc = {}
+    for feature_name, sign in feature_name_to_sign.items():
+        y_true = []
+        y_score = []
+        for gid in correct_gid_set:
+            y_true.append(0)
+            y_score.append(sign * float(g_id_to_features[gid][feature_name]))
+        for gid in error_gid_set:
+            y_true.append(1)
+            y_score.append(sign * float(g_id_to_features[gid][feature_name]))
+        fpr, tpr, _ = roc_curve(y_true, y_score)
+        roc_auc = auc(fpr, tpr)
+        feature_to_auc[feature_name] = roc_auc
+        plt.plot(fpr, tpr, lw=1.5, label=f"{feature_name} (AUC={roc_auc:.3f})")
+
+    plt.plot([0, 1], [0, 1], color='gray', lw=1, linestyle='--', label='random (AUC=0.500)')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(f'ROC Curves of Box Features ({save_file_name})')
+    plt.legend(loc='lower right', fontsize=8)
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(f"/data/mml/data_debugging_data/temp/{save_file_name}.png", dpi=150)
+    plt.close()
+
+    print("="*60)
+    print("AUC 排名:")
+    for fn, a in sorted(feature_to_auc.items(), key=lambda x: -x[1]):
+        print(f"  {fn:20s}  AUC={a:.4f}")
+    return feature_to_auc
 
 def main():
     gt_json = read_json(gt_json_path)
@@ -150,6 +188,8 @@ def main():
     gid_to_metric = get_g_id_to_metric(g_box_metrics_json_path)
     g_id_to_features,feature_name_to_sign = build_gid_feature(all_gids,gid_to_metric,K=0.2)
     correct_gid_set,error_gid_set = split_gid_clean_error(gt_json)
+    plot_roc_auc(g_id_to_features, feature_name_to_sign, correct_gid_set, error_gid_set,
+                 save_file_name=f"roc_auc_{dataset_name}_{model_name}")
     for feature_name,sign in feature_name_to_sign.items():
         print("="*60)
         print("feature_name:",feature_name)
@@ -180,7 +220,7 @@ if __name__ == "__main__":
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
-    g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
+    g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",
                                            dataset_name,model_name,"collection_metric",
                                            "collection_metrics_v2.json")
     main()

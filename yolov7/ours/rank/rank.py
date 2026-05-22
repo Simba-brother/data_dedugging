@@ -383,10 +383,6 @@ def rank_img_name(all_img_name_list:list[str], gt_match_json:dict, last_epoch=5,
     return ranked_image_name_list, ranked_score_list
 
 
-
-
-
-
 def build_feature_beta(all_gids:list[int],g_box_id_to_metric:dict, K:float=0.2) -> tuple:
     """
     根据每个 ground truth box 的跨 epoch 过程度量（conf_list 与 iou_list），
