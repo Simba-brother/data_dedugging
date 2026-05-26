@@ -144,12 +144,15 @@ def visualization(correct_list,error_list,save_file_name:str):
 
 def plot_roc_auc(g_id_to_features, feature_name_to_sign, correct_gid_set, error_gid_set, save_file_name:str="roc_auc"):
     """
-    把所有 feature 的 ROC 画在同一张图上。
+    把所有 feature 各自的 ROC 以及 topsis 综合 score 的 ROC 画在同一张图上。
     label: error=1, correct=0
-    score: 把 feature 转成"越大越可疑"。sign==1 直接用；sign==-1 取相反数。
+    feature score: 把 feature 转成"越大越可疑"。sign==1 直接用；sign==-1 取相反数。
+    topsis score: 所有 feature 一起传入 topsis 得到的综合分数（越大越可疑）。
     """
     plt.figure(figsize=(8, 7))
-    feature_to_auc = {}
+    name_to_auc = {}
+
+    # 各个 feature 的 ROC
     for feature_name, sign in feature_name_to_sign.items():
         y_true = []
         y_score = []
@@ -161,15 +164,33 @@ def plot_roc_auc(g_id_to_features, feature_name_to_sign, correct_gid_set, error_
             y_score.append(sign * float(g_id_to_features[gid][feature_name]))
         fpr, tpr, _ = roc_curve(y_true, y_score)
         roc_auc = auc(fpr, tpr)
-        feature_to_auc[feature_name] = roc_auc
+        name_to_auc[feature_name] = roc_auc
         plt.plot(fpr, tpr, lw=1.5, label=f"{feature_name} (AUC={roc_auc:.3f})")
+
+    # topsis 综合 score 的 ROC
+    g_id_list = sorted(g_id_to_features.keys())
+    gid_to_idx = {gid: i for i, gid in enumerate(g_id_list)}
+    feature_names = list(feature_name_to_sign.keys())
+    sign_list = [feature_name_to_sign[fn] for fn in feature_names]
+    data = np.array([[float(g_id_to_features[gid][fn]) for fn in feature_names] for gid in g_id_list])
+    weights = np.ones(len(feature_names)) / len(feature_names)
+    _, score_array = tp.topsis(data, weights, sign_list)
+    score_array = np.asarray(score_array)
+
+    eval_gids = [gid for gid in g_id_list if gid in correct_gid_set or gid in error_gid_set]
+    y_true_t = np.array([1 if gid in error_gid_set else 0 for gid in eval_gids])
+    y_score_t = np.array([score_array[gid_to_idx[gid]] for gid in eval_gids])
+    fpr_t, tpr_t, _ = roc_curve(y_true_t, y_score_t)
+    roc_auc_t = auc(fpr_t, tpr_t)
+    name_to_auc["TOPSIS_score"] = roc_auc_t
+    plt.plot(fpr_t, tpr_t, lw=2.5, color='black', label=f"TOPSIS_score (AUC={roc_auc_t:.3f})")
 
     plt.plot([0, 1], [0, 1], color='gray', lw=1, linestyle='--', label='random (AUC=0.500)')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title(f'ROC Curves of Box Features ({save_file_name})')
+    plt.title(f'ROC Curves of Box Features & TOPSIS Score ({save_file_name})')
     plt.legend(loc='lower right', fontsize=8)
     plt.grid(alpha=0.3)
     plt.tight_layout()
@@ -178,9 +199,9 @@ def plot_roc_auc(g_id_to_features, feature_name_to_sign, correct_gid_set, error_
 
     print("="*60)
     print("AUC 排名:")
-    for fn, a in sorted(feature_to_auc.items(), key=lambda x: -x[1]):
+    for fn, a in sorted(name_to_auc.items(), key=lambda x: -x[1]):
         print(f"  {fn:20s}  AUC={a:.4f}")
-    return feature_to_auc
+    return name_to_auc
 
 def main():
     gt_json = read_json(gt_json_path)

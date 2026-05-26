@@ -679,7 +679,7 @@ def main():
     # rank_res = img_rank(img_to_nomatched_pboxs_json_path) # img level feature
     rank_res = img_rank_2(img_to_nomatched_pboxs_json_path) # cluster level feature
     # 分析
-    rank_analyse(rank_res)
+    # rank_analyse(rank_res)
     # 可视化
     # pic_save_dir = os.path.join(exp_root_dir,"img_rank","max")
     # pic_save_file_name = "rank.png"
@@ -690,12 +690,11 @@ def main():
 
 if __name__ == "__main__":
     exp_root_dir= "/data/mml/data_debugging_data"
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
     epochs = 50
-    img_to_nomatched_pboxs_json_path = os.path.join(exp_root_dir,"collection_indicator_bbox_level",
-                    dataset_name,model_name,"img_to_nomatched_pboxs.json")
+    img_to_nomatched_pboxs_json_path = os.path.join(
+        exp_root_dir,"collection_bbox_level",
+        dataset_name,model_name,"img_to_nomatched_pboxs.json")
     main()
     # compare()
-    
-    

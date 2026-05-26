@@ -441,8 +441,6 @@ def get_img_to_scoreAndFeature(img_to_clusters:dict,last_epoch:int):
     return img_name_to_scoreAndFeature
 
 
-
-
 def get_img_to_no_matched_pboxs(all_img_name_list, gt_match_json:dict)->dict:
     last_epoch_nums = 5
     conf_threshold = 0.6
@@ -553,7 +551,7 @@ def main():
     for img_name in with_miss_fault_img_set:
         error_data_list.append(img_to_feature[img_name]["topsis_score"])
     
-    visualization(correct_data_list,error_data_list,"topsis_score")
+    # visualization(correct_data_list,error_data_list,"topsis_score")
     
     hypothesis_testing(correct_data_list,error_data_list,"less")
     
@@ -569,9 +567,7 @@ def main():
         for img_name in with_miss_fault_img_set:
             error_data_list.append(img_to_feature[img_name]["img_features"][feature_name])
         
-        
-        
-        visualization(correct_data_list,error_data_list,feature_name)
+        # visualization(correct_data_list,error_data_list,feature_name)
         if feature_to_sign[feature_name] == 1:
             # 我们直觉认为 error data list > correct data list, 因为sign == -1, 说明越小topsis分数（可疑）越高，排名越靠前。
             # 单侧检验是否 correct < error
@@ -584,10 +580,10 @@ if __name__ == "__main__":
     model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
     epochs = 50
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
-    match_json_path = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
+    match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",
                                 dataset_name,model_name,"gp_box_match","match_v2.json")
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
-    predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
+    predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_bbox_level",
                                     dataset_name,model_name,"collected_predicted_box","v2")
     # 一定要是全量的trainset的imgsdir
     imgs_dir = os.path.join(exp_data_root_dir,"retrain_dataset_split", dataset_name,
@@ -597,7 +593,7 @@ if __name__ == "__main__":
     gt_match_json = read_json(match_json_path)
     img_to_p_boxs = get_img_to_no_matched_pboxs(all_img_name_list, gt_match_json)
     
-    save_dir = os.path.join(exp_data_root_dir,"collection_indicator_bbox_level",
+    save_dir = os.path.join(exp_data_root_dir,"collection_bbox_level",
                             dataset_name,model_name)
     save_file_name = "img_to_nomatched_pboxs.json"
     save_path = os.path.join(save_dir,save_file_name)

@@ -5,6 +5,7 @@ import os
 import numpy as np
 from collections import Counter
 from sklearn.metrics import roc_auc_score
+import topsispy as tp
 
 from ours.data_organization_tools import (get_all_gids, get_g_id_to_metric,
                                           get_all_errored_g_box_id_set,
@@ -54,6 +55,32 @@ def auc_with_and_without_unmatched(g_id_to_features, feature_name_to_sign,
         auc_all = roc_auc_score(y_all, s_all)
         auc_m = roc_auc_score(y_m, s_m) if (n_e_m > 0 and n_c_m > 0) else float('nan')
         print(f"{fn:<22}{auc_all:>12.4f}{auc_m:>20.4f}{n_e_m:>12}{n_c_m:>12}")
+
+    # 综合 TOPSIS score：所有 feature 一起跑 TOPSIS，看综合 score 的 AUC
+    g_id_list = sorted(g_id_to_features.keys())
+    gid_to_idx = {gid: i for i, gid in enumerate(g_id_list)}
+    feature_names = list(feature_name_to_sign.keys())
+    sign_list = [feature_name_to_sign[fn] for fn in feature_names]
+    data = np.array([[float(g_id_to_features[gid][fn]) for fn in feature_names] for gid in g_id_list])
+    weights = np.ones(len(feature_names)) / len(feature_names)
+    _, score_array = tp.topsis(data, weights, sign_list)
+    score_array = np.asarray(score_array)
+
+    y_all, s_all, y_m, s_m = [], [], [], []
+    n_e_m = n_c_m = 0
+    for gid in correct_gid_set:
+        v = float(score_array[gid_to_idx[gid]])
+        y_all.append(0); s_all.append(v)
+        if gid in matched_gid_set:
+            y_m.append(0); s_m.append(v); n_c_m += 1
+    for gid in error_gid_set:
+        v = float(score_array[gid_to_idx[gid]])
+        y_all.append(1); s_all.append(v)
+        if gid in matched_gid_set:
+            y_m.append(1); s_m.append(v); n_e_m += 1
+    auc_all = roc_auc_score(y_all, s_all)
+    auc_m = roc_auc_score(y_m, s_m) if (n_e_m > 0 and n_c_m > 0) else float('nan')
+    print(f"{'TOPSIS_score':<22}{auc_all:>12.4f}{auc_m:>20.4f}{n_e_m:>12}{n_c_m:>12}")
 
 
 def run(dataset_name, model_name="YOLOv7"):
