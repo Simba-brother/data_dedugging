@@ -14,6 +14,10 @@ import pprint
 from collections import defaultdict
 import numpy as np
 import topsispy as tp
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, roc_auc_score
 from ours.base_data_manager import (exp_data_root_dir,
                                     get_annotations_with_miss_json_path,
                                     get_collected_gt_box_json_path
@@ -321,6 +325,216 @@ def get_img_to_topsis_score(img_to_clusters:dict,last_epoch:int):
     return img_name_to_max_score
 
 
+def missed_box_to_xyxy(missed_box:dict) -> list:
+    x, y, w, h = missed_box["bbox"]
+    return [int(x), int(y), int(x + w), int(y + h)]
+
+
+def cluster_locates_any_missed_box(cluster:list, missed_boxs:list, iou_threshold:float):
+    '''
+    判断一个候选cluster是否真正定位到了该图像中的任意missed box。
+
+    返回:
+    ---
+    hit_flag: bool
+        cluster中是否存在p_box与任意missed box的IoU大于阈值
+    max_iou: float
+        cluster内所有p_box与所有missed box之间的最大IoU
+    '''
+    max_iou = 0.0
+    for missed_box in missed_boxs:
+        missed_bbox = missed_box_to_xyxy(missed_box)
+        for p_box in cluster:
+            iou = calu_iou(missed_bbox, p_box["bbox"])
+            max_iou = max(max_iou, iou)
+            if iou > iou_threshold:
+                return True, max_iou
+    return False, max_iou
+
+
+def build_cluster_rank_records(img_to_clusters:dict,
+                               imgname_to_missed_boxs:dict,
+                               last_epoch:int,
+                               iou_threshold:float) -> list[dict]:
+    '''
+    构建cluster级排序评估样本。
+
+    每个cluster是一条样本:
+    - score: cluster的TOPSIS分数，越大越可疑
+    - label: 该cluster是否真正定位到任意missed box
+    - max_iou_to_missed: 与同图像missed boxes的最大IoU
+    '''
+    cluster_features = []
+    cluster_signs = []
+    cluster_meta = []
+
+    for img_name, clusters in img_to_clusters.items():
+        missed_boxs = imgname_to_missed_boxs.get(img_name, [])
+        for cluster_id, cluster in enumerate(clusters):
+            features, signs = get_cluster_feaure(cluster, last_epoch)
+            hit_flag, max_iou = cluster_locates_any_missed_box(
+                cluster, missed_boxs, iou_threshold)
+            cluster_features.append(features)
+            cluster_signs = signs
+            cluster_meta.append({
+                "img_name": img_name,
+                "cluster_id": cluster_id,
+                "label": int(hit_flag),
+                "max_iou_to_missed": float(max_iou),
+                "cluster_size": len(cluster),
+            })
+
+    if not cluster_features:
+        return []
+
+    data_array = np.array(cluster_features)
+    weights = np.ones(data_array.shape[1]) / data_array.shape[1]
+    _, score_array = tp.topsis(data_array, weights, cluster_signs)
+    score_array = np.nan_to_num(score_array, nan=0.0, posinf=1.0, neginf=0.0)
+
+    records = []
+    for meta, features, score in zip(cluster_meta, cluster_features, score_array):
+        record = dict(meta)
+        record["score"] = float(score)
+        record["features"] = {
+            "conf": float(features[0]),
+            "stab": float(features[1]),
+            "cls_consis": float(features[2]),
+            "e_freq": float(features[3]),
+        }
+        records.append(record)
+    records.sort(key=lambda x: (-x["score"], x["img_name"], x["cluster_id"]))
+    return records
+
+
+def best_f1_from_scores(y_true:np.ndarray, y_score:np.ndarray) -> dict:
+    '''
+    在所有score阈值上扫描，返回最佳F1及对应precision/recall/threshold。
+    预测规则: score >= threshold 判为定位到miss fault的cluster。
+    '''
+    best = {
+        "threshold": None,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": int(np.sum(y_true == 1)),
+    }
+    for threshold in sorted(set(y_score.tolist()), reverse=True):
+        y_pred = (y_score >= threshold).astype(int)
+        tp = int(np.sum((y_pred == 1) & (y_true == 1)))
+        fp = int(np.sum((y_pred == 1) & (y_true == 0)))
+        fn = int(np.sum((y_pred == 0) & (y_true == 1)))
+        precision = tp / (tp + fp) if tp + fp > 0 else 0.0
+        recall = tp / (tp + fn) if tp + fn > 0 else 0.0
+        f1 = (2 * precision * recall / (precision + recall)
+              if precision + recall > 0 else 0.0)
+        if f1 > best["f1"]:
+            best = {
+                "threshold": float(threshold),
+                "precision": float(precision),
+                "recall": float(recall),
+                "f1": float(f1),
+                "tp": tp,
+                "fp": fp,
+                "fn": fn,
+            }
+    return best
+
+
+def print_topk_cluster_metrics(records:list[dict], positive_count:int):
+    topk_specs = [
+        ("top1", 1),
+        ("top5", 5),
+        ("top10", 10),
+        ("top1%", max(1, int(len(records) * 0.01))),
+        ("top5%", max(1, int(len(records) * 0.05))),
+        ("top10%", max(1, int(len(records) * 0.10))),
+        ("top20%", max(1, int(len(records) * 0.20))),
+    ]
+
+    print("\n[Cluster Top-K 定位命中]")
+    print(f"{'scope':<10}{'k':>8}{'hits':>8}{'precision':>12}"
+          f"{'recall':>12}{'f1':>12}")
+    for name, k in topk_specs:
+        k = min(k, len(records))
+        selected = records[:k]
+        hits = sum(r["label"] for r in selected)
+        precision = hits / k if k > 0 else 0.0
+        recall = hits / positive_count if positive_count > 0 else 0.0
+        f1 = (2 * precision * recall / (precision + recall)
+              if precision + recall > 0 else 0.0)
+        print(f"{name:<10}{k:>8}{hits:>8}{precision:>12.4f}"
+              f"{recall:>12.4f}{f1:>12.4f}")
+
+
+def evaluate_cluster_ranking(img_to_clusters:dict,
+                             imgname_to_missed_boxs:dict,
+                             last_epoch:int,
+                             iou_threshold:float,
+                             save_dir:str):
+    '''
+    评估“排名靠前的cluster是否真的定位到了miss fault”。
+
+    label=1: cluster中至少有一个p_box与真实missed box的IoU > iou_threshold
+    score: cluster TOPSIS分数
+    '''
+    records = build_cluster_rank_records(
+        img_to_clusters, imgname_to_missed_boxs, last_epoch, iou_threshold)
+    if not records:
+        print("\n[Cluster Ranking] 没有候选cluster，无法评估。")
+        return
+
+    y_true = np.array([r["label"] for r in records], dtype=int)
+    y_score = np.array([r["score"] for r in records], dtype=float)
+    positive_count = int(np.sum(y_true == 1))
+    negative_count = int(np.sum(y_true == 0))
+
+    print("\n[Cluster Ranking ROC/AUC/F1]")
+    print(f"cluster总数: {len(records)}")
+    print(f"真正定位到miss fault的cluster数量: {positive_count}")
+    print(f"未定位到miss fault的cluster数量: {negative_count}")
+
+    if positive_count == 0 or negative_count == 0:
+        print("正负样本不同时存在，无法计算ROC/AUC和F1阈值扫描。")
+        return
+
+    fpr, tpr, _ = roc_curve(y_true, y_score)
+    roc_auc = roc_auc_score(y_true, y_score)
+    print(f"cluster_score_auc: {roc_auc:.4f}")
+
+    best_f1 = best_f1_from_scores(y_true, y_score)
+    print("best_f1_threshold_eval:")
+    pprint.pprint({
+        "threshold": round(best_f1["threshold"], 6),
+        "precision": round(best_f1["precision"], 4),
+        "recall": round(best_f1["recall"], 4),
+        "f1": round(best_f1["f1"], 4),
+        "tp": best_f1["tp"],
+        "fp": best_f1["fp"],
+        "fn": best_f1["fn"],
+    })
+
+    print_topk_cluster_metrics(records, positive_count)
+
+    os.makedirs(save_dir, exist_ok=True)
+    roc_save_path = os.path.join(
+        save_dir, f"cluster_loc_roc_iou_{iou_threshold}.png")
+    plt.figure(figsize=(6, 5))
+    plt.plot(fpr, tpr, lw=2, label=f"AUC={roc_auc:.4f}")
+    plt.plot([0, 1], [0, 1], color="gray", linestyle="--", lw=1)
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("Cluster ranking ROC for miss-fault localization")
+    plt.legend(loc="lower right")
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(roc_save_path, dpi=150)
+    plt.close()
+    print(f"ROC曲线保存路径: {roc_save_path}")
+
+
 def get_img_name_to_epoch_to_unmatched_p_boxs(epoch_to_matched_p_ids:dict,
                                               last_epoch: int=5, conf_threshold: float=0.6):
     '''
@@ -442,9 +656,7 @@ def main():
         clusters = img_to_clusters[img_name]
         # # 遍历该img的所有的missed boxs
         for missed_box in missed_boxs:
-            x, y, w, h = missed_box['bbox']
-            x1, y1, x2, y2 = int(x), int(y), int(x + w), int(y + h)
-            missed_bbox = [x1,y1,x2,y2]
+            missed_bbox = missed_box_to_xyxy(missed_box)
             # 遍历该img的所有预测簇
             for cluster in clusters:
                 for p_box in cluster:
@@ -457,6 +669,8 @@ def main():
                         missed_box["success_loc_flag"] = True
                         missed_box["loc_p_box_list"].append(p_box)
                         break
+                if missed_box["success_loc_flag"] is True:
+                    break
 
     total_missed_box_nums = 0
     loced_nums = 0
@@ -468,7 +682,14 @@ def main():
     print("总共missed_box数量:",total_missed_box_nums)
     print("loc准确的数量:",loced_nums)
     loc_success_rate = round(loced_nums / total_missed_box_nums,4)
-    print("loc_success_rate:",loc_success_rate)
+    print("misloc_recall_rate:",loc_success_rate)
+
+    save_dir = os.path.join(os.path.dirname(__file__), "features", "results",
+                            "mis_loc", dataset_name, model_name)
+    evaluate_cluster_ranking(img_to_clusters, imgname_to_missed_boxs,
+                             last_epoch=5,
+                             iou_threshold=iou_threshold,
+                             save_dir=save_dir)
 
 
 
@@ -495,6 +716,9 @@ if __name__ == "__main__":
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",
                                    dataset_name,model_name,"gp_box_match","match_v2.json")
+    if dataset_name == "VisDrone":
+        match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",
+                                   dataset_name,model_name,"gp_box_match","match_v21.json")
     
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     annos_with_miss_json = read_json(annos_with_miss_json_path)

@@ -2,6 +2,7 @@
 对排序使用的features进行讨论
 '''
 import os
+import csv
 import numpy as np
 from ours.data_organization_tools import (get_all_gids,get_g_id_to_metric,
                                           get_all_errored_g_box_id_set,get_all_correct_g_box_id_set)
@@ -11,8 +12,22 @@ import matplotlib.pyplot as plt
 
 from scipy import stats
 from sklearn.metrics import roc_curve, auc
+from sklearn.feature_selection import mutual_info_classif
 import seaborn as sns
 import topsispy as tp
+import pandas as pd
+
+
+FEATURE_NAME_TO_SIGN = {
+    "early_conf_mean": -1,
+    "early_iou_mean": -1,
+    "lastly_conf_mean": -1,
+    "lastly_iou_mean": -1,
+    "conf_mean": -1,
+    "iou_mean": -1,
+    "D_conf": 1,
+    "D_iou": 1,
+}
 
 
 def split_gid_clean_error(gt_json):
@@ -69,16 +84,7 @@ def build_gid_feature(all_gids:list[int],g_box_id_to_metric:dict, K:float=0.2) -
             "D_conf":D_conf, # 起量延迟 conf，越大越可疑 -> topsis分数越高 -> 1
             "D_iou":D_iou, # 起量延迟 iou，越大越可疑 -> topsis分数越高 -> 1
         }
-    feature_name_to_sign = {
-        "early_conf_mean":-1, # 越小越可疑
-        "early_iou_mean":-1,
-        "lastly_conf_mean":-1,
-        "lastly_iou_mean":-1,
-        "conf_mean":-1,
-        "iou_mean":-1,
-        "D_conf":1,
-        "D_iou":1
-    }
+    feature_name_to_sign = FEATURE_NAME_TO_SIGN.copy()
 
     print(f"all gbox数量:{len(all_gids)}")
     print(f"matched gbox数量:{len(g_id_to_features)}")
@@ -203,45 +209,345 @@ def plot_roc_auc(g_id_to_features, feature_name_to_sign, correct_gid_set, error_
         print(f"  {fn:20s}  AUC={a:.4f}")
     return name_to_auc
 
-def main():
-    gt_json = read_json(gt_json_path)
-    all_gids = get_all_gids(gt_json)
-    gid_to_metric = get_g_id_to_metric(g_box_metrics_json_path)
-    g_id_to_features,feature_name_to_sign = build_gid_feature(all_gids,gid_to_metric,K=0.2)
-    correct_gid_set,error_gid_set = split_gid_clean_error(gt_json)
-    plot_roc_auc(g_id_to_features, feature_name_to_sign, correct_gid_set, error_gid_set,
-                 save_file_name=f"roc_auc_{dataset_name}_{model_name}")
-    for feature_name,sign in feature_name_to_sign.items():
-        print("="*60)
-        print("feature_name:",feature_name)
-        print("feature sign:",sign)
-        correct_data_list = []
-        error_data_list = []
-        for gid in correct_gid_set:
-            correct_data_list.append(float(g_id_to_features[gid][feature_name]))
-        for gid in error_gid_set:
-            error_data_list.append(float(g_id_to_features[gid][feature_name]))
-        # 数据可视化
-        visualization(correct_data_list,error_data_list,feature_name)
-        # 统计这两个序列的差异
-        if sign == -1: 
-            # 我们直觉认为 error data list < correct data list, 因为sign == -1, 说明越小topsis分数（可疑）越高，排名越靠前。
-            # 单侧检验是否 correct > error
-            hypothesis_testing(correct_data_list,error_data_list,"greater")
-        elif sign == 1:
-            # 我们直觉认为 error data list > correct data list, 因为sign == -1, 说明越小topsis分数（可疑）越高，排名越靠前。
-            # 单侧检验是否 correct < error
-            hypothesis_testing(correct_data_list,error_data_list,"less")
+
+def _safe_corr(func, x, y):
+    if len(x) < 2 or len(np.unique(x)) < 2 or len(np.unique(y)) < 2:
+        return float("nan"), float("nan")
+    stat, p_value = func(x, y)
+    return float(stat), float(p_value)
+
+def _entropy_from_counts(counts):
+    counts = np.asarray(counts, dtype=float)
+    total = counts.sum()
+    if total <= 0:
+        return 0.0
+    probs = counts[counts > 0] / total
+    return float(-np.sum(probs * np.log2(probs)))
+
+def _discretize_by_quantile(values, n_bins=10):
+    """
+    用分位数离散化连续特征，便于计算信息熵/互信息。
+    重复取值很多时，实际 bin 数可能小于 n_bins。
+    """
+    values = np.asarray(values, dtype=float)
+    unique_values = np.unique(values)
+    if len(unique_values) <= 1:
+        return np.zeros(len(values), dtype=int)
+    quantiles = np.linspace(0, 1, min(n_bins, len(unique_values)) + 1)[1:-1]
+    edges = np.unique(np.quantile(values, quantiles))
+    if len(edges) == 0:
+        return np.zeros(len(values), dtype=int)
+    return np.digitize(values, edges, right=False)
+
+def _mutual_information_discrete(feature_bins, labels):
+    feature_bins = np.asarray(feature_bins, dtype=int)
+    labels = np.asarray(labels, dtype=int)
+    n = len(labels)
+    if n == 0:
+        return 0.0, 0.0, 0.0, 0.0, 0.0
+
+    feature_values = np.unique(feature_bins)
+    label_values = np.unique(labels)
+    joint_counts = np.zeros((len(feature_values), len(label_values)), dtype=float)
+    f_to_i = {v: i for i, v in enumerate(feature_values)}
+    y_to_i = {v: i for i, v in enumerate(label_values)}
+    for f, y in zip(feature_bins, labels):
+        joint_counts[f_to_i[f], y_to_i[y]] += 1
+
+    pxy = joint_counts / n
+    px = pxy.sum(axis=1)
+    py = pxy.sum(axis=0)
+    mi = 0.0
+    for i in range(pxy.shape[0]):
+        for j in range(pxy.shape[1]):
+            if pxy[i, j] > 0 and px[i] > 0 and py[j] > 0:
+                mi += pxy[i, j] * np.log2(pxy[i, j] / (px[i] * py[j]))
+
+    h_feature = _entropy_from_counts(joint_counts.sum(axis=1))
+    h_label = _entropy_from_counts(joint_counts.sum(axis=0))
+    mi_over_h_label = mi / h_label if h_label > 0 else float("nan")
+    mi_over_h_feature = mi / h_feature if h_feature > 0 else float("nan")
+    return float(mi), float(h_feature), float(h_label), float(mi_over_h_label), float(mi_over_h_feature)
+
+def correlation_importance_analysis(df, feature_names, subset_name):
+    labels = _series_to_bool(df["is_error"]).astype(int)
+    rows = []
+    for feature_name in feature_names:
+        raw_values = df[feature_name].astype(float).to_numpy()
+        sign = int(df[f"{feature_name}_sign"].iloc[0])
+        suspicious_values = sign * raw_values
+        pearson_r, pearson_p = _safe_corr(stats.pearsonr, suspicious_values, labels)
+        spearman_r, spearman_p = _safe_corr(stats.spearmanr, suspicious_values, labels)
+        point_biserial_r, point_biserial_p = _safe_corr(stats.pointbiserialr, raw_values, labels)
+        rows.append({
+            "subset": subset_name,
+            "feature": feature_name,
+            "n": len(labels),
+            "n_error": int(labels.sum()),
+            "n_correct": int(len(labels) - labels.sum()),
+            "pearson_r_suspicious": pearson_r,
+            "pearson_p": pearson_p,
+            "spearman_r_suspicious": spearman_r,
+            "spearman_p": spearman_p,
+            "point_biserial_r_raw": point_biserial_r,
+            "point_biserial_p": point_biserial_p,
+            "abs_spearman_r": abs(spearman_r) if not np.isnan(spearman_r) else float("nan"),
+        })
+    rows.sort(key=lambda row: -row["abs_spearman_r"] if not np.isnan(row["abs_spearman_r"]) else float("-inf"))
+    return rows
+
+def mutual_information_importance_analysis(df, feature_names, subset_name, n_bins=10):
+    labels = _series_to_bool(df["is_error"]).astype(int)
+    rows = []
+    if len(labels) == 0 or len(np.unique(labels)) < 2:
+        return rows
+
+    suspicious_matrix = np.column_stack([
+        int(df[f"{feature_name}_sign"].iloc[0]) * df[feature_name].astype(float).to_numpy()
+        for feature_name in feature_names
+    ])
+    n_neighbors = max(1, min(3, len(labels) - 1))
+    mi_continuous = mutual_info_classif(
+        suspicious_matrix, labels, discrete_features=False,
+        n_neighbors=n_neighbors, random_state=0
+    )
+    for idx, feature_name in enumerate(feature_names):
+        suspicious_values = suspicious_matrix[:, idx]
+        feature_bins = _discretize_by_quantile(suspicious_values, n_bins=n_bins)
+        mi_bits, h_feature, h_label, mi_over_h_label, mi_over_h_feature = (
+            _mutual_information_discrete(feature_bins, labels)
+        )
+        rows.append({
+            "subset": subset_name,
+            "feature": feature_name,
+            "n": len(labels),
+            "n_error": int(labels.sum()),
+            "n_correct": int(len(labels) - labels.sum()),
+            "bins": int(len(np.unique(feature_bins))),
+            "mi_bits_quantile": mi_bits,
+            "h_feature_bits": h_feature,
+            "h_label_bits": h_label,
+            "mi_over_h_label": mi_over_h_label,
+            "mi_over_h_feature": mi_over_h_feature,
+            "mi_knn_nats": float(mi_continuous[idx]),
+        })
+    rows.sort(key=lambda row: -row["mi_over_h_label"] if not np.isnan(row["mi_over_h_label"]) else float("-inf"))
+    return rows
+
+def write_rows_to_csv(rows, output_path):
+    if not rows:
+        return
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+
+def plot_importance_bar(rows, metric_name, title, output_path):
+    if not rows:
+        return
+    feature_names = [row["feature"] for row in rows]
+    values = [row[metric_name] for row in rows]
+    plt.figure(figsize=(9, 5))
+    sns.barplot(x=values, y=feature_names, orient="h")
+    plt.xlabel(metric_name)
+    plt.ylabel("feature")
+    plt.title(title)
+    plt.grid(axis="x", alpha=0.3)
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    plt.savefig(output_path, dpi=150)
+    plt.close()
+
+def plot_feature_correlation_heatmap(df, feature_names, subset_name, output_path):
+    matrix = np.column_stack([
+        int(df[f"{feature_name}_sign"].iloc[0]) * df[feature_name].astype(float).to_numpy()
+        for feature_name in feature_names
+    ])
+    if matrix.shape[0] < 2:
+        return
+    corr_matrix = np.corrcoef(matrix, rowvar=False)
+    plt.figure(figsize=(8, 7))
+    sns.heatmap(
+        corr_matrix,
+        xticklabels=feature_names,
+        yticklabels=feature_names,
+        cmap="coolwarm",
+        vmin=-1,
+        vmax=1,
+        annot=True,
+        fmt=".2f",
+        square=True,
+        cbar_kws={"label": "Pearson r"},
+    )
+    plt.title(f"Feature Correlation Heatmap ({subset_name})")
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    plt.savefig(output_path, dpi=150)
+    plt.close()
+
+def print_importance_rows(title, rows, metric_name):
+    print("="*60)
+    print(title)
+    for row in rows:
+        value = row[metric_name]
+        if np.isnan(value):
+            value_text = "nan"
         else:
-            # 我们不知 error data list 与 correct data list的大小关系
-            hypothesis_testing(correct_data_list,error_data_list,"two-sided")
+            value_text = f"{value:.4f}"
+        print(f"  {row['feature']:20s}  {metric_name}={value_text}")
+
+def _series_to_bool(series):
+    if pd.api.types.is_bool_dtype(series):
+        return series.to_numpy(dtype=bool)
+    if pd.api.types.is_numeric_dtype(series):
+        return series.fillna(0).astype(int).astype(bool).to_numpy()
+    true_values = {"true", "1", "yes", "y", "t"}
+    return series.astype(str).str.strip().str.lower().isin(true_values).to_numpy()
+
+def get_feature_names_from_df(df:pd.DataFrame):
+    required_columns = {"is_matched", "is_error"}
+    missing_columns = sorted(required_columns - set(df.columns))
+    if missing_columns:
+        raise ValueError(f"CSV缺少必要列: {missing_columns}")
+
+    feature_names = [fn for fn in FEATURE_NAME_TO_SIGN.keys() if fn in df.columns]
+    if len(feature_names) != len(FEATURE_NAME_TO_SIGN):
+        missing_features = sorted(set(FEATURE_NAME_TO_SIGN.keys()) - set(feature_names))
+        raise ValueError(f"CSV缺少过程特征列: {missing_features}")
+
+    missing_sign_columns = [
+        f"{feature_name}_sign"
+        for feature_name in feature_names
+        if f"{feature_name}_sign" not in df.columns
+    ]
+    if missing_sign_columns:
+        raise ValueError(f"CSV缺少feature sign列: {missing_sign_columns}")
+    return feature_names
+
+def run_feature_importance_analysis(df:pd.DataFrame):
+    feature_names = get_feature_names_from_df(df)
+    result_dir = RESULT_DIR
+    output_prefix = f"box_feature_importance_{dataset_name}_{model_name}"
+    # all gid set / matched gid set
+    subsets = {
+        "all": df,
+        "matched_only": df[_series_to_bool(df["is_matched"])],
+    }
+    all_corr_rows = [] # 相关性
+    all_mi_rows = [] # 互信息
+    for subset_name, subset_df in subsets.items():
+        labels = _series_to_bool(subset_df["is_error"]).astype(int)
+        if len(labels) == 0 or len(np.unique(labels)) < 2:
+            print(f"[skip] {subset_name}: 样本为空或只包含单一类别，无法计算重要性。")
+            continue
+        corr_rows = correlation_importance_analysis(subset_df, feature_names, subset_name)
+        mi_rows = mutual_information_importance_analysis(subset_df, feature_names, subset_name)
+        all_corr_rows.extend(corr_rows)
+        all_mi_rows.extend(mi_rows)
+
+        print_importance_rows(
+            f"相关性重要性排名 ({subset_name}, 按 |Spearman r|)",
+            corr_rows,
+            "abs_spearman_r",
+        )
+        print_importance_rows(
+            f"信息熵/互信息重要性排名 ({subset_name}, 按 MI/H(label))",
+            mi_rows,
+            "mi_over_h_label",
+        )
+
+        plot_importance_bar(
+            corr_rows,
+            "abs_spearman_r",
+            f"Correlation Importance ({subset_name})",
+            f"{result_dir}/{output_prefix}_{subset_name}_correlation_importance.png",
+        )
+        plot_importance_bar(
+            mi_rows,
+            "mi_over_h_label",
+            f"Mutual Information Importance ({subset_name})",
+            f"{result_dir}/{output_prefix}_{subset_name}_mi_importance.png",
+        )
+        plot_feature_correlation_heatmap(
+            subset_df,
+            feature_names,
+            subset_name,
+            f"{result_dir}/{output_prefix}_{subset_name}_feature_corr_heatmap.png",
+        )
+
+    write_rows_to_csv(all_corr_rows, f"{result_dir}/{output_prefix}_correlation_importance.csv")
+    write_rows_to_csv(all_mi_rows, f"{result_dir}/{output_prefix}_mutual_information_importance.csv")
+    return all_corr_rows, all_mi_rows
+
+def get_csv_table_for_feature(save_file_name=None):
+    """
+    导出 gid 级 feature 表。
+    每行是一个 gid，列包括 8 个过程特征、是否 matched、以及 correct/error。
+    """
+    # 加载gt box的json数据
+    gt_json = read_json(gt_json_path)
+    # 得到所有的gids
+    all_gids = get_all_gids(gt_json)
+    # 得到被matched gid的conf/iou list
+    gid_to_metric = get_g_id_to_metric(g_box_metrics_json_path)
+    # 得到每个gid的features和每个feature的sign
+    g_id_to_features,feature_name_to_sign = build_gid_feature(all_gids,gid_to_metric,K=0.2)
+    # correct/error gid set
+    correct_gid_set,error_gid_set = split_gid_clean_error(gt_json)
+    # 单独拎出来 matched gid set
+    matched_gid_set = set(gid_to_metric.keys())
+
+    # csv 保存路径
+    if save_file_name is None:
+        save_file_name = f"box_feature_table_{dataset_name}_{model_name}.csv"
+    output_path = os.path.join(RESULT_DIR, save_file_name)
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    feature_names = list(feature_name_to_sign.keys())
+    sign_fieldnames = [f"{feature_name}_sign" for feature_name in feature_names]
+    fieldnames = ["gid", "is_matched", "is_error"] + feature_names + sign_fieldnames
+    rows = []
+    for gid in sorted(all_gids):
+        row = {
+            "gid": gid,
+            "is_matched": gid in matched_gid_set,
+            "is_error": gid in error_gid_set
+        }
+        for feature_name in feature_names:
+            row[feature_name] = float(g_id_to_features[gid][feature_name])
+            row[f"{feature_name}_sign"] = int(feature_name_to_sign[feature_name])
+        rows.append(row)
+
+    with open(output_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    print(f"gid feature csv saved: {output_path}")
+    return output_path
+
+def main():
+    mode = 0 # 0:全程贯通,1:基于csv进行特征重要性分析
+    if mode == 0: 
+        csv_path = get_csv_table_for_feature()
+    if mode == 0 or mode == 1:
+        if mode == 1:
+            csv_path = os.path.join(RESULT_DIR,f"box_feature_table_{dataset_name}_{model_name}.csv")
+        df = pd.read_csv(csv_path)
+        run_feature_importance_analysis(df)
 
 
 if __name__ == "__main__":
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    RESULT_DIR = "/data/mml/data_debugging_data/discussion/"
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",
                                            dataset_name,model_name,"collection_metric",
                                            "collection_metrics_v2.json")
+    if dataset_name == "VisDrone":
+        g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",
+                                           dataset_name,model_name,"collection_metric",
+                                           "collection_metrics_v21.json")
     main()
