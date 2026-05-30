@@ -370,7 +370,7 @@ def main():
     print("装载每个epoch的预测框json数据...")
     epoch_to_p_boxs = get_epoch_to_pboxs(predicted_bboxs_dir)
     offset = False
-    if model_name not in ["YOLOv7","rtdetr"]:
+    if model_name not in ["YOLOv7","rtdetr"]: # FRCNN是需要offset的0（bg）, 1->0..,10->9
         offset = True
     if mode == 0 or mode == 1:
         print("match START")

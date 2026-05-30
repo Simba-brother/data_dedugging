@@ -787,10 +787,10 @@ def rank()->list:
     # 得到gid的排序
     ranked_gid_list,ranked_gid_score_list = get_gid_level_rank(gt_json,g_box_metrics_json_path)
     # 得到img的排序
-    img_rank_res = img_rank(img_to_nomatched_pboxs_json_path) # img level feature
-    ranked_image_name_list = img_rank_res["ranked_imgs"]
-    ranked_img_score_list = img_rank_res["ranked_scores"]
-    # ranked_image_name_list,ranked_img_score_list = get_img_level_rank(imgs_dir,match_json_path)
+    # img_rank_res = img_rank(img_to_nomatched_pboxs_json_path) # img level feature（不同于cluster level）
+    # ranked_image_name_list = img_rank_res["ranked_imgs"]
+    # ranked_img_score_list = img_rank_res["ranked_scores"]
+    ranked_image_name_list,ranked_img_score_list = get_img_level_rank(imgs_dir,match_json_path) # cluster
     # 合并排序
     alpha = _args["alpha"]
     total_rank = merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,
@@ -800,13 +800,13 @@ def rank()->list:
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    exp_id = "01"
+    exp_id = "03"
     # 实验参数
     _args = {
-        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
-        "model_name":"rtdetr",# YOLOv7|FRCNN|SSD|rtdetr
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "model_name":"YOLOv7",# YOLOv7|FRCNN|SSD|rtdetr
         "alpha":1.5, # discussion: [0.5,1.0,1.2,1.5,2]
-        "img_rank": "图像级别的特征工程"
+        "img_rank": "cluster级别的特征工程"
     }
     _args["epochs"] = 50
     if _args["model_name"] == "rtdetr":
@@ -834,16 +834,28 @@ if __name__ == "__main__":
     # 需要的数据文件路径
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     # match json
-    match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,
+    match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name, "gp_box_match",
+                                   "match_v3.json") # 21!
+    if not os.path.exists(match_json_path):
+        # 使用了新路径
+        match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,
                                    "match.json")
     # metric json
-    g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,
-                                           "metrics.json")
+    g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,"collection_metric",
+                                           "collection_metrics_v3.json") # 21!
+    if not os.path.exists(g_box_metrics_json_path):
+        # 使用了新路径
+        g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,
+                                            "metrics.json")
     # match_json_path = "/data/mml/data_debugging_data/temp/match/iou=0.4_PG/match.json"
     # g_box_metrics_json_path = "/data/mml/data_debugging_data/temp/match/iou=0.4_PG/metrics.json"
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_bbox_level",
-                                       dataset_name,model_name,"predicted_bbox")
+                                       dataset_name,model_name,"collected_predicted_box","v2")
+    if not os.path.exists(predicted_bboxs_dir):
+        # 使用新路径
+        predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_bbox_level",
+                                        dataset_name,model_name,"predicted_bbox")
     imgs_dir = os.path.join(exp_data_root_dir,"retrain_dataset_split", dataset_name, "images", "origin")
     # nomatched pboxs json
     img_to_nomatched_pboxs_json_path = os.path.join(

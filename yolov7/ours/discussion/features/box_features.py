@@ -540,7 +540,7 @@ def main():
 
 if __name__ == "__main__":
     RESULT_DIR = "/data/mml/data_debugging_data/discussion/"
-    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7"
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",

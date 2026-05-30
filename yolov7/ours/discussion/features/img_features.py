@@ -456,11 +456,11 @@ def get_img_to_no_matched_pboxs(all_img_name_list, gt_match_json:dict)->dict:
     for img_name in all_img_name_list:
         img_to_p_boxs[img_name] = {}
         if img_name in with_miss_fault_img_set:
-            img_to_p_boxs[img_name]["with_miss_fault_flag"] = 1
+            img_to_p_boxs[img_name]["with_miss_fault_flag"] = 1 # 记录该imgname包含miss fault标识
         else:
-            img_to_p_boxs[img_name]["with_miss_fault_flag"] = 0
+            img_to_p_boxs[img_name]["with_miss_fault_flag"] = 0 # 记录该imgname不含miss fault标识
 
-        img_to_p_boxs[img_name]["No_matched_p_box_list"] = []
+        img_to_p_boxs[img_name]["No_matched_p_box_list"] = [] # 记录该imgname中没有得到匹配的预测box list（conf>0.6 and last 5 epochs）
         if img_name in img_name_to_epoch_to_no_match_p_boxs.keys():
             for epoch in img_name_to_epoch_to_no_match_p_boxs[img_name].keys():
                 for p_box in img_name_to_epoch_to_no_match_p_boxs[img_name][epoch]:
@@ -553,12 +553,11 @@ def main():
     
     # visualization(correct_data_list,error_data_list,"topsis_score")
     
-    hypothesis_testing(correct_data_list,error_data_list,"less")
+    # hypothesis_testing(correct_data_list,error_data_list,"less")
     
     for feature_name,sign in feature_to_sign.items():
 
         img_to_feature[img_name]["img_features"][feature_name]
-    
 
         correct_data_list = []
         error_data_list = []
@@ -573,6 +572,12 @@ def main():
             # 单侧检验是否 correct < error
             hypothesis_testing(correct_data_list,error_data_list,"less")
     print()
+
+def build_feature_csv():
+    '''
+    构建出每个img的4个feature
+    '''
+    
 
 if __name__ == "__main__":
     
@@ -598,4 +603,3 @@ if __name__ == "__main__":
     save_file_name = "img_to_nomatched_pboxs.json"
     save_path = os.path.join(save_dir,save_file_name)
     save_json_file(img_to_p_boxs,save_path)
-    

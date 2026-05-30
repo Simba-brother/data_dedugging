@@ -444,8 +444,6 @@ def img_rank_2(img_to_nomatched_pboxs_json_path):
     ranked_img_names = sorted(img_name_to_features_and_score.keys(), 
                               key=lambda x: img_name_to_features_and_score[x]["max_topsis_score"], 
                               reverse=True)
-    
-    
     ranked_imgs = list(ranked_img_names)
     ranked_score_list = []
     ranked_flag_list = []
@@ -697,4 +695,4 @@ if __name__ == "__main__":
         exp_root_dir,"collection_bbox_level",
         dataset_name,model_name,"img_to_nomatched_pboxs.json")
     main()
-    # compare()
+    compare()
