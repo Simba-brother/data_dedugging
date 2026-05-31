@@ -840,14 +840,14 @@ if __name__ == "__main__":
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     # match json
     match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name, "gp_box_match",
-                                   "match_v2.json") # 21!
+                                   "match_v2.json") # v3 for visdrone
     if not os.path.exists(match_json_path):
         # 使用了新路径
         match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,
                                    "match.json")
     # metric json
     g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,"collection_metric",
-                                           "collection_metrics_v2.json") # 21!
+                                           "collection_metrics_v2.json") # v3 for visdrone
     if not os.path.exists(g_box_metrics_json_path):
         # 使用了新路径
         g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,

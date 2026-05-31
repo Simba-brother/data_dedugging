@@ -544,17 +544,16 @@ def main():
     gt_match_json = read_json(match_json_path)
     '''得到ours方法的img的排序'''
     img_to_feature,feature_to_sign = build_img_feature(all_img_name_list, gt_match_json)
-    with_miss_fault_img_set,no_miss_fault_img_set = split_img_miss_no_miss()
+    with_miss_fault_img_set,no_miss_fault_img_set = split_img_miss_no_miss(imgs_dir,annos_with_miss_json_path)
 
-
-    correct_data_list = []
-    error_data_list = []
-    for img_name in no_miss_fault_img_set:
-        correct_data_list.append(img_to_feature[img_name]["topsis_score"])
-    for img_name in with_miss_fault_img_set:
-        error_data_list.append(img_to_feature[img_name]["topsis_score"])
+    # correct_data_list = []
+    # error_data_list = []
+    # for img_name in no_miss_fault_img_set:
+    #     correct_data_list.append(img_to_feature[img_name]["topsis_score"])
+    # for img_name in with_miss_fault_img_set:
+    #     error_data_list.append(img_to_feature[img_name]["topsis_score"])
     
-    # visualization(correct_data_list,error_data_list,"topsis_score")
+    # # visualization(correct_data_list,error_data_list,"topsis_score")
     
     # hypothesis_testing(correct_data_list,error_data_list,"less")
     
@@ -571,16 +570,14 @@ def main():
         
         # visualization(correct_data_list,error_data_list,feature_name)
         if feature_to_sign[feature_name] == 1:
-            # 我们直觉认为 error data list > correct data list, 因为sign == -1, 说明越小topsis分数（可疑）越高，排名越靠前。
+            # 我们直觉认为 error data list > correct data list, 因为sign == -1, 说明越小越可疑，排名越靠前。
             # 单侧检验是否 correct < error
             hypothesis_testing(correct_data_list,error_data_list,"less")
-    print()
+
 
 def main_2():
     all_img_name_list = get_all_img_name(imgs_dir)
     gt_match_json = read_json(match_json_path)
-    '''得到ours方法的img的排序'''
-    img_to_feature,feature_to_sign = build_img_feature(all_img_name_list, gt_match_json)
     with_miss_fault_img_set,no_miss_fault_img_set = split_img_miss_no_miss(imgs_dir,annos_with_miss_json_path)
     mode = 0 # 0:全程贯通,1:基于csv进行特征重要性分析
     if mode == 0: 
@@ -633,7 +630,10 @@ def build_feature_csv(all_img_name_list:list[str], gt_match_json:dict, missfault
             "is_missfault":is_missfault,
             "hasCluster":True
         })
-    for imgname in no_clusters_image_name_set:
+    for img_name in no_clusters_image_name_set:
+        is_missfault = False
+        if img_name in missfaultimg_set:
+            is_missfault = True
         rows.append({
             "img_name":img_name,
             "conf":0,
@@ -927,12 +927,26 @@ def run_feature_importance_analysis(df:pd.DataFrame):
 
 if __name__ == "__main__":
     
-    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
     epochs = 50
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
-    match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",
-                                dataset_name,model_name,"gp_box_match","match_v2.json")
+
+    # match json
+    match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name, "gp_box_match",
+                                   "match_v2.json") # v3!
+    if not os.path.exists(match_json_path):
+        # 使用了新路径
+        match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,
+                                   "match.json")
+    # metric json
+    g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,"collection_metric",
+                                           "collection_metrics_v2.json") # v3!
+    if not os.path.exists(g_box_metrics_json_path):
+        # 使用了新路径
+        g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,
+                                            "metrics.json")
+
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_bbox_level",
                                     dataset_name,model_name,"collected_predicted_box","v2")
@@ -957,3 +971,4 @@ if __name__ == "__main__":
         "epoch_cross":1,
     }
     main_2()
+    # main()
