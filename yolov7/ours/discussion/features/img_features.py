@@ -452,7 +452,7 @@ def get_img_to_no_matched_pboxs(all_img_name_list, gt_match_json:dict)->dict:
     img_name_to_epoch_to_no_match_p_boxs = get_img_name_to_epoch_to_unmatched_p_boxs(
         epoch_to_matched_p_ids,last_epoch_nums,conf_threshold)
     # 划分出带有miss fault的img set和不带有miss fault的img set
-    with_miss_fault_img_set,no_miss_fault_img_set = split_img_miss_no_miss()
+    with_miss_fault_img_set,no_miss_fault_img_set = split_img_miss_no_miss(imgs_dir,annos_with_miss_json_path)
     # 展平epoch key
     img_to_p_boxs = {}
 
@@ -581,7 +581,7 @@ def main_2():
     gt_match_json = read_json(match_json_path)
     '''得到ours方法的img的排序'''
     img_to_feature,feature_to_sign = build_img_feature(all_img_name_list, gt_match_json)
-    with_miss_fault_img_set,no_miss_fault_img_set = split_img_miss_no_miss()
+    with_miss_fault_img_set,no_miss_fault_img_set = split_img_miss_no_miss(imgs_dir,annos_with_miss_json_path)
     mode = 0 # 0:全程贯通,1:基于csv进行特征重要性分析
     if mode == 0: 
         csv_path = build_feature_csv(all_img_name_list, gt_match_json, with_miss_fault_img_set, last_epoch=5, conf_threshold=0.6)
@@ -649,10 +649,9 @@ def build_feature_csv(all_img_name_list:list[str], gt_match_json:dict, missfault
         })
 
     # csv 保存路径
-    if save_file_name is None:
-        save_file_name = f"img_feature_table_{dataset_name}_{model_name}.csv"
+    save_file_name = f"img_feature_table_{dataset_name}_{model_name}.csv"
     output_path = os.path.join(RESULT_DIR, save_file_name)
-    fieldnames = ["img_name","conf","stab","cls","epoch_cross","is_missfault"]
+    fieldnames = ["img_name","conf","stab","cls","epoch_cross","conf_sign","stab_sign","cls_sign","epoch_cross_sign", "is_missfault", "hasCluster"]
     with open(output_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -952,9 +951,9 @@ if __name__ == "__main__":
     save_json_file(img_to_p_boxs,save_path)
     RESULT_DIR = "/data/mml/data_debugging_data/discussion/"
     FEATURE_NAME_TO_SIGN = {
-        "conf_sign":1,
-        "stab_sign":1,
-        "cls_sign":1,
-        "epoch_cross_sign":1,
+        "conf":1,
+        "stab":1,
+        "cls":1,
+        "epoch_cross":1,
     }
     main_2()
