@@ -759,6 +759,7 @@ def get_gid_level_rank(gt_json:dict,g_box_metrics_json_path:str):
     return ranked_gid_list, ranked_gid_score_list
 
 def get_img_level_rank(imgs_dir:str,match_json_path:str):
+    '''cluster级'''
     '''得到ours方法的img的排序'''
     all_img_name_list = get_all_img_name(imgs_dir)
     gt_match_json = read_json(match_json_path)
@@ -786,11 +787,15 @@ def rank()->list:
     gt_json = read_json(gt_json_path)
     # 得到gid的排序
     ranked_gid_list,ranked_gid_score_list = get_gid_level_rank(gt_json,g_box_metrics_json_path)
-    # 得到img的排序
-    # img_rank_res = img_rank(img_to_nomatched_pboxs_json_path) # img level feature（不同于cluster level）
-    # ranked_image_name_list = img_rank_res["ranked_imgs"]
-    # ranked_img_score_list = img_rank_res["ranked_scores"]
-    ranked_image_name_list,ranked_img_score_list = get_img_level_rank(imgs_dir,match_json_path) # cluster
+    if _args["feature_level"] == "imgLevel":
+        # 得到img的排序
+        img_rank_res = img_rank(img_to_nomatched_pboxs_json_path) # img level feature（不同于cluster level）
+        ranked_image_name_list = img_rank_res["ranked_imgs"]
+        ranked_img_score_list = img_rank_res["ranked_scores"]
+    elif _args["feature_level"] == "clusterLevel": 
+        ranked_image_name_list,ranked_img_score_list = get_img_level_rank(imgs_dir,match_json_path) # cluster
+    else:
+        raise Exception("请你指定img rank使用哪个level feature")
     # 合并排序
     alpha = _args["alpha"]
     total_rank = merge_rank(ranked_gid_list,ranked_gid_score_list,ranked_image_name_list,
@@ -800,13 +805,13 @@ def rank()->list:
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    exp_id = "03"
+    exp_id = "03" # 03:clusterLevel,04:imgLevel
     # 实验参数
     _args = {
-        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
-        "model_name":"YOLOv7",# YOLOv7|FRCNN|SSD|rtdetr
+        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
+        "model_name":"FRCNN",# YOLOv7|FRCNN|SSD|rtdetr
         "alpha":1.5, # discussion: [0.5,1.0,1.2,1.5,2]
-        "img_rank": "cluster级别的特征工程"
+        "feature_level": "clusterLevel" # clusterLevel|imgLevel # 簇级别的feature(4)和图像级别的feature(F1-F8)
     }
     _args["epochs"] = 50
     if _args["model_name"] == "rtdetr":
@@ -835,14 +840,14 @@ if __name__ == "__main__":
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
     # match json
     match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name, "gp_box_match",
-                                   "match_v3.json") # 21!
+                                   "match_v2.json") # 21!
     if not os.path.exists(match_json_path):
         # 使用了新路径
         match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,
                                    "match.json")
     # metric json
     g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,"collection_metric",
-                                           "collection_metrics_v3.json") # 21!
+                                           "collection_metrics_v2.json") # 21!
     if not os.path.exists(g_box_metrics_json_path):
         # 使用了新路径
         g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,

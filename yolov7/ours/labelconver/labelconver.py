@@ -36,6 +36,8 @@ def coco2voc(coco_anno_json_path:Path,voc_output_dir:Path):
 
 
 if __name__ == "__main__":
+
+    '''
     exp_data_root = "/data/mml/data_debugging_data"
     dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     dataset_mode = "correct"
@@ -57,12 +59,13 @@ if __name__ == "__main__":
         os.path.join(exp_data_root,"Results",dataset_mode,dataset_name,"labels","voc_format",tvt)
     )
     coco2voc(coco_anno_json_path,voc_output_dir)
-
     '''
+
+    # Only YOLOv7
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
     method_name = "ours" # ours|datactive|entropy|loss|deepgini|margin
-    exp_id = "02"
+    exp_id = "03"
     
     if method_name in ["entropy","loss","deepgini","margin"]:
         coco_anno_json_path = Path(
@@ -91,7 +94,7 @@ if __name__ == "__main__":
             )
         )
     coco2yolo(coco_anno_json_path,yolo_output_dir,tvt="train")
-    '''
+
 
 
 

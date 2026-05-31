@@ -2,6 +2,8 @@
 对排序使用的features进行讨论
 '''
 import os
+import csv
+import pandas as pd
 import numpy as np
 from ours.data_organization_tools import (get_all_gids,get_g_id_to_metric,
                                           get_all_errored_g_box_id_set,get_all_correct_g_box_id_set,
@@ -15,6 +17,7 @@ import seaborn as sns
 import topsispy as tp
 from collections import defaultdict
 from sklearn.metrics import roc_auc_score
+from sklearn.feature_selection import mutual_info_classif
 
 
 
@@ -573,15 +576,359 @@ def main():
             hypothesis_testing(correct_data_list,error_data_list,"less")
     print()
 
-def build_feature_csv():
+def main_2():
+    all_img_name_list = get_all_img_name(imgs_dir)
+    gt_match_json = read_json(match_json_path)
+    '''得到ours方法的img的排序'''
+    img_to_feature,feature_to_sign = build_img_feature(all_img_name_list, gt_match_json)
+    with_miss_fault_img_set,no_miss_fault_img_set = split_img_miss_no_miss()
+    mode = 0 # 0:全程贯通,1:基于csv进行特征重要性分析
+    if mode == 0: 
+        csv_path = build_feature_csv(all_img_name_list, gt_match_json, with_miss_fault_img_set, last_epoch=5, conf_threshold=0.6)
+    if mode == 0 or mode == 1:
+        if mode == 1:
+            csv_path = os.path.join(RESULT_DIR,f"box_feature_table_{dataset_name}_{model_name}.csv")
+        df = pd.read_csv(csv_path)
+        run_feature_importance_analysis(df)
+
+def build_feature_csv(all_img_name_list:list[str], gt_match_json:dict, missfaultimg_set:dict, last_epoch=5, conf_threshold=0.6):
     '''
     构建出每个img的4个feature
     '''
+    epoch_to_matched_p_ids = get_epoch_to_matched_p_boxs(gt_match_json)
+
+    # 获得每张图像在后面几个epoch中没被g_box匹配的高置信度p_box
+    img_name_to_epoch_no_match_p_boxs = get_img_name_to_epoch_to_unmatched_p_boxs(
+        epoch_to_matched_p_ids,last_epoch,conf_threshold)
+
+    img_name_to_no_matched_p_boxs  = get_img_name_to_no_matched_p_boxs(img_name_to_epoch_no_match_p_boxs)
+
+    # 采用并查集算法将该img这些高置信度未匹配p_box进行分簇，一个簇其实就是一个统一的p_box
+    img_to_clusters = get_img_to_clusters(img_name_to_no_matched_p_boxs,iou_thre=0.6)
+    img_name_to_scoreAndFeature = get_img_to_scoreAndFeature(img_to_clusters, last_epoch)
+    # 没有可疑预测簇的图像
+    no_clusters_image_name_set = sorted(set(all_img_name_list) - set(img_name_to_scoreAndFeature.keys()))
+    print(f"没有预测簇的图像数量:{len(no_clusters_image_name_set)}")
+
+    rows = []
+    for img_name in img_name_to_scoreAndFeature.keys():
+        is_missfault = False
+        if img_name in missfaultimg_set:
+            is_missfault = True
+        feature = img_name_to_scoreAndFeature[img_name]["best_feature"]
+        conf = feature["conf"]
+        stab = feature["stab"]
+        cls = feature["cls"]
+        epoch_cross = feature["epoch_cross"]
+        rows.append({
+            "img_name":img_name,
+            "conf":conf,
+            "stab":stab,
+            "cls":cls, # 做多数量类的占比（类的一致性）
+            "epoch_cross":epoch_cross,
+            "conf_sign":1,
+            "stab_sign":1,
+            "cls_sign":1,
+            "epoch_cross_sign":1,
+            "is_missfault":is_missfault,
+            "hasCluster":True
+        })
+    for imgname in no_clusters_image_name_set:
+        rows.append({
+            "img_name":img_name,
+            "conf":0,
+            "stab":0,
+            "cls":0,
+            "epoch_cross":0,
+            "conf_sign":1,
+            "stab_sign":1,
+            "cls_sign":1,
+            "epoch_cross_sign":1,
+            "is_missfault":is_missfault,
+            "hasCluster":False
+        })
+
+    # csv 保存路径
+    if save_file_name is None:
+        save_file_name = f"img_feature_table_{dataset_name}_{model_name}.csv"
+    output_path = os.path.join(RESULT_DIR, save_file_name)
+    fieldnames = ["img_name","conf","stab","cls","epoch_cross","is_missfault"]
+    with open(output_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    print(f"img feature csv saved: {output_path}")
+    return output_path
+
+def get_feature_names_from_df(df:pd.DataFrame):
+    required_columns = {"is_missfault"}
+    missing_columns = sorted(required_columns - set(df.columns))
+    if missing_columns:
+        raise ValueError(f"CSV缺少必要列: {missing_columns}")
+
+    feature_names = [fn for fn in FEATURE_NAME_TO_SIGN.keys() if fn in df.columns]
+    if len(feature_names) != len(FEATURE_NAME_TO_SIGN):
+        missing_features = sorted(set(FEATURE_NAME_TO_SIGN.keys()) - set(feature_names))
+        raise ValueError(f"CSV缺少过程特征列: {missing_features}")
+
+    missing_sign_columns = [
+        f"{feature_name}_sign"
+        for feature_name in feature_names
+        if f"{feature_name}_sign" not in df.columns
+    ]
+    if missing_sign_columns:
+        raise ValueError(f"CSV缺少feature sign列: {missing_sign_columns}")
+    return feature_names
+
+def _series_to_bool(series):
+    if pd.api.types.is_bool_dtype(series):
+        return series.to_numpy(dtype=bool)
+    if pd.api.types.is_numeric_dtype(series):
+        return series.fillna(0).astype(int).astype(bool).to_numpy()
+    true_values = {"true", "1", "yes", "y", "t"}
+    return series.astype(str).str.strip().str.lower().isin(true_values).to_numpy()
+
+def _safe_corr(func, x, y):
+    if len(x) < 2 or len(np.unique(x)) < 2 or len(np.unique(y)) < 2:
+        return float("nan"), float("nan")
+    stat, p_value = func(x, y)
+    return float(stat), float(p_value)
+
+def correlation_importance_analysis(df, feature_names):
+    labels = _series_to_bool(df["is_missfault"]).astype(int)
+    rows = []
+    for feature_name in feature_names:
+        raw_values = df[feature_name].astype(float).to_numpy()
+        sign = int(df[f"{feature_name}_sign"].iloc[0])
+        suspicious_values = sign * raw_values
+        pearson_r, pearson_p = _safe_corr(stats.pearsonr, suspicious_values, labels)
+        spearman_r, spearman_p = _safe_corr(stats.spearmanr, suspicious_values, labels)
+        point_biserial_r, point_biserial_p = _safe_corr(stats.pointbiserialr, raw_values, labels)
+        rows.append({
+            "feature": feature_name,
+            "n": len(labels),
+            "n_error": int(labels.sum()),
+            "n_correct": int(len(labels) - labels.sum()),
+            "pearson_r_suspicious": pearson_r,
+            "pearson_p": pearson_p,
+            "spearman_r_suspicious": spearman_r,
+            "spearman_p": spearman_p,
+            "point_biserial_r_raw": point_biserial_r,
+            "point_biserial_p": point_biserial_p,
+            "abs_spearman_r": abs(spearman_r) if not np.isnan(spearman_r) else float("nan"),
+        })
+    rows.sort(key=lambda row: -row["abs_spearman_r"] if not np.isnan(row["abs_spearman_r"]) else float("-inf"))
+    return rows
+
+def _discretize_by_quantile(values, n_bins=10):
+    """
+    用分位数离散化连续特征，便于计算信息熵/互信息。
+    重复取值很多时，实际 bin 数可能小于 n_bins。
+    """
+    values = np.asarray(values, dtype=float)
+    unique_values = np.unique(values)
+    if len(unique_values) <= 1:
+        return np.zeros(len(values), dtype=int)
+    quantiles = np.linspace(0, 1, min(n_bins, len(unique_values)) + 1)[1:-1]
+    edges = np.unique(np.quantile(values, quantiles))
+    if len(edges) == 0:
+        return np.zeros(len(values), dtype=int)
+    return np.digitize(values, edges, right=False)
+
+def _entropy_from_counts(counts):
+    counts = np.asarray(counts, dtype=float)
+    total = counts.sum()
+    if total <= 0:
+        return 0.0
+    probs = counts[counts > 0] / total
+    return float(-np.sum(probs * np.log2(probs)))
+
+def _mutual_information_discrete(feature_bins, labels):
+    feature_bins = np.asarray(feature_bins, dtype=int)
+    labels = np.asarray(labels, dtype=int)
+    n = len(labels)
+    if n == 0:
+        return 0.0, 0.0, 0.0, 0.0, 0.0
+
+    feature_values = np.unique(feature_bins)
+    label_values = np.unique(labels)
+    joint_counts = np.zeros((len(feature_values), len(label_values)), dtype=float)
+    f_to_i = {v: i for i, v in enumerate(feature_values)}
+    y_to_i = {v: i for i, v in enumerate(label_values)}
+    for f, y in zip(feature_bins, labels):
+        joint_counts[f_to_i[f], y_to_i[y]] += 1
+
+    pxy = joint_counts / n
+    px = pxy.sum(axis=1)
+    py = pxy.sum(axis=0)
+    mi = 0.0
+    for i in range(pxy.shape[0]):
+        for j in range(pxy.shape[1]):
+            if pxy[i, j] > 0 and px[i] > 0 and py[j] > 0:
+                mi += pxy[i, j] * np.log2(pxy[i, j] / (px[i] * py[j]))
+
+    h_feature = _entropy_from_counts(joint_counts.sum(axis=1))
+    h_label = _entropy_from_counts(joint_counts.sum(axis=0))
+    mi_over_h_label = mi / h_label if h_label > 0 else float("nan")
+    mi_over_h_feature = mi / h_feature if h_feature > 0 else float("nan")
+    return float(mi), float(h_feature), float(h_label), float(mi_over_h_label), float(mi_over_h_feature)
+
+
+def mutual_information_importance_analysis(df, feature_names, n_bins=10):
+    labels = _series_to_bool(df["is_missfault"]).astype(int)
+    rows = []
+    if len(labels) == 0 or len(np.unique(labels)) < 2:
+        return rows
+
+    suspicious_matrix = np.column_stack([
+        int(df[f"{feature_name}_sign"].iloc[0]) * df[feature_name].astype(float).to_numpy()
+        for feature_name in feature_names
+    ])
+    n_neighbors = max(1, min(3, len(labels) - 1))
+    mi_continuous = mutual_info_classif(
+        suspicious_matrix, labels, discrete_features=False,
+        n_neighbors=n_neighbors, random_state=0
+    )
+    for idx, feature_name in enumerate(feature_names):
+        suspicious_values = suspicious_matrix[:, idx]
+        feature_bins = _discretize_by_quantile(suspicious_values, n_bins=n_bins)
+        mi_bits, h_feature, h_label, mi_over_h_label, mi_over_h_feature = (
+            _mutual_information_discrete(feature_bins, labels)
+        )
+        rows.append({
+            "feature": feature_name,
+            "n": len(labels),
+            "n_error": int(labels.sum()),
+            "n_correct": int(len(labels) - labels.sum()),
+            "bins": int(len(np.unique(feature_bins))),
+            "mi_bits_quantile": mi_bits,
+            "h_feature_bits": h_feature,
+            "h_label_bits": h_label,
+            "mi_over_h_label": mi_over_h_label,
+            "mi_over_h_feature": mi_over_h_feature,
+            "mi_knn_nats": float(mi_continuous[idx]),
+        })
+    rows.sort(key=lambda row: -row["mi_over_h_label"] if not np.isnan(row["mi_over_h_label"]) else float("-inf"))
+    return rows
+
+def print_importance_rows(title, rows, metric_name):
+    print("="*60)
+    print(title)
+    for row in rows:
+        value = row[metric_name]
+        if np.isnan(value):
+            value_text = "nan"
+        else:
+            value_text = f"{value:.4f}"
+        print(f"  {row['feature']:20s}  {metric_name}={value_text}")
+
+def plot_importance_bar(rows, metric_name, title, output_path):
+    if not rows:
+        return
+    feature_names = [row["feature"] for row in rows]
+    values = [row[metric_name] for row in rows]
+    plt.figure(figsize=(9, 5))
+    sns.barplot(x=values, y=feature_names, orient="h")
+    plt.xlabel(metric_name)
+    plt.ylabel("feature")
+    plt.title(title)
+    plt.grid(axis="x", alpha=0.3)
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    plt.savefig(output_path, dpi=150)
+    plt.close()
+
+def plot_feature_correlation_heatmap(df, feature_names, output_path):
+    matrix = np.column_stack([
+        int(df[f"{feature_name}_sign"].iloc[0]) * df[feature_name].astype(float).to_numpy()
+        for feature_name in feature_names
+    ])
+    if matrix.shape[0] < 2:
+        return
+    corr_matrix = np.corrcoef(matrix, rowvar=False)
+    plt.figure(figsize=(8, 7))
+    sns.heatmap(
+        corr_matrix,
+        xticklabels=feature_names,
+        yticklabels=feature_names,
+        cmap="coolwarm",
+        vmin=-1,
+        vmax=1,
+        annot=True,
+        fmt=".2f",
+        square=True,
+        cbar_kws={"label": "Pearson r"},
+    )
+    plt.title(f"Feature Correlation Heatmap")
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    plt.savefig(output_path, dpi=150)
+    plt.close()
+
+def write_rows_to_csv(rows, output_path):
+    if not rows:
+        return
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+
+def run_feature_importance_analysis(df:pd.DataFrame):
+    feature_names = get_feature_names_from_df(df)
+    result_dir = RESULT_DIR
+    output_prefix = f"img_feature_importance_{dataset_name}_{model_name}"
     
+    all_corr_rows = [] # 相关性
+    all_mi_rows = [] # 互信息
+    
+    labels = _series_to_bool(df["is_missfault"]).astype(int)
+    if len(labels) == 0 or len(np.unique(labels)) < 2:
+        raise Exception("样本为空或只包含单一类别，无法计算重要性。")
+    corr_rows = correlation_importance_analysis(df, feature_names)
+    mi_rows = mutual_information_importance_analysis(df, feature_names)
+    all_corr_rows.extend(corr_rows)
+    all_mi_rows.extend(mi_rows)
+
+    print_importance_rows(
+        f"相关性重要性排名 (按 |Spearman r|)",
+        corr_rows,
+        "abs_spearman_r",
+    )
+    print_importance_rows(
+        f"信息熵/互信息重要性排名 (按 MI/H(label))",
+        mi_rows,
+        "mi_over_h_label",
+    )
+
+    plot_importance_bar(
+        corr_rows,
+        "abs_spearman_r",
+        f"Correlation Importance",
+        f"{result_dir}/{output_prefix}_correlation_importance.png",
+    )
+    plot_importance_bar(
+        mi_rows,
+        "mi_over_h_label",
+        f"Mutual Information Importance",
+        f"{result_dir}/{output_prefix}_mi_importance.png",
+    )
+    plot_feature_correlation_heatmap(
+        df,
+        feature_names,
+        f"{result_dir}/{output_prefix}_feature_corr_heatmap.png",
+    )
+
+    write_rows_to_csv(all_corr_rows, f"{result_dir}/{output_prefix}_correlation_importance.csv")
+    write_rows_to_csv(all_mi_rows, f"{result_dir}/{output_prefix}_mutual_information_importance.csv")
+    return all_corr_rows, all_mi_rows
+
+
 
 if __name__ == "__main__":
     
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
     epochs = 50
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
@@ -603,3 +950,11 @@ if __name__ == "__main__":
     save_file_name = "img_to_nomatched_pboxs.json"
     save_path = os.path.join(save_dir,save_file_name)
     save_json_file(img_to_p_boxs,save_path)
+    RESULT_DIR = "/data/mml/data_debugging_data/discussion/"
+    FEATURE_NAME_TO_SIGN = {
+        "conf_sign":1,
+        "stab_sign":1,
+        "cls_sign":1,
+        "epoch_cross_sign":1,
+    }
+    main_2()

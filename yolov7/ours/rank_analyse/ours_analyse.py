@@ -1131,9 +1131,9 @@ if __name__ == "__main__":
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     anno_error_json_path = get_error_ann_file_path(dataset_name)
     # 我们的序
-
+    # exp_03(cluster)
     rank_res = joblib.load(os.path.join(exp_data_root_dir,"Results","ours",dataset_name,model_name,
-                                        "exp_01","rank","rank.joblib"))
+                                        "exp_03","rank","rank.joblib"))
 
     # rank_res = joblib.load(os.path.join(exp_data_root_dir,"Discussion_Results",dataset_name,model_name,
     #                                     "exp_01","rank","alpha=2","rank.joblib"))

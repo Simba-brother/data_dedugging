@@ -205,8 +205,9 @@ def repair_kit(converted_rank:list, anno_correct_json:dict, anno_error_json:dict
     return new_annos
     
 
-def repair_kit_2(converted_rank:list, anno_correct_json:dict, anno_error_json:dict,
+def repair_kit_strict_cost(converted_rank:list, anno_correct_json:dict, anno_error_json:dict,
                  cut_off_rate:float=0.4):
+    '''严格控制cost'''
     # 获得annonums
     total_imgnums = len(anno_error_json["images"])
     total_annoLen = len(anno_error_json["annotations"])
@@ -279,8 +280,8 @@ def repair_kit_2(converted_rank:list, anno_correct_json:dict, anno_error_json:di
     count_info = count_repair_info(repair_info,anno_with_miss_error_json,anno_error_json)
     pprint.pprint(count_info,indent=4,sort_dicts=False)
     # 修复anno
-    # new_annos = repair_anno_json(anno_error_json,repair_info)
-    return None
+    new_annos = repair_anno_json(anno_error_json,repair_info)
+    return new_annos
 
 
 def main():
@@ -302,10 +303,13 @@ def main():
         raise Exception("rank method 参数错误")
 
     # 修复的标注json
-    # anno_repaired_json = repair_kit(converted_rank, anno_correct_json, anno_error_json, 
-    #                                 cut_off_rate=0.4)
-    anno_repaired_json = repair_kit_2(converted_rank, anno_correct_json, anno_error_json, 
+    if _args["strict_cost"]:
+        anno_repaired_json = repair_kit_strict_cost(converted_rank, anno_correct_json, anno_error_json, 
                                     cut_off_rate=_args["cut_off_rate"])
+    else:
+        anno_repaired_json = repair_kit(converted_rank, anno_correct_json, anno_error_json, 
+                                     cut_off_rate=_args["cut_off_rate"])
+    
 
     # 结果保存与计时
     if _args["is_save"]:
@@ -326,14 +330,15 @@ if __name__ == "__main__":
     PID = os.getpid()
     print("PID:",PID)
     exp_root_dir = "/data/mml/data_debugging_data"
-    exp_id = "02"
+    exp_id = "03"
 
     _args = {
-        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7", # YOLOv7|FRCNN|SSD
-        "rank_method":"datactive", # ours|datactive|entropy|loss|deepgini|margin|
+        "rank_method":"ours", # ours|datactive|entropy|loss|deepgini|margin|
         "cut_off_rate": 0.5,
-        "is_save":False
+        "strict_cost":True,
+        "is_save":True # 保存repair json
     }
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]

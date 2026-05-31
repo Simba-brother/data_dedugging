@@ -159,14 +159,11 @@ def image_features_from_clusters(clusters, total_epoch_num=5):
     feats = [cluster_features(c, total_epoch_num=total_epoch_num) for c in clusters]
     # cluster_scores = [score_cluster(f) for f in feats] F9
 
-
-    
-
-    F1 = float(len(clusters))
-    F2 = float(max(f["cluster_size"] for f in feats))
-    F3 = float(max(f["epoch_coverage"] for f in feats))
-    F4 = float(max(f["mean_conf"] for f in feats))
-    F5 = float(max(f["max_conf"] for f in feats))
+    F1 = float(len(clusters)) # 该图像包含的簇数量
+    F2 = float(max(f["cluster_size"] for f in feats)) # 簇中最大size簇
+    F3 = float(max(f["epoch_coverage"] for f in feats)) # 簇中最大的epoch覆盖值
+    F4 = float(max(f["mean_conf"] for f in feats)) # 簇中最大mean conf
+    F5 = float(max(f["max_conf"] for f in feats)) # 簇中最大max max conf
     F6 = float(max(f["class_consistency"] for f in feats))
     F7 = float(max(f["mean_iou"] for f in feats))
     F8 = float(max(f["center_stability"] for f in feats)) # 越稳定越好

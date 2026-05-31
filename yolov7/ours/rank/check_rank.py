@@ -3,8 +3,8 @@ import joblib
 
 
 def check_rank_1():
-    rank_1_path = "/data/mml/data_debugging_data/Results/ours/VisDrone/YOLOv7/exp_02/rank/rank.joblib"
-    rank_2_path = "/data/mml/data_debugging_data/Results/ours/VisDrone/YOLOv7/exp_03/rank/rank.joblib"
+    rank_1_path = "/data/mml/data_debugging_data/Results/ours/VOC2012/YOLOv7/exp_01/rank/rank.joblib"
+    rank_2_path = "/data/mml/data_debugging_data/Results/ours/VOC2012/YOLOv7/exp_03/rank/rank.joblib"
     rank_1 = joblib.load(rank_1_path)
     rank_2 = joblib.load(rank_2_path)
 

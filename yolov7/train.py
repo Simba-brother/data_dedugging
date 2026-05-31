@@ -580,7 +580,7 @@ if __name__ == '__main__':
         "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
-        "trainset_stat":"margin", # clean|error|ours|datactive|entropy|loss|deepgini|margin
+        "trainset_stat":"ours", # clean|error|ours|datactive|entropy|loss|deepgini|margin
         "save_each_epoch":False # 恢复训练时不需要保存每个epoch的ckpt
     }
     dataset_name = _args["dataset_name"]
@@ -634,14 +634,10 @@ if __name__ == '__main__':
     parser.add_argument('--v5-metric', action='store_true', help='assume maximum recall as 1.0 in AP calculation')
     opt = parser.parse_args()
 
-
-    
     # 训练好后模型保存的目录
     model_save_dir = _args["model_save_dir"]
-    
 
     if _args["trainset_stat"] in ["ours","datactive","entropy","loss","deepgini","margin"]:
-        
         # opt.weights = os.path.join(exp_data_root, "models", dataset_name.lower(), "yolov7", "error", "new", "weights", "last.pt")
         # 设置恢复训练的ckpt
         opt.resume = f"trained_models/{dataset_name.lower()}/error_resume.pt"
