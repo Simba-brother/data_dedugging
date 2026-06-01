@@ -343,13 +343,82 @@ def cluster_locates_any_missed_box(cluster:list, missed_boxs:list, iou_threshold
     '''
     max_iou = 0.0
     for missed_box in missed_boxs:
-        missed_bbox = missed_box_to_xyxy(missed_box)
+        missed_bbox = missed_box_to_xyxy(missed_box) # coco:x1y1wh -> x1y1x2y2
         for p_box in cluster:
             iou = calu_iou(missed_bbox, p_box["bbox"])
             max_iou = max(max_iou, iou)
             if iou > iou_threshold:
                 return True, max_iou
     return False, max_iou
+
+
+def evaluate_cluster_precision_at_iou(img_to_clusters:dict, # x1y1x2y2
+                                      imgname_to_missed_boxs:dict,
+                                      iou_threshold:float) -> dict:
+    '''
+    计算指定IoU阈值下预测簇的precision。
+
+    预测簇TP定义:
+    cluster中只要存在1个p_box与同图像任意miss box的IoU > iou_threshold，
+    该cluster即为TP；否则为FP。
+    '''
+    tp = 0
+    fp = 0
+    max_iou_list = []
+    total_missed_box_count = sum(len(v) for v in imgname_to_missed_boxs.values())
+    located_missed_box_set = set()
+    for img_name, clusters in img_to_clusters.items():
+        missed_boxs = imgname_to_missed_boxs.get(img_name, [])
+        for cluster in clusters:
+            hit_flag, max_iou = cluster_locates_any_missed_box(
+                cluster, missed_boxs, iou_threshold)
+            max_iou_list.append(max_iou)
+            if hit_flag:
+                tp += 1
+                for missed_idx, missed_box in enumerate(missed_boxs):
+                    missed_bbox = missed_box_to_xyxy(missed_box)
+                    for p_box in cluster:
+                        if calu_iou(missed_bbox, p_box["bbox"]) > iou_threshold:
+                            located_missed_box_set.add((img_name, missed_idx))
+                            break
+            else:
+                fp += 1
+
+    total_pred_clusters = tp + fp
+    precision = tp / total_pred_clusters if total_pred_clusters > 0 else 0.0
+    recall = (len(located_missed_box_set) / total_missed_box_count
+              if total_missed_box_count > 0 else 0.0)
+    f1 = (2 * precision * recall / (precision + recall)
+          if precision + recall > 0 else 0.0)
+    result = {
+        "iou_threshold": float(iou_threshold),
+        "pred_cluster_count": total_pred_clusters,
+        "tp_cluster_count": tp,
+        "fp_cluster_count": fp,
+        "total_missed_box_count": total_missed_box_count,
+        "located_missed_box_count": len(located_missed_box_set),
+        "precision": float(precision),
+        "recall": float(recall),
+        "f1": float(f1),
+        "max_iou_mean": float(np.mean(max_iou_list)) if max_iou_list else 0.0,
+        "max_iou_median": float(np.median(max_iou_list)) if max_iou_list else 0.0,
+    }
+
+    print("\n[Cluster Precision @ IoU]")
+    pprint.pprint({
+        "iou_threshold": result["iou_threshold"],
+        "pred_cluster_count": result["pred_cluster_count"],
+        "tp_cluster_count": result["tp_cluster_count"],
+        "fp_cluster_count": result["fp_cluster_count"],
+        "total_missed_box_count": result["total_missed_box_count"],
+        "located_missed_box_count": result["located_missed_box_count"],
+        "precision": round(result["precision"], 4),
+        "recall": round(result["recall"], 4),
+        "f1": round(result["f1"], 4),
+        "max_iou_mean": round(result["max_iou_mean"], 4),
+        "max_iou_median": round(result["max_iou_median"], 4),
+    })
+    return result
 
 
 def build_cluster_rank_records(img_to_clusters:dict,
@@ -636,7 +705,7 @@ def img_name_to_missed_box_list(annos_with_miss_json:dict)->dict:
     for anno in annos:
         if anno["fault_type"] == 4:
             img_name = imgId_to_imgName[anno["image_id"]]
-            imgname_to_missed_box[img_name].append(anno)
+            imgname_to_missed_box[img_name].append(anno) # anno["bbox"]:[x1,y1,width,height]
     return imgname_to_missed_box
 
 def main():
@@ -646,6 +715,11 @@ def main():
     ranked_image_name_list,ranked_img_score_list, img_to_clusters = rank_img_name(all_img_name_list, gt_match_json)
     imgname_to_missed_boxs = img_name_to_missed_box_list(annos_with_miss_json)
 
+    r = evaluate_cluster_precision_at_iou(
+        img_to_clusters, imgname_to_missed_boxs, iou_threshold)
+    print()
+
+    '''
     print("包含miss fault的img数量:", len(imgname_to_missed_boxs.keys()))
     for img_name, missed_boxs in imgname_to_missed_boxs.items():
         for missed_box in missed_boxs:
@@ -683,6 +757,8 @@ def main():
     print("loc准确的数量:",loced_nums)
     loc_success_rate = round(loced_nums / total_missed_box_nums,4)
     print("misloc_recall_rate:",loc_success_rate)
+    evaluate_cluster_precision_at_iou(
+        img_to_clusters, imgname_to_missed_boxs, iou_threshold)
 
     save_dir = os.path.join(os.path.dirname(__file__), "features", "results",
                             "mis_loc", dataset_name, model_name)
@@ -690,12 +766,12 @@ def main():
                              last_epoch=5,
                              iou_threshold=iou_threshold,
                              save_dir=save_dir)
-
+    '''
 
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    iou_threshold = 0.9 # [0.5,0.6,0.7,0.8,0.9]
+    iou_threshold = 0.5 # [0.5,0.6,0.7,0.8,0.9]
 
     # 实验参数
     _args = {
@@ -714,11 +790,17 @@ if __name__ == "__main__":
 
     # 需要的数据文件路径
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
-    match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",
-                                   dataset_name,model_name,"gp_box_match","match_v2.json")
+    # match json
     if dataset_name == "VisDrone":
-        match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",
-                                   dataset_name,model_name,"gp_box_match","match_v21.json")
+        match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name, "gp_box_match",
+                                   "match_v3.json") # v3 for visdrone
+    else:
+        match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name, "gp_box_match",
+                                   "match_v2.json")
+    if not os.path.exists(match_json_path):
+        # 使用了新路径
+        match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,
+                                   "match.json")
     
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     annos_with_miss_json = read_json(annos_with_miss_json_path)

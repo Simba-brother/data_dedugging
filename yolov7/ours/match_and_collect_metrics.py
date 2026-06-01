@@ -186,7 +186,7 @@ def search_match_PG(predicted_box_list, gt_box_list, iou_thre=0.5):
     '''
     一张图像的gt boxs与predicted boxs匹配函数.
     args:
-        gt_box_list: 该图像的所有g_boxes
+        gt_box_list: 该图像的所有g_boxes x1y1x2y2
         predicted_box_list: 该图像在某个轮次的p_boxes
         iou_thre: pbox与gbox的iou只有大于这个阈值才算match
     '''
