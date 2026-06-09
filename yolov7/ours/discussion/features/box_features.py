@@ -549,5 +549,5 @@ if __name__ == "__main__":
     if dataset_name == "VisDrone":
         g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",
                                            dataset_name,model_name,"collection_metric",
-                                           "collection_metrics_v21.json")
+                                           "collection_metrics_v3.json")
     main()

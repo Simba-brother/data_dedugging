@@ -927,21 +927,21 @@ def run_feature_importance_analysis(df:pd.DataFrame):
 
 if __name__ == "__main__":
     
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7" # YOLOv7|FRCNN|SSD
     epochs = 50
     gt_json_path = get_collected_gt_box_json_path(dataset_name)
 
     # match json
     match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name, "gp_box_match",
-                                   "match_v2.json") # v3!
+                                   "match_v3.json") # v3!
     if not os.path.exists(match_json_path):
         # 使用了新路径
         match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,
                                    "match.json")
     # metric json
     g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,"collection_metric",
-                                           "collection_metrics_v2.json") # v3!
+                                           "collection_metrics_v3.json") # v3!
     if not os.path.exists(g_box_metrics_json_path):
         # 使用了新路径
         g_box_metrics_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",dataset_name,model_name,

@@ -1119,7 +1119,7 @@ def analyse_rank(gt_json_path:str, annos_with_miss_json_path:str, rank_res:list,
 
 if __name__ == "__main__":
     exp_data_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     model_name = "YOLOv7" # YOLOv7|FRCNN|rtdetr|SSD
     epochs = 50
     if model_name == "rtdetr":

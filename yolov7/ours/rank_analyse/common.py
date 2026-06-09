@@ -58,7 +58,7 @@ def compute_apfd(fault_set:set, rankded_list):
         return 0.0  # 防止除零
 
     apfd = 1 - sum(TF_positions) / (n * m) + 1 / (2 * n)
-    apfd = round(apfd,4)
+    apfd = round(apfd,3)
     return apfd
 
 def calc_fpr_fnr_f1(rank_list,error_set,cut_off=0.4):
@@ -79,12 +79,12 @@ def calc_fpr_fnr_f1(rank_list,error_set,cut_off=0.4):
             fn += 1 # 错阴
     fpr = fp / len(correct_set)
     fnr = fn / len(error_set)
-    fpr = round(fpr,4)
-    fnr = round(fnr,4)
+    fpr = round(fpr,3)
+    fnr = round(fnr,3)
     precision = tp / (tp + fp)
     recall = tp / (tp + fn)
     f1 = 2*precision*recall / (precision + recall)
-    f1 = round(f1,4)
+    f1 = round(f1,3)
     return fpr,fnr,f1
 
 
@@ -102,7 +102,7 @@ def calc_top1(annos_with_miss_json:dict,rank_list,error_set,error_imageset):
             continue
         if rankedcomponents[0] in error_set:
             mingzhong_count+=1         
-    return round(mingzhong_count/img_nums,4)
+    return round(mingzhong_count/img_nums,3)
 
 def calc_exam(annos_with_miss_json:dict,rank_list):
     imgs_group = get_imgs_group_by_fault(annos_with_miss_json)
@@ -138,7 +138,7 @@ def calc_exam(annos_with_miss_json:dict,rank_list):
             faultset = missfault_imgname_set
         exam_one_fault = exam_by_one_fault(imgset,imgname2rankedcompoents,faultset)
         exam_list.append(exam_one_fault)
-    exam = round(sum(exam_list)/len(exam_list),4)
+    exam = round(sum(exam_list)/len(exam_list),3)
     return exam
 
 def get_imgs_group_by_fault(annos_with_miss_json):
