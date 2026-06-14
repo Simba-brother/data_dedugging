@@ -775,7 +775,7 @@ if __name__ == "__main__":
 
     # 实验参数
     _args = {
-        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",# YOLOv7|FRCNN|SSD
         "epochs":50,
         "loc_iou_threshold": iou_threshold
