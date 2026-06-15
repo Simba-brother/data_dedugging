@@ -1,6 +1,54 @@
 import os
 import json
 from datetime import datetime
+
+def calu_iou(gt_bbox,predicted_bbox):
+    x1_min, y1_min, x1_max, y1_max = gt_bbox
+    x2_min, y2_min, x2_max, y2_max = predicted_bbox
+
+    inter_xmin = max(x1_min, x2_min)
+    inter_ymin = max(y1_min, y2_min)
+    inter_xmax = min(x1_max, x2_max)
+    inter_ymax = min(y1_max, y2_max)
+
+    inter_w = max(0.0, inter_xmax - inter_xmin)
+    inter_h = max(0.0, inter_ymax - inter_ymin)
+    inter_area = inter_w * inter_h
+
+    area1 = max(0.0, x1_max - x1_min) * max(0.0, y1_max - y1_min)
+    area2 = max(0.0, x2_max - x2_min) * max(0.0, y2_max - y2_min)
+
+    union_area = area1 + area2 - inter_area
+    if union_area == 0:
+        return 0.0
+    return inter_area / union_area
+
+def xcycwh_to_x1y1x2y2(bbox,W,H):
+    xc = bbox[0]
+    yc = bbox[1]
+    w = bbox[2]
+    h = bbox[3]
+
+    # 1. 归一化 -> 像素
+    x_c = xc * W
+    y_c = yc * H
+    bw  = w  * W
+    bh  = h  * H
+
+    # 2. 中心 -> 左上 / 右下
+    x1 = x_c - bw / 2
+    y1 = y_c - bh / 2
+    x2 = x_c + bw / 2
+    y2 = y_c + bh / 2
+
+    # 3. 转 int + 裁剪
+    x1 = max(0, min(W - 1, int(round(x1))))
+    y1 = max(0, min(H - 1, int(round(y1))))
+    x2 = max(0, min(W - 1, int(round(x2))))
+    y2 = max(0, min(H - 1, int(round(y2))))
+
+    return [x1,y1,x2,y2]
+
 def get_all_files(directory)->list[str]:
     files = []
     for filename in sorted(os.listdir(directory)):
