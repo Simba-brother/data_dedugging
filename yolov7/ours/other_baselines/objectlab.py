@@ -83,7 +83,7 @@ def objectlab_score(imgname,gboxs,pboxs):
             if pbox["cls"] != gbox['cls'] and iou_map[f"{gbox['id']}#{pbox['id']}"] > 0.95
         ]
         if len(diff_cls_high_conf_preds) == 0:
-            badcls_score = 1.0
+            badcls_score = 1.0 # 越大越可信
         else:
             badcls_score = 1.0 - max(iou_map[f"{gbox['id']}#{pbox['id']}"] for pbox in diff_cls_high_conf_preds)
         res[gbox['id']]["badcls_score"] = badcls_score
@@ -135,7 +135,7 @@ def main():
             imgname = key
             score = res[key]["miss_score"]
             _dict[imgname] = score
-    rank = sorted(_dict, key=_dict.get) # gid/imgname rank
+    rank = sorted(_dict, key=_dict.get) # gid/imgname rank, 值越小越可疑越靠前
 
     # 保存rank
     save_dir = os.path.join(exp_root_dir,"Results","other_baselines","objectlab",
@@ -152,8 +152,8 @@ def main():
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     exp_id = "01"
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
-    model_name = "rtdetr" # YOLOv7|FRCNN|rtdetr
+    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
+    model_name = "YOLOv7" # YOLOv7|FRCNN|rtdetr
     epoch = 99 if model_name == "rtdetr" else 49
     train_img_dir = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-yolo","origin","train","images")
     g_json_path = get_collected_gt_box_json_path(dataset_name)

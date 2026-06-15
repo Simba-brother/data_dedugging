@@ -355,7 +355,7 @@ def test(data,
 
 
 if __name__ == '__main__':
-    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
     gpu_id = 1
     parser = argparse.ArgumentParser(prog='test.py')
     parser.add_argument('--weights', nargs='+', type=str, 

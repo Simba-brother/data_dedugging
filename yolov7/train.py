@@ -577,16 +577,17 @@ if __name__ == '__main__':
     gpu_id = 0
 
     _args = {
-        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
-        "trainset_stat":"objectlab", # clean|error|ours|datactive|entropy|loss|deepgini|margin|objectlab
+        "trainset_stat":"objectlab", # clean|error|ours|datactive|entropy|loss|deepgini|margin|objectlab|clod
         "save_each_epoch":False # 恢复训练时不需要保存每个epoch的ckpt
     }
+    other_baseline_list = ["entropy","loss","deepgini","margin","objectlab","clod"]
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
     method_name = _args["trainset_stat"]
-    if _args["trainset_stat"] in ["entropy","loss","deepgini","margin","objectlab"]:
+    if _args["trainset_stat"] in other_baseline_list:
         _args["model_save_dir"] = os.path.join(exp_data_root,"Results","other_baselines", method_name,
                                    dataset_name,model_name,f"exp_{exp_id}","retrain","retrained_model")
     else:
@@ -636,8 +637,11 @@ if __name__ == '__main__':
 
     # 训练好后模型保存的目录
     model_save_dir = _args["model_save_dir"]
-
-    if _args["trainset_stat"] in ["ours","datactive","entropy","loss","deepgini","margin","objectlab"]:
+    ours_and_baselines = []
+    ours_and_baselines.append("ours")
+    ours_and_baselines.append("datactive")
+    ours_and_baselines.extend(other_baseline_list)
+    if _args["trainset_stat"] in ours_and_baselines:
         # opt.weights = os.path.join(exp_data_root, "models", dataset_name.lower(), "yolov7", "error", "new", "weights", "last.pt")
         # 设置恢复训练的ckpt
         opt.resume = f"trained_models/{dataset_name.lower()}/error_resume.pt"

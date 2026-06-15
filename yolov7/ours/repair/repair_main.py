@@ -292,7 +292,10 @@ def main():
     anno_correct_json = read_json(anno_correct_path)
 
     # 排序数据转换
-    if _args['rank_method'] in ["ours","entropy","loss","deepgini","margin","objectlab"]:
+    ours_and_otherbaseline = []
+    ours_and_otherbaseline.append("ours")
+    ours_and_otherbaseline.extend(other_baselines_list)
+    if _args['rank_method'] in ours_and_otherbaseline:
         g_boxes_json = read_json(gt_json_path)
         converted_rank = conver_ours_rank(rank,g_boxes_json,anno_error_json)
     elif _args['rank_method'] == "datactive":
@@ -332,17 +335,18 @@ if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     exp_id = "01"
 
+    other_baselines_list = ["entropy","loss","deepgini","margin","objectlab","clod"]
     _args = {
         "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7", # YOLOv7|FRCNN|SSD
-        "rank_method":"objectlab", # ours|datactive|entropy|loss|deepgini|margin|objectlab
+        "rank_method":"clod", # ours|datactive|entropy|loss|deepgini|margin|objectlab|clod
         "cut_off_rate": 0.5,
         "strict_cost":True,
         "is_save":True # 保存repair json
     }
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
-    if _args["rank_method"] in ["entropy","loss","deepgini","margin","objectlab"]:
+    if _args["rank_method"] in other_baselines_list:
         _args["save_dir"] = os.path.join(exp_root_dir,"Results","other_baselines",
                                         _args["rank_method"],dataset_name,model_name,
                                         f"exp_{exp_id}", "repair")
