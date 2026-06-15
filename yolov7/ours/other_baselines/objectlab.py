@@ -152,8 +152,8 @@ def main():
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     exp_id = "01"
-    dataset_name = "KITIT_8" # VOC2012|KITIT_8|VisDrone
-    model_name = "YOLOv7" # YOLOv7|FRCNN|rtdetr
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    model_name = "rtdetr" # YOLOv7|FRCNN|rtdetr
     epoch = 99 if model_name == "rtdetr" else 49
     train_img_dir = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-yolo","origin","train","images")
     g_json_path = get_collected_gt_box_json_path(dataset_name)

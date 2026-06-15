@@ -63,11 +63,11 @@ if __name__ == "__main__":
 
     # Only YOLOv7
     exp_data_root = "/data/mml/data_debugging_data"
-    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
-    method_name = "ours" # ours|datactive|entropy|loss|deepgini|margin
-    exp_id = "03"
+    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    method_name = "objectlab" # ours|datactive|entropy|loss|deepgini|margin|objectlab
+    exp_id = "01"
     
-    if method_name in ["entropy","loss","deepgini","margin"]:
+    if method_name in ["entropy","loss","deepgini","margin","objectlab"]:
         coco_anno_json_path = Path(
             os.path.join(
                 exp_data_root,"Results","other_baselines",method_name,dataset_name,

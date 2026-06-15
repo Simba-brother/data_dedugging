@@ -556,7 +556,7 @@ def label_replace(dataset_name):
         shutil.rmtree(cur_val_labels_dir)
         print("删除了val labels")
 
-    if _args["trainset_stat"] in ["entropy", "loss", "deepgini", "margin"]:
+    if _args["trainset_stat"] in ["entropy", "loss", "deepgini", "margin","objectlab"]:
         new_train_labels_dir = f"{exp_data_root}/Results/other_baselines/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_{exp_id}/retrain/label_split/splitted_labels/train"
         new_val_labels_dir = f"{exp_data_root}/Results/other_baselines/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_{exp_id}/retrain/label_split/splitted_labels/val"
     else:
@@ -573,20 +573,20 @@ if __name__ == '__main__':
     PID = os.getpid()
     print("PID:",PID)
     exp_data_root = "/data/mml/data_debugging_data"
-    exp_id = "02"
-    gpu_id = 1
+    exp_id = "01"
+    gpu_id = 0
 
     _args = {
-        "dataset_name":"VOC2012", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
-        "trainset_stat":"ours", # clean|error|ours|datactive|entropy|loss|deepgini|margin
+        "trainset_stat":"objectlab", # clean|error|ours|datactive|entropy|loss|deepgini|margin|objectlab
         "save_each_epoch":False # 恢复训练时不需要保存每个epoch的ckpt
     }
     dataset_name = _args["dataset_name"]
     model_name = _args["model_name"]
     method_name = _args["trainset_stat"]
-    if _args["trainset_stat"] in ["entropy","loss","deepgini","margin"]:
+    if _args["trainset_stat"] in ["entropy","loss","deepgini","margin","objectlab"]:
         _args["model_save_dir"] = os.path.join(exp_data_root,"Results","other_baselines", method_name,
                                    dataset_name,model_name,f"exp_{exp_id}","retrain","retrained_model")
     else:
@@ -637,7 +637,7 @@ if __name__ == '__main__':
     # 训练好后模型保存的目录
     model_save_dir = _args["model_save_dir"]
 
-    if _args["trainset_stat"] in ["ours","datactive","entropy","loss","deepgini","margin"]:
+    if _args["trainset_stat"] in ["ours","datactive","entropy","loss","deepgini","margin","objectlab"]:
         # opt.weights = os.path.join(exp_data_root, "models", dataset_name.lower(), "yolov7", "error", "new", "weights", "last.pt")
         # 设置恢复训练的ckpt
         opt.resume = f"trained_models/{dataset_name.lower()}/error_resume.pt"
