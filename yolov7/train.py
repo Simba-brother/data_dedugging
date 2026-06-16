@@ -551,12 +551,12 @@ def label_replace(dataset_name):
     cur_val_labels_dir = f"{exp_data_root}/datasets/{dataset_name}-yolo/val/labels"
     if is_directory_exists(cur_train_labels_dir):
         shutil.rmtree(cur_train_labels_dir)
-        print("删除了train labels")
+        print("存在train labels目录但现在删除了放心")
     if is_directory_exists(cur_val_labels_dir):
         shutil.rmtree(cur_val_labels_dir)
-        print("删除了val labels")
+        print("存在val labels目录但现在删除了放心")
 
-    if _args["trainset_stat"] in ["entropy", "loss", "deepgini", "margin","objectlab"]:
+    if _args["trainset_stat"] in other_baseline_list:
         new_train_labels_dir = f"{exp_data_root}/Results/other_baselines/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_{exp_id}/retrain/label_split/splitted_labels/train"
         new_val_labels_dir = f"{exp_data_root}/Results/other_baselines/{_args['trainset_stat']}/{dataset_name}/YOLOv7/exp_{exp_id}/retrain/label_split/splitted_labels/val"
     else:
@@ -574,13 +574,13 @@ if __name__ == '__main__':
     print("PID:",PID)
     exp_data_root = "/data/mml/data_debugging_data"
     exp_id = "01"
-    gpu_id = 0
+    gpu_id = 1
 
     _args = {
-        "dataset_name":"KITTI_8", # VOC2012|KITTI_8|VisDrone
+        "dataset_name":"VisDrone", # VOC2012|KITTI_8|VisDrone
         "model_name":"YOLOv7",
         "gpu_id":gpu_id,
-        "trainset_stat":"objectlab", # clean|error|ours|datactive|entropy|loss|deepgini|margin|objectlab|clod
+        "trainset_stat":"clod", # clean|error|ours|datactive|entropy|loss|deepgini|margin|objectlab|clod
         "save_each_epoch":False # 恢复训练时不需要保存每个epoch的ckpt
     }
     other_baseline_list = ["entropy","loss","deepgini","margin","objectlab","clod"]

@@ -76,12 +76,12 @@ def vis_rank(rank_res,errored_gid_set, miss_img_set):
 if __name__ == "__main__":
     
     exp_root_dir = "/data/mml/data_debugging_data"
-    dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
-    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD|rtdetr
-    baseline_name = "objectlab" # entropy|loss|deepgini|margin|objectlab|clod
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
+    model_name = "FRCNN" # YOLOv7|FRCNN|SSD|rtdetr
+    baseline_name = "clod" # entropy|loss|deepgini|margin|objectlab|clod
     rank_path = os.path.join(exp_root_dir,"Results",
                              "other_baselines",baseline_name,dataset_name,model_name,
-                             "exp_01","rank","rank.joblib")
+                             "exp_01","rank","rank_temp.joblib")
     rank = joblib.load(rank_path)
 
     gt_json_path = get_collected_gt_box_json_path(dataset_name)

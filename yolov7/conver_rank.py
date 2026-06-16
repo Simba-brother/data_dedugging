@@ -33,7 +33,7 @@ def convert_otherbaselines():
         anno_error_json_path = get_error_ann_file_path(dataset_name)
         anno_error_json = read_json(anno_error_json_path)
         for model_name in ["YOLOv7","FRCNN","rtdetr"]:
-            for baseline_name in ["entropy","loss","deepgini","margin"]:
+            for baseline_name in ["objectlab","clod"]: # ["entropy","loss","deepgini","margin","objectlab","clod"]:
                 print(f"{dataset_name}|{model_name}|{baseline_name} 转换中...")
                 rank_path = os.path.join(exp_data_root_dir,"Results",
                                         "other_baselines",baseline_name,dataset_name,model_name,
@@ -63,5 +63,5 @@ def convert_datactive():
 
 if __name__ == "__main__":
     # convert_ours()
-    # convert_otherbaselines()
-    convert_datactive()
+    convert_otherbaselines()
+    # convert_datactive()

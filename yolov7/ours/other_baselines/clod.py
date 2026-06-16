@@ -150,8 +150,6 @@ def clod_score(imgname,gboxs,pboxs,iou_thr=0.5, alpha=0.8):
         # 5. 判断类型
         err_type = infer_clod_error_type(gts, preds)
 
-
-
         # 6. 输出候选
         # candidates = []
         if len(gts) > 0:
@@ -209,7 +207,7 @@ def main():
     save_dir = os.path.join(exp_root_dir,"Results","other_baselines","clod",
                             dataset_name,model_name,f"exp_{exp_id}","rank")
     os.makedirs(save_dir,exist_ok=True)
-    save_file_name = "rank.joblib"
+    save_file_name = "rank_temp.joblib"
     save_path = os.path.join(save_dir,save_file_name)
     joblib.dump(rank,save_path)
     print(f"rank长度为:{len(rank)}")
@@ -220,9 +218,9 @@ def main():
 if __name__ == "__main__":
     exp_root_dir = "/data/mml/data_debugging_data"
     exp_id = "01"
-    dataset_name = "VisDrone" # VOC2012|KITTI_8|VisDrone
+    dataset_name = "VOC2012" # VOC2012|KITTI_8|VisDrone
+    model_name = "FRCNN" # YOLOv7|FRCNN|rtdetr
     num_classes = get_nc(dataset_name)
-    model_name = "YOLOv7" # YOLOv7|FRCNN|rtdetr
     epoch = 99 if model_name == "rtdetr" else 49
     train_img_dir = os.path.join(exp_root_dir,"datasets",f"{dataset_name}-yolo","origin","train","images")
     g_json_path = get_collected_gt_box_json_path(dataset_name)
