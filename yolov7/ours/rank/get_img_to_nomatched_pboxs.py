@@ -69,8 +69,8 @@ def get_img_name_to_epoch_to_unmatched_p_boxs(epoch_to_matched_p_ids:dict,
 
 
 def get_img_to_no_matched_pboxs(all_img_name_list, gt_match_json:dict)->dict:
-    last_epoch_nums = 5
-    conf_threshold = 0.6
+    last_epoch_nums = 20 # default:5
+    conf_threshold = 0.5 # default:0.6
     epoch_to_matched_p_ids = get_epoch_to_matched_p_boxs(gt_match_json)
     # 获得每张图像在后面几个epoch中没被g_box匹配的高置信度p_box
     img_name_to_epoch_to_no_match_p_boxs = get_img_name_to_epoch_to_unmatched_p_boxs(
@@ -110,7 +110,7 @@ def main():
 
     save_dir = os.path.join(exp_data_root_dir,"collection_bbox_level",
                             dataset_name,model_name)
-    save_file_name = "img_to_nomatched_pboxs.json"
+    save_file_name = "img_to_nomatched_pboxs_temp.json"
     save_path = os.path.join(save_dir,save_file_name)
     save_json_file(img_to_p_boxs,save_path)
     print(f"json保存在:{save_path}")
@@ -120,7 +120,7 @@ def main():
 if __name__ == "__main__":
 
     dataset_name = "KITTI_8" # VOC2012|KITTI_8|VisDrone
-    model_name = "rtdetr" # YOLOv7|FRCNN|SSD|rtdetr
+    model_name = "YOLOv7" # YOLOv7|FRCNN|SSD|rtdetr
     epochs = 50
     if model_name == "rtdetr":
         epochs = 100
@@ -128,8 +128,10 @@ if __name__ == "__main__":
     imgs_dir = os.path.join(exp_data_root_dir,"retrain_dataset_split", dataset_name,
                              "images", "origin")
     match_json_path = os.path.join(exp_data_root_dir,"collection_bbox_level",
-                                dataset_name,model_name,"match.json")
+                                dataset_name,model_name,"gp_box_match", "match_v2.json")
+    
     annos_with_miss_json_path = get_annotations_with_miss_json_path(dataset_name)
     predicted_bboxs_dir = os.path.join(exp_data_root_dir,"collection_bbox_level",
-                                    dataset_name,model_name,"predicted_bbox")
+                                    dataset_name,model_name,"collected_predicted_box", "v2")
+    
     main()
