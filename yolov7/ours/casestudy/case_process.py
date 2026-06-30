@@ -53,7 +53,7 @@ def draw_iou_line(iou_list,save_path):
             markeredgewidth=0.7,
             label="IoU",
         )
-        ax.set_xlabel("Epoch", labelpad=0)
+        ax.set_xlabel("Epoch", labelpad=4)
         ax.set_ylabel("IoU", labelpad=1)
         ax.set_xlim(0, max(len(iou_arr) - 1, 1))
         ax.set_ylim(0.5, 1.02)
